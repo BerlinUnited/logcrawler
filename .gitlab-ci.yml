@@ -1,0 +1,23 @@
+image: docker:latest
+services:
+ - docker:dind
+
+before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN scm.cms.hu-berlin.de:4567
+    # - docker login -u CI_USER -p $CI_USER_TOKEN scm.cms.hu-berlin.de:4567
+
+variables:
+    # https://about.gitlab.com/blog/2019/07/31/docker-in-docker-with-docker-19-dot-03/
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_IMAGE: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
+
+build_image:
+  rules:
+    - changes: 
+      - Dockerfile
+      - main.py
+      - requirements.txt
+  script:
+    - docker build -f Dockerfile -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:latest
