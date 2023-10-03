@@ -4,7 +4,6 @@ services:
 
 before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN scm.cms.hu-berlin.de:4567
-    - export KUBECONFIG=$KUBECONFIG_FILE
 
 variables:
     # https://about.gitlab.com/blog/2019/07/31/docker-in-docker-with-docker-19-dot-03/
@@ -22,7 +21,10 @@ build_image:
 deploy_k8s:
   tags:
     - goal
-  image: bitnami/kubectl:1.28.2
+  image: 
+    name: bitnami/kubectl:1.28.2
+    entrypoint: [""]
   script:
+    - export KUBECONFIG=$KUBECONFIG_FILE
     - kubectl create configmap logcrawler --from-file=main.py -n default
     - kubectl apply -f log_crawler.yaml
