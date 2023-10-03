@@ -2,9 +2,6 @@ image: docker:latest
 services:
  - docker:dind
 
-before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN scm.cms.hu-berlin.de:4567
-
 variables:
     # https://about.gitlab.com/blog/2019/07/31/docker-in-docker-with-docker-19-dot-03/
     DOCKER_DRIVER: overlay2
@@ -15,6 +12,7 @@ build_image:
   tags:
     - goal
   script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN scm.cms.hu-berlin.de:4567
     - docker build -f Dockerfile -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:latest
 
