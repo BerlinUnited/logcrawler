@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-configmap
+data:
+  ma: |
+    #!/bin/bash
+
+    echo "Hi!"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-crawler
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1  # You can change the number of desired replicas
+  selector:
+    matchLabels:
+      app: log-crawler
+  template:
+    metadata:
+      labels:
+        app: log-crawler
+    spec:
+      containers:
+      - name: log-crawler
+        image: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /mnt/repl
+          name: replmount # Corresponds to the `spec.volumes` Persistent Volume
+        - name: pythoncode
+            mountPath: "/"
+        command: [python "/main.py"]
+      imagePullSecrets: 
+        - name: registry-credentials
+      volumes:
+      - name: replmount
+        hostPath:
+          path: /mnt/repl # Specify a path to a local drive or volume on the Kubernetes worker node
+      - name: pythoncode
+          configMap:
+            name: logcrawler
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
