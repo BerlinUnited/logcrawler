@@ -19,10 +19,12 @@ build_image:
 deploy_k8s:
   tags:
     - goal
+  # https://gitlab.com/gitlab-org/gitlab-foss/-/issues/65110
   image: 
     name: bitnami/kubectl:1.28.2
     entrypoint: [""]
   script:
     - export KUBECONFIG=$KUBECONFIG_FILE
-    - kubectl create configmap logcrawler --from-file=main.py -n default
+    # https://stackoverflow.com/questions/38216278/update-k8s-configmap-or-secret-without-deleting-the-existing-one
+    - kubectl create configmap logcrawler --from-file=main.py -n default -o yaml --dry-run=client | kubectl apply -f -
     - kubectl apply -f log_crawler.yaml
