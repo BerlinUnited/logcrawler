@@ -3,6 +3,8 @@
 import pathlib
 import time
 import psycopg2
+from minio import Minio
+from minio.error import S3Error
 
 params = {"host": "postgres.postgres","port": 5432,"dbname": "postgres","user": "postgres","password": "123"}
 conn = psycopg2.connect(**params)
