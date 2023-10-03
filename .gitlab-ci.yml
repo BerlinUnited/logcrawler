@@ -13,11 +13,16 @@ variables:
     DOCKER_IMAGE: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
 
 build_image:
+  tags:
+    - goal
   script:
     - docker build -f Dockerfile -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:latest
 
 deploy_k8s:
+  tags:
+    - goal
   image: bitnami/kubectl:1.28.2
   script:
     - kubectl create configmap logcrawler --from-file=main.py -n default
+    - kubectl apply -f log_crawler.yaml
