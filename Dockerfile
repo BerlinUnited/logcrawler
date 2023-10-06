@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-RUN apt install -y python3 python3-pip
+RUN apt update && apt install -y python3 python3-pip
 
 ADD main.py /code/main.py
 ADD requirements.txt /requirements.txt
