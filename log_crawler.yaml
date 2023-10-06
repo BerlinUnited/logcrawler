@@ -17,7 +17,7 @@ spec:
       containers:
       - name: log-crawler
         image: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always #IfNotPresent
         ports:
         - containerPort: 80
         volumeMounts:
