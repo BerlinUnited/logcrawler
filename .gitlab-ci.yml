@@ -1,6 +1,6 @@
 image: docker:latest
 services:
- - docker:dind
+  - docker:dind
 
 variables:
     # https://about.gitlab.com/blog/2019/07/31/docker-in-docker-with-docker-19-dot-03/
@@ -9,14 +9,15 @@ variables:
     DOCKER_IMAGE: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
 
 build_image:
-  tags:
-    - goal
+
+#  tags:
+#    - goal
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN scm.cms.hu-berlin.de:4567
     - docker build -f Dockerfile -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:latest
 
-deploy_k8s:
+.deploy_k8s:
   tags:
     - goal
   # https://gitlab.com/gitlab-org/gitlab-foss/-/issues/65110
