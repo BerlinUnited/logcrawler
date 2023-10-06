@@ -16,16 +16,16 @@ spec:
     spec:
       containers:
       - name: log-crawler
-        image: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
-        imagePullPolicy: Always
+        image: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         volumeMounts:
         - mountPath: /mnt/repl
           name: replmount # Corresponds to the `spec.volumes` Persistent Volume
-        - mountPath: "/"
+        - mountPath: "/code"
           name: pythoncode            
-        command: [python "/main.py"]
+        #command: ["python /code/main.py"]
       imagePullSecrets: 
         - name: registry-credentials
       volumes:
