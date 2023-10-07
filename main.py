@@ -6,7 +6,6 @@ import psycopg2
 from naoth.log import Parser
 from naoth.log import Reader as LogReader
 from naoth.pb.Framework_Representations_pb2 import Image
-import psycopg2.sql as sql
 
 # connect to database
 params = {"host": "postgres.postgres","port": 5432,"dbname": "postgres","user": "postgres","password": "123"}
@@ -57,7 +56,7 @@ def create_tables_step2():
     rep_list = [str(row[0]) + " VARCHAR" for row in rtn_val]
 
     create_table_query = """CREATE TABLE IF NOT EXISTS log ({0});""".format(', '.join( rep_list ))
-    print(create_table_query)
+
     cur.execute(create_table_query)
     conn.commit()
 
@@ -110,11 +109,25 @@ def get_robot_data(game_path, game_id):
         cur.execute(insert_statement)
         conn.commit()
 
-        # TODO actually parse the logs
+        # actually parse the logs
+        parse_log_data(logfolder)
 
 
-def parse_log_data():
-    pass
+def parse_log_data(logfolder):
+    gamelog = logfolder / "game.log"
+    print(f"parsing {gamelog}")
+    my_parser = Parser()
+    log = LogReader(gamelog, my_parser)
+    # TODO think about how to actually insert
+    for i, frame in enumerate(log):
+        print("\tframe: ", i)
+        dict_keys = frame.get_names()
+        for key in dict_keys:
+            print(frame[key])
+            # we cant just insert frame[key] because all the keys belong to the same insert command otherwise they would go on different rows
+        break
+
+    # TODO parse the image log
 
 
 def export_representations_from_log(event_path):
