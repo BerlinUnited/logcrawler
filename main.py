@@ -3,6 +3,10 @@
 from pathlib import Path
 import time
 import psycopg2
+from naoth.log import Parser
+from naoth.log import Reader as LogReader
+from naoth.pb.Framework_Representations_pb2 import Image
+import psycopg2.sql as sql
 
 # connect to database
 params = {"host": "postgres.postgres","port": 5432,"dbname": "postgres","user": "postgres","password": "123"}
@@ -13,7 +17,8 @@ def cleanup():
     # FIXME for easier life we will delete all the data first whenever the pod starts. This prevents double entry. 
     cur.execute("DROP TABLE game, robot_logs")
 
-def create_tables():
+
+def create_tables_step1():
     # TODO use postgres date / datetime later
     test = """
     CREATE TABLE IF NOT EXISTS game (
@@ -33,11 +38,28 @@ def create_tables():
         headnumber INT,
         bodynumber VARCHAR
     );
+
+    CREATE TABLE IF NOT EXISTS representations (
+        representation_name VARCHAR,
+        CONSTRAINT rep_constraint UNIQUE (representation_name)
+    );
     """
     cur.execute(test)
     conn.commit()
 
 
+def create_tables_step2():
+    cur.execute("SELECT * FROM representations")
+    rtn_val = cur.fetchall()
+
+    # we get list of tuples each tuple represents one row
+    # combine it with the string VARCHAR so that we can create a valid SQL query out of it
+    rep_list = [str(row[0]) + " VARCHAR" for row in rtn_val]
+
+    create_table_query = """CREATE TABLE IF NOT EXISTS log ({0});""".format(', '.join( rep_list ))
+    print(create_table_query)
+    cur.execute(create_table_query)
+    conn.commit()
 
 def get_game_data(event_path):
     """
@@ -72,10 +94,6 @@ def get_game_data(event_path):
             # TODO video data
             # TODO gamecontroller data
 
-    
-
-    cur.execute("SELECT * FROM game;")
-    print(cur.fetchall())
 
 def get_robot_data(game_path, game_id):
     gamelog_path = Path(game_path) / "game_logs"
@@ -93,7 +111,44 @@ def get_robot_data(game_path, game_id):
         conn.commit()
 
         # TODO actually parse the logs
-        
+
+
+def parse_log_data():
+    pass
+
+
+def export_representations_from_log(event_path):
+    """
+        Idea is to find all representations put that into db table, later on we will use this table to create the logs table
+    """
+    for game in sorted(event_path.iterdir()):
+        game_log_folder = Path(game) / "game_logs"
+
+        for robot in sorted(game_log_folder.iterdir()):
+            # TODO add images.log representations
+            print(f"\t{robot}")
+            gamelog = robot / "game.log"
+            img_log = robot / "images.log"
+
+            my_parser = Parser()
+
+            log = LogReader(gamelog, my_parser)
+            for i, frame in enumerate(log):
+                dict_keys = frame.get_names()
+                for key in dict_keys:
+                    insert_statement = f"""
+                    INSERT INTO representations (representation_name) 
+                    VALUES ('{key}') ON CONFLICT DO NOTHING;
+                    """
+                    cur.execute(insert_statement)
+                # only check the first few frames
+                if i > 20:
+                    break
+
+            conn.commit()
+
+        break
+    return
 
 
 def main_loop():
@@ -110,9 +165,25 @@ def main_loop():
                 print(event)
                 get_game_data(event)
 
+def prep_loop():
+    """
+        this is something that needs to run continuously and it should fix or identify problems in the structure of the data
+    """
+    eventlist = ["2019-05-01_GO19", "2019-03-28_Aspen"]
+    d = Path('/mnt/repl/')
+    print("running prep loop")
+    for event in d.iterdir():
+        if event.is_dir():
+            if event.name in eventlist:
+                export_representations_from_log(event)
+    print("finished prep loop")
 
 cleanup()
-create_tables()
+create_tables_step1()
+prep_loop()
+create_tables_step2()
+# TODO create tables step 2 (table for actual parsed log data)
+
 main_loop()
 
 

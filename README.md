@@ -7,33 +7,8 @@ For creating another db have a look at this: https://stackoverflow.com/questions
 
 
 ---
-"""
-"""
-import pathlib
-import time
-import psycopg2
-
-# connect to database
-params = {"host": "postgres.postgres","port": 5432,"dbname": "postgres","user": "postgres","password": "123"}
-conn = psycopg2.connect(**params)
-cur = conn.cursor()
-
 # create schema
-# TODO create table if not exist
-test = """
-CREATE TABLE game (
- id SERIAL PRIMARY KEY,
-  game_name VARCHAR,
-  event_name VARCHAR
-);
 
-CREATE TABLE robot_logs (
-  id INT,
-  	game_name VARCHAR,
-  	robot_id INT
-    robot_name VARCHAR
-
-);
 
 creation of log table:
      QUESTION: what are the columnnames???
@@ -43,12 +18,6 @@ def get_all_representations():
     load all the json files
     unique_list_representations = set(list of dict)
 
-
-def populate_game_table(event_name, game_names):
-    INSERT INTO game (game_name, event_name) VALUES ('game1', 'cool_event');
-    INSERT INTO game (game_name, event_name) VALUES ('game2', 'cool_event');
-    INSERT INTO game (game_name, event_name) VALUES ('game3', 'cool_event');
-    INSERT INTO game (game_name, event_name) VALUES ('game4', 'cool_event');
 
 
 def parse_log(logfile):
