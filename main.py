@@ -14,17 +14,21 @@ def cleanup():
     cur.execute("DROP TABLE game, robot_logs")
 
 def create_tables():
-    # TODO add fields for date, time, halftime, team1, team2, test(boolean)
-    # 
+    # TODO use postgres date / datetime later
     test = """
     CREATE TABLE IF NOT EXISTS game (
-        id SERIAL PRIMARY KEY,
+        game_id SERIAL PRIMARY KEY,
         game_name VARCHAR,
-        event_name VARCHAR
+        event_name VARCHAR,
+        game_date VARCHAR,
+        game_time VARCHAR,
+        halftime INT,
+        team1 VARCHAR,
+        team2 VARCHAR
     );
 
     CREATE TABLE IF NOT EXISTS robot_logs (
-        id INT,
+        game_id INT,
         game_name VARCHAR,
         robot_id INT,
         robot_name VARCHAR
@@ -43,20 +47,39 @@ def create_tables():
 
 
 def get_game_data(event_path):
+    """
+        function that fills 
+    """
     event_name = event_path.name
     for game in event_path.iterdir():
         if game.is_dir():
             print(f"\t{game}")
-            # TODO parse additional information from game folder
-            cur.execute(f"INSERT INTO game (game_name, event_name) VALUES ('{game.name}', '{event_name}');")
+            # ignore test games
+            if "test" in str(game.name).lower(): 
+                continue
+            # parse additional information from game folder
+            game_parsed = str(game.name).split("_")
+            date = game_parsed[0]
+            time = game_parsed[1]
+            team1 = game_parsed[2]
+            team2 = game_parsed[4]
+            halftime = game_parsed[5][-1]
+      
+            insert_statement = f"""
+            INSERT INTO game (game_name, event_name, game_date, game_time, halftime, team1, team2) 
+            
+            VALUES ('{game.name}', '{event_name}', '{date}', '{time}', '{halftime}', '{team1}', '{team2}');
+            """
+            cur.execute(insert_statement)
             conn.commit()
             # TODO get id from inserted row
+
 
             #get_robot_data(game_id)
 
     
 
-    cur.execute("SELECT * FROM game ;")
+    cur.execute("SELECT * FROM game;")
     print(cur.fetchall())
 
 def get_robot_data():
