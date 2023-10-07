@@ -11,8 +11,7 @@ cur = conn.cursor()
 
 def cleanup():
     # FIXME for easier life we will delete all the data first whenever the pod starts. This prevents double entry. 
-    cur.execute("TRUNCATE game, robot_logs")
-    # TODO maybe also always delete the schema
+    cur.execute("DROP TABLE game, robot_logs")
 
 def create_tables():
     # TODO add fields for date, time, halftime, team1, team2, test(boolean)
