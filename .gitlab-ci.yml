@@ -27,5 +27,5 @@ build_image:
   script:
     - export KUBECONFIG=$KUBECONFIG_FILE
     # https://stackoverflow.com/questions/38216278/update-k8s-configmap-or-secret-without-deleting-the-existing-one
-    - kubectl create configmap logcrawler --from-file=main.py -n default -o yaml --dry-run=client | kubectl apply -f -
+    - kubectl create configmap logcrawler --from-file=main.py -n stella -o yaml --dry-run=client | kubectl apply -f -
     - kubectl apply -f log_crawler.yaml -n default

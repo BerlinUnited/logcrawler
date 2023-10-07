@@ -3,10 +3,10 @@
 TODO
 
 ## Possible improvements
-- move the k8s yaml from the k8s cluster repo to this repo and use configmaps for the code
+For creating another db have a look at this: https://stackoverflow.com/questions/74899785/psycopg2-errors-activesqltransaction-create-database-cannot-run-inside-a-transa
 
 
-
+---
 """
 """
 import pathlib
