@@ -17,7 +17,7 @@ def create_tables():
     # TODO use postgres date / datetime later
     test = """
     CREATE TABLE IF NOT EXISTS game (
-        game_id SERIAL PRIMARY KEY,
+        game_id BIGSERIAL PRIMARY KEY,
         game_name VARCHAR,
         event_name VARCHAR,
         game_date VARCHAR,
@@ -28,22 +28,15 @@ def create_tables():
     );
 
     CREATE TABLE IF NOT EXISTS robot_logs (
-        game_id INT,
-        game_name VARCHAR,
-        robot_id INT,
-        robot_name VARCHAR
+        game_id BIGINT REFERENCES game (game_id),
+        playernumber INT,
+        headnumber INT,
+        bodynumber VARCHAR
     );
     """
-    # TODO add fields for playernumber, headnumber, bodynumber
-    # TODO change id to game_id
-    # TODO think about foreign keys here?
     cur.execute(test)
     conn.commit()
 
-
-    cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public';")
-    table_names = cur.fetchall()
-    print(f"created tables: {table_names}")
 
 
 def get_game_data(event_path):
@@ -64,26 +57,44 @@ def get_game_data(event_path):
             team1 = game_parsed[2]
             team2 = game_parsed[4]
             halftime = game_parsed[5][-1]
-      
+
+            # TODO maybe improve insertion like this sql_string = "INSERT INTO domes_hundred (name,name_slug,status) VALUES (%s,%s,%s) RETURNING id;"
             insert_statement = f"""
             INSERT INTO game (game_name, event_name, game_date, game_time, halftime, team1, team2) 
             
-            VALUES ('{game.name}', '{event_name}', '{date}', '{time}', '{halftime}', '{team1}', '{team2}');
+            VALUES ('{game.name}', '{event_name}', '{date}', '{time}', '{halftime}', '{team1}', '{team2}')
+            RETURNING game_id;
             """
             cur.execute(insert_statement)
+            game_id = cur.fetchone()[0]
             conn.commit()
-            # TODO get id from inserted row
-
-
-            #get_robot_data(game_id)
+            get_robot_data(game, game_id)
+            # TODO video data
+            # TODO gamecontroller data
 
     
 
     cur.execute("SELECT * FROM game;")
     print(cur.fetchall())
 
-def get_robot_data():
-    pass
+def get_robot_data(game_path, game_id):
+    gamelog_path = Path(game_path) / "game_logs"
+    for logfolder in gamelog_path.iterdir():
+        print(f"\t\t{logfolder}")
+        logfolder_parsed = str(logfolder.name).split("_")
+        playernumber = logfolder_parsed[0]
+        head_number = logfolder_parsed[1]
+        body_number = logfolder_parsed[2]
+        insert_statement = f"""
+        INSERT INTO robot_logs (game_id, playernumber, headnumber, bodynumber) 
+        VALUES ('{game_id}', '{playernumber}', '{head_number}', '{body_number}');
+        """
+        cur.execute(insert_statement)
+        conn.commit()
+
+        # TODO actually parse the logs
+        
+
 
 def main_loop():
     """
