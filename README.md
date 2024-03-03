@@ -1,5 +1,41 @@
 # Berlin United LogCrawler
 
+## Container
+The Dockerfile contains all the python packages that are needed to run all the code related to logs. The image is build by the CI and pushed to our gitlab container registry. This image will be used for all code running inside k8s.
+
+
+## Code
+- Should contain code to build and publish an image what can parse logs, connect to the database and can use minio. 
+- This generic image will later be used by all pods that need to deal with logs
+
+Write scripts that can do one thing well:
+- find all games from a list of suitable events
+  - should add those to the db if not exist already
+  - use proper datetime so that we can use them in a query
+- find all logs for a game and put them in the db
+  - add folder of log to the table
+- use each log folder from db and check if logs all already combined, if not combine them
+  - use a normal pvc in which we download the logs for combining, then we upload it to repl again, after pod dies the pvc should too.
+  - should add a flag to the log table for is_combined e {no, yes, not possible}
+- if log is combined or not possible to combine and no representation.json is present
+  - get representation and write it to json
+  - write it also to the robot_logs table similar to what I already did in the logcrawler
+- for each log that contains images export them with meta data
+  - TODO: where should I save it?
+        -> probably in a pvc that persists, so a minio bucket I guess. This would be needed so that we can annotate per log
+        -> if we go this route the script can also create the task/projects in labelstudio
+- for each log that contains patches export patches as they were recorded (not sure if this is really necessary)
+- generate patches from images
+- script that can create dataset from sql query like
+    - all top images from robot 96 since 2019
+    - TODO: how do we get the annotations in the database?
+
+
+
+
+
+
+
 TODO
 
 ## Possible improvements
