@@ -9,3 +9,5 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
 
 ADD requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
+
+COPY image_extractor /scripts/image_extractor
