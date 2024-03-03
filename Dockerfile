@@ -1,7 +1,11 @@
-FROM python:3.9-alpine
+FROM ubuntu:22.04
 ENV PYTHONUNBUFFERED=1
-#RUN apt update && apt install -y python3 python3-pip
+
+RUN apt-get update && apt-get -y --no-install-recommends install \
+    wget \
+    git \
+    python3 \
+    python3-pip
 
 ADD requirements.txt /requirements.txt
-
 RUN pip install -r /requirements.txt
