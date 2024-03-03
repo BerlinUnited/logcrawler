@@ -5,3 +5,4 @@ minio
 opencv-python
 label-studio-sdk
 pillow
+protobuf==3.20
