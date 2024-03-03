@@ -20,8 +20,9 @@ def export_images(logfile, img):
 
         and saves the images inside those folders
     """
-    # TODO save in extraced folder and zipped
-    logfile_name = Path(logfile).parent / Path(logfile).stem
+    # TODO naming is weird logfile_name is not really what it says it is
+    extracted_folder = Path(logfile).parent.parent.parent / Path("extracted") / Path(logfile).parent.name
+    logfile_name = extracted_folder / Path(logfile).stem
     output_folder_top = Path(str(logfile_name) + "_top")
     output_folder_bottom = Path(str(logfile_name) + "_bottom")
 
@@ -29,6 +30,7 @@ def export_images(logfile, img):
     output_folder_bottom.mkdir(exist_ok=True, parents=True)
     
     # the order changed in 2023
+    # TODO add the code from max here
     for i, img_b, img_t, cm_b, cm_t in img:
         if img_b:
             img_b = img_b.convert('RGB')
@@ -40,17 +42,27 @@ def export_images(logfile, img):
 
         print("saving images from frame ", i)
 
-    # TODO zip the images
-    output_zipfile_top = Path(output_folder_top).with_suffix(".zip")
+    # zip the images
+    # FIXME: it does not zip the correct thing
+    """
+    output_zipfile_top = Path(output_folder_top)
     if output_zipfile_top.is_file():
         print("\tframes.zip file already exists. Will continue with the next game")
     else:
         shutil.make_archive(str(output_zipfile_top), format="zip")
-    output_zipfile_bottom = Path(output_folder_bottom).with_suffix(".zip")
+        # remove the extracted images after zipping
+        shutil.rmtree(output_folder_top)
+
+    output_zipfile_bottom = Path(output_folder_bottom)
     if output_zipfile_bottom.is_file():
         print("\tframes.zip file already exists. Will continue with the next game")
     else:
         shutil.make_archive(str(output_zipfile_bottom), format="zip")
+        # remove the extracted images after zipping
+        shutil.rmtree(output_folder_bottom)
+
+    # TODO maybe its better to have the images not zipped for later
+    """
 
 def get_images(frame):
     try:
