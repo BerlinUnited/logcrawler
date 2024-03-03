@@ -4,3 +4,4 @@ numpy
 minio
 opencv-python
 label-studio-sdk
+pillow
