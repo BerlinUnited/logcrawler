@@ -43,9 +43,11 @@ def export_images(logfile, img):
 
         print("saving images from frame ", i)
 
-    # zip the images
+    
     # FIXME: it does not zip the correct thing
+    # labelstudio expects the data to be unzipped so it can be loaded in a minio bucket
     """
+    # zip the images
     output_zipfile_top = Path(output_folder_top)
     if output_zipfile_top.is_file():
         print("\tframes.zip file already exists. Will continue with the next game")
@@ -61,8 +63,6 @@ def export_images(logfile, img):
         shutil.make_archive(str(output_zipfile_bottom), format="zip")
         # remove the extracted images after zipping
         shutil.rmtree(output_folder_bottom)
-
-    # TODO maybe its better to have the images not zipped for later
     """
 
 def get_images(frame):
