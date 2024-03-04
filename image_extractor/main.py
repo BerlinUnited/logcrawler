@@ -32,13 +32,14 @@ def export_images(logfile, img):
     # the order changed in 2023
     # TODO add the code from max here
     for i, img_b, img_t, cm_b, cm_t in img:
+        frame_number = format(i, '07d')  # make frame number a fixed length string so that the images are in the correct order
         if img_b:
             img_b = img_b.convert('RGB')
-            save_image_to_png(i, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile)
+            save_image_to_png(frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile)
 
         if img_t:
             img_t = img_t.convert('RGB')
-            save_image_to_png(i, img_t, cm_t, output_folder_top, cam_id=0, name=logfile)
+            save_image_to_png(frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile)
 
         print("saving images from frame ", i)
 
