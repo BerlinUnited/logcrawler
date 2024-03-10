@@ -9,7 +9,12 @@ from PIL import Image as PIL_Image
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
 import sys
+import psycopg2
 
+
+params = {"host": "pg.berlinunited-cloud.de","port": 4000,"dbname": "logs","user": "naoth","password": "fsdjhwzuertuqg"}
+conn = psycopg2.connect(**params)
+cur = conn.cursor()
 
 
 def export_images(logfile, img):
@@ -138,17 +143,41 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
     filename = target_dir / (str(j) + ".png")
     img.save(filename, pnginfo=meta)
 
+
+def get_logs():
+    # TODO only select the ones which have images
+    select_statement = f"""
+    SELECT log_path FROM robot_logs
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    logs = [x[0] for x in rtn_val]
+    print(logs)
+    return logs
+
+
 if __name__ == "__main__":
+    """
+    TODO set up argparser here, if no argument set get all logs from postgres
+    """
+    # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
+    root_path = environ.get('LOG_ROOT') or '/mnt/q/'  # use or with environment variable to make sure it works in k8s as well
+    root_path = Path(root_path)
+    log_list = get_logs()
+
+    quit()
     # log_folder= "/mnt/q/2023-07-04_RC23/2023-07-08_10-30-00_HULKs_vs_Berlin_United_half1-E/game_logs/1_13_Nao0038_230708-0843"
-    log_folder = sys.argv[1]
-    combined_log = Path(log_folder) / "combined.log"
-    if combined_log.is_file():
-        # export from combined log
-        log = str(combined_log)
+    #log_folder = sys.argv[1]
 
-    # TODO dont do anything if extraced stuff already exists
+    for log in log_list:
+        combined_log = root_path / Path(log) / "combined.log"
+        if combined_log.is_file():
+            # export from combined log
+            log = str(combined_log)
 
-    my_parser = Parser()
-    with LogReader(log, my_parser) as reader:
-        images = map(get_images, reader.read())
-        export_images(log, images)
+        # TODO dont do anything if extraced stuff already exists
+
+        my_parser = Parser()
+        with LogReader(log, my_parser) as reader:
+            images = map(get_images, reader.read())
+            export_images(log, images)

@@ -14,3 +14,7 @@ RUN pip install -r /requirements.txt
 
 COPY image_extractor /scripts/image_extractor
 COPY labelstudio_importer /scripts/labelstudio_importer
+COPY representation_exporter /scripts/representation_exporter
+COPY db_ingester /scripts/db_ingester
+COPY check_images /scripts/check_images
+COPY combine_images /scripts/combine_images

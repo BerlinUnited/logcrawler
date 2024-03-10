@@ -67,6 +67,12 @@ def create_bucket_from_logfile(data_folder):
 
 
 if __name__ == "__main__":
+    # TODO use a row from postgres as input
+    """
+        something like give the logpath as argument and then this code checks if its already done
+    """
+
+
     # TODO use argparse here
     #log_folder = sys.argv[1]
     log_folder= "/mnt/repl/2023-07-04_RC23/2023-07-08_10-30-00_HULKs_vs_Berlin_United_half1-E/extracted/2_24_Nao0011_230708-0843"
