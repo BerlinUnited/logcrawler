@@ -23,9 +23,16 @@ def get_logs():
     logs = [x[0] for x in rtn_val]
     return logs
 
+
+def generate_unique_name():
+    while True:
+        name = ''.join(random.choices(string.ascii_lowercase, k=22))
+        if not mclient.bucket_exists(name):
+            return name
+
+
 def upload_to_minio(data_folder):
-    # TODO make sure there cant be any collisions
-    bucket_name= ''.join(random.choices(string.ascii_lowercase, k=22))
+    bucket_name= generate_unique_name()
 
     # Make the bucket
     mclient.make_bucket(bucket_name)
@@ -44,6 +51,7 @@ def upload_to_minio(data_folder):
             source_file, "successfully uploaded as object",
             destination_file, "to bucket", bucket_name,
         )
+    return bucket_name
 
 
 if __name__ == "__main__":

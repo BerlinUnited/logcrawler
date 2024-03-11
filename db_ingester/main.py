@@ -24,7 +24,7 @@ def create_log_table():
         bodynumber VARCHAR,
         team1 VARCHAR,
         team2 VARCHAR,
-        time DATE,
+        time timestamp,
         broken BOOLEAN DEFAULT FALSE,
         representation_exists BOOLEAN,
         images_exist BOOLEAN,
@@ -56,8 +56,7 @@ def insert_data():
                     continue
                 # parse additional information from game folder
                 game_parsed = str(game.name).split("_")
-                date = game_parsed[0]
-                time = game_parsed[1]
+                timestamp = game_parsed[0] + "_" + game_parsed[1]
                 team1 = game_parsed[2]
                 team2 = game_parsed[4]
                 halftime = game_parsed[5]
@@ -75,7 +74,7 @@ def insert_data():
                     logfolder_w_prefix = str(logfolder).removeprefix(str(root_path)).removeprefix("/")
                     insert_statement1 = f"""
                     INSERT INTO robot_logs (log_path, event_name, half, playernumber, headnumber, bodynumber, team1, team2, time) 
-                    VALUES ('{logfolder_w_prefix}', '{event.name}', '{halftime}', '{playernumber}', '{head_number}', '{body_number}', '{team1}', '{team2}', '{date}')
+                    VALUES ('{logfolder_w_prefix}', '{event.name}', '{halftime}', '{playernumber}', '{head_number}', '{body_number}', '{team1}', '{team2}', to_timestamp('{timestamp}', 'yyyy-mm-dd_hh24-mi-ss'))
                     ON CONFLICT DO NOTHING
                     """
                     cur.execute(insert_statement1)
