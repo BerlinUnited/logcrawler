@@ -18,3 +18,4 @@ COPY representation_exporter /scripts/representation_exporter
 COPY db_ingester /scripts/db_ingester
 COPY check_images /scripts/check_images
 COPY combine_images /scripts/combine_images
+COPY minio_importer /scripts/minio_importer

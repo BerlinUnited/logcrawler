@@ -4,7 +4,6 @@
 from pathlib import Path
 import numpy as np
 from PIL import PngImagePlugin
-import shutil
 from PIL import Image as PIL_Image
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
@@ -17,7 +16,7 @@ conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
 
-def export_images(logfile, img):
+def export_images(logfile, img, output_folder_top, output_folder_bottom):
     """
         creates two folders:
             <logfile name>_top
@@ -25,15 +24,6 @@ def export_images(logfile, img):
 
         and saves the images inside those folders
     """
-    # Probably makes more sense if the outputfolder generation is done outside this function
-    # TODO naming is weird logfile_name is not really what it says it is
-    extracted_folder = Path(logfile).parent.parent.parent / Path("extracted") / Path(logfile).parent.name
-    logfile_name = extracted_folder / Path(logfile).stem
-    output_folder_top = Path(str(logfile_name) + "_top")
-    output_folder_bottom = Path(str(logfile_name) + "_bottom")
-
-    output_folder_top.mkdir(exist_ok=True, parents=True)
-    output_folder_bottom.mkdir(exist_ok=True, parents=True)
     
     # the order changed in 2023
     # TODO add the code from max here
@@ -149,17 +139,34 @@ if __name__ == "__main__":
         game_log = root_path / Path(actual_log_folder) / "game.log"
 
         # TODO dont do anything if extraced stuff already exists
+        extracted_folder = Path(actual_log_folder).parent.parent / Path("extracted") / Path(actual_log_folder).name
 
-        if combined_log.is_file():
-            # export from combined log
-            log = combined_log
+        output_folder_top = extracted_folder / Path("log_top")
+        output_folder_bottom = extracted_folder /Path("log_bottom")
 
-        elif game_log.is_file():
-            log = log = combined_log
-        else: 
-            continue
+        if output_folder_top.exists() and output_folder_bottom.exists():
+            pass
+        else:
+            output_folder_top.mkdir(exist_ok=True, parents=True)
+            output_folder_bottom.mkdir(exist_ok=True, parents=True)
 
-        my_parser = Parser()
-        with LogReader(log, my_parser) as reader:
-            images = map(get_images, reader.read())
-            export_images(log, images)
+            if combined_log.is_file():
+                # export from combined log
+                log = combined_log
+
+            elif game_log.is_file():
+                log = log = combined_log
+            else: 
+                continue
+
+            my_parser = Parser()
+            with LogReader(log, my_parser) as reader:
+                images = map(get_images, reader.read())
+                export_images(log, images,output_folder_top, output_folder_bottom)
+
+        # write to db
+        insert_statement = f"""
+        UPDATE robot_logs SET extract_status = true WHERE log_path = '{log_folder}';
+        """
+        cur.execute(insert_statement)
+        conn.commit()

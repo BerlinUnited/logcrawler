@@ -9,7 +9,6 @@ conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
 def cleanup():
-    # FIXME for easier life we will delete all the data first whenever the pod starts. This prevents double entry. 
     cur.execute("DROP TABLE robot_logs")
 
 def create_log_table():
@@ -31,7 +30,8 @@ def create_log_table():
         images_exist BOOLEAN,
         combined_status BOOLEAN,
         extract_status BOOLEAN,
-        minio_bucket VARCHAR,
+        bucket_top VARCHAR,
+        bucket_bottom    VARCHAR,
         labelstudio_project VARCHAR, 
         CONSTRAINT my_constraint UNIQUE (log_path)
     );
