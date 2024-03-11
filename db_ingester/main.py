@@ -39,28 +39,6 @@ def create_log_table():
     cur.execute(sql_query)
     conn.commit()
 
-def dummy_insert():
-    insert_statement1 = f"""
-    INSERT INTO robot_logs (game_name, playernumber, headnumber, bodynumber, team1, team2, day) 
-    
-    VALUES ('testgame', 1, 45, 'bodynumber1', 'team1', 'team2', '2023-07-08')
-    """
-    cur.execute(insert_statement1)
-    insert_statement2 = f"""
-    INSERT INTO robot_logs (game_name, playernumber, headnumber, bodynumber, team1, team2, day) 
-    
-    VALUES ('testgame2', 2, 55, 'bodynumber2', 'team1', 'team2', '2023-07-06')
-    """
-    cur.execute(insert_statement2)
-def dummy_query():
-    select_statement1 = f"""
-    SELECT * FROM robot_logs where day between '2023-07-05' and '2023-07-08'
-    """
-    cur.execute(select_statement1)
-    rtn_val = cur.fetchall()
-    print(rtn_val)
-
-
 def insert_data():
     # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
     root_path = environ.get('LOG_ROOT') or '/mnt/q/'  # use or with environment variable to make sure it works in k8s as well

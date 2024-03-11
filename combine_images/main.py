@@ -5,7 +5,6 @@
 
 from pathlib import Path
 from naoth.log import Reader as LogReader
-from naoth.log import Parser
 from naoth.pb.Framework_Representations_pb2 import Image
 import psycopg2
 from os import environ, stat

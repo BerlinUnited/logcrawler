@@ -8,7 +8,7 @@ import shutil
 from PIL import Image as PIL_Image
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
-import sys
+from os import environ
 import psycopg2
 
 
@@ -25,6 +25,7 @@ def export_images(logfile, img):
 
         and saves the images inside those folders
     """
+    # Probably makes more sense if the outputfolder generation is done outside this function
     # TODO naming is weird logfile_name is not really what it says it is
     extracted_folder = Path(logfile).parent.parent.parent / Path("extracted") / Path(logfile).parent.name
     logfile_name = extracted_folder / Path(logfile).stem
@@ -48,27 +49,6 @@ def export_images(logfile, img):
 
         print("saving images from frame ", i)
 
-    
-    # FIXME: it does not zip the correct thing
-    # labelstudio expects the data to be unzipped so it can be loaded in a minio bucket
-    """
-    # zip the images
-    output_zipfile_top = Path(output_folder_top)
-    if output_zipfile_top.is_file():
-        print("\tframes.zip file already exists. Will continue with the next game")
-    else:
-        shutil.make_archive(str(output_zipfile_top), format="zip")
-        # remove the extracted images after zipping
-        shutil.rmtree(output_folder_top)
-
-    output_zipfile_bottom = Path(output_folder_bottom)
-    if output_zipfile_bottom.is_file():
-        print("\tframes.zip file already exists. Will continue with the next game")
-    else:
-        shutil.make_archive(str(output_zipfile_bottom), format="zip")
-        # remove the extracted images after zipping
-        shutil.rmtree(output_folder_bottom)
-    """
 
 def get_images(frame):
     try:
@@ -145,14 +125,12 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
 
 
 def get_logs():
-    # TODO only select the ones which have images
     select_statement = f"""
-    SELECT log_path FROM robot_logs
+    SELECT log_path FROM robot_logs WHERE images_exist = true
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x[0] for x in rtn_val]
-    print(logs)
     return logs
 
 
@@ -165,17 +143,21 @@ if __name__ == "__main__":
     root_path = Path(root_path)
     log_list = get_logs()
 
-    quit()
-    # log_folder= "/mnt/q/2023-07-04_RC23/2023-07-08_10-30-00_HULKs_vs_Berlin_United_half1-E/game_logs/1_13_Nao0038_230708-0843"
-    #log_folder = sys.argv[1]
-
-    for log in log_list:
-        combined_log = root_path / Path(log) / "combined.log"
-        if combined_log.is_file():
-            # export from combined log
-            log = str(combined_log)
+    for log_folder in log_list:
+        actual_log_folder = root_path / Path(log_folder)
+        combined_log = root_path / Path(actual_log_folder) / "combined.log"
+        game_log = root_path / Path(actual_log_folder) / "game.log"
 
         # TODO dont do anything if extraced stuff already exists
+
+        if combined_log.is_file():
+            # export from combined log
+            log = combined_log
+
+        elif game_log.is_file():
+            log = log = combined_log
+        else: 
+            continue
 
         my_parser = Parser()
         with LogReader(log, my_parser) as reader:

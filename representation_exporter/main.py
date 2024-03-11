@@ -68,7 +68,7 @@ if __name__ == "__main__":
             else:
                 if Path(gamelog_path).is_file() and stat(str(gamelog_path)).st_size > 0:
                     my_parser2 = Parser()
-                    game_log = LogReader(gamelog_path, my_parser)
+                    game_log = LogReader(gamelog_path, my_parser2)
                     try:
                         for i, frame in enumerate(game_log):
                             dict_keys = frame.get_names()
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                 # sensor log    
                 if Path(sensor_log_path).is_file() and stat(str(sensor_log_path)).st_size > 0:
                     my_parser3 = Parser()
-                    sensor_log = LogReader(sensor_log_path, my_parser)
+                    sensor_log = LogReader(sensor_log_path, my_parser3)
                     try:
                         for i, frame in enumerate(sensor_log):
                             dict_keys = frame.get_names()
@@ -110,6 +110,7 @@ if __name__ == "__main__":
         # write to db
         insert_statement = f"""
         UPDATE robot_logs SET representation_exists = true WHERE log_path = '{log_folder}';
+        UPDATE robot_logs SET broken = false WHERE log_path = '{log_folder}';    
         """
         cur.execute(insert_statement)
         conn.commit()
