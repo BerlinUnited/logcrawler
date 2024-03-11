@@ -36,6 +36,7 @@ def upload_to_minio(data_folder):
 
     # Make the bucket
     mclient.make_bucket(bucket_name)
+    # TODO I could use set_tag to annotate the bucket with the name of the log
     print("Created bucket", bucket_name)
 
     print(f"Upload files in {data_folder}")
