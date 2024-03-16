@@ -29,7 +29,7 @@ ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
 label_config_bb = """
     <View>
-        <Image name="image" value="$image"/>
+        <Image name="image" value="$image" rotateControl="true"/>
         <RectangleLabels name="label" toName="image">
         <Label value="ball" background="#9eaeff"/><Label value="nao" background="#D4380D"/><Label value="penalty_mark" background="#e109da"/></RectangleLabels>
     </View>
@@ -74,6 +74,7 @@ if __name__ == "__main__":
         existing_projects = [a.title for a in ls.list_projects()]
         if bucketname in existing_projects:
             print("project already exists")
+            continue
         else:
             project = ls.start_project(
                 title=bucketname, label_config=label_config_bb, description=logpath
@@ -86,21 +87,13 @@ if __name__ == "__main__":
                 s3_endpoint="https://minio.berlinunited-cloud.de",
             )
             storage_id = rt_val["id"]
-            print(storage_id)
-            # TODO call the api here and sync the storage
+            print(rt_val)
+            project.sync_import_storage(rt_val["type"], storage_id)
 
-            url = f"https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync"
-            myobj = {
-                "project": f"{project.id}",
-                "s3_endpoint": "https://minio.berlinunited-cloud.de",
-                "aws_access_key_id": "naoth",
-                "aws_secret_access_key": "HAkPYLnAvydQA",
-            }
-            x = requests.post(url, json=myobj, headers = {"Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"})
-            print(x.text)
-        quit()
+            quit()
+        
     log_list_bottom = get_logs_with_bottom_images()
-
+    quit()
     # for log_folder in log_list_top:
     # TODO build a better parser that can get all the information out of the path name
     log_name = str(Path(log_folder).name).replace("_", ".")
