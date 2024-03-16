@@ -5,3 +5,4 @@ python /scripts/check_images/main.py
 python /scripts/image_extractor/main.py
 
 python /scripts/minio_importer/main.py
+python /scripts/labelstudio_importer/main.py

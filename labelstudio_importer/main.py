@@ -1,15 +1,10 @@
 """
     Labelstudio importer
 """
-
-import sys
 from pathlib import Path
 from label_studio_sdk import Client
 from minio import Minio
 import psycopg2
-import random
-import string
-import requests
 from os import environ
 
 params = {
@@ -38,24 +33,55 @@ label_config_bb = """
 
 def get_logs_with_top_images():
     select_statement = f"""
-    SELECT log_path,bucket_top  FROM robot_logs WHERE bucket_top IS NOT NULL 
+    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL 
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
-    print(logs)
     return logs
 
 
 def get_logs_with_bottom_images():
     select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE bucket_bottom IS NOT NULL 
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL 
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
-
     return logs
+
+def import_labelstudio(data, color):
+    for logpath, bucketname in data:
+        print(f"handling data from {logpath}")
+        log_name = str(Path(logpath).name)
+        game_name = str(Path(logpath).parent.parent.name)
+        event_name = str(Path(logpath).parent.parent.parent.name)
+        description = f"""
+        event: {event_name} < /br>
+        game: {game_name} < /br>
+        log: {log_name}
+        """
+        existing_projects = [a.title for a in ls.list_projects()]
+        if bucketname in existing_projects:
+            print("\tproject already exists")
+            continue
+        else:
+            print(f"\tcreating project {bucketname}")
+            project = ls.start_project(
+                title=bucketname,
+                label_config=label_config_bb,
+                description=description,
+                color=color
+            )
+            rt_val = project.connect_s3_import_storage(
+                bucket=bucketname,
+                title=bucketname,
+                aws_access_key_id="naoth",
+                aws_secret_access_key="HAkPYLnAvydQA",
+                s3_endpoint="https://minio.berlinunited-cloud.de",
+            )
+            storage_id = rt_val["id"]
+            project.sync_import_storage(rt_val["type"], storage_id)
 
 
 if __name__ == "__main__":
@@ -69,45 +95,7 @@ if __name__ == "__main__":
     root_path = Path(root_path)
 
     data_top = get_logs_with_top_images()
-    for logpath, bucketname in data_top:
-        print(bucketname)
-        existing_projects = [a.title for a in ls.list_projects()]
-        if bucketname in existing_projects:
-            print("project already exists")
-            continue
-        else:
-            project = ls.start_project(
-                title=bucketname, label_config=label_config_bb, description=logpath
-            )
-            rt_val = project.connect_s3_import_storage(
-                bucket=bucketname,
-                title=bucketname,
-                aws_access_key_id="naoth",
-                aws_secret_access_key="HAkPYLnAvydQA",
-                s3_endpoint="https://minio.berlinunited-cloud.de",
-            )
-            storage_id = rt_val["id"]
-            print(rt_val)
-            project.sync_import_storage(rt_val["type"], storage_id)
+    data_bottom = get_logs_with_bottom_images()
 
-            quit()
-        
-    log_list_bottom = get_logs_with_bottom_images()
-    quit()
-    # for log_folder in log_list_top:
-    # TODO build a better parser that can get all the information out of the path name
-    log_name = str(Path(log_folder).name).replace("_", ".")
-    game_name = str(Path(log_folder).parent.parent.name).replace("_", ".")
-    event_name = str(Path(log_folder).parent.parent.parent.name).replace("_", ".")
-
-    project_name_bottom = event_name + "." + game_name + "." + log_name + ".bottom"
-    project_name_top = event_name + "." + game_name + "." + log_name + ".top"
-
-    bottom_data = Path(log_folder) / Path("combined_bottom")
-    top_data = Path(log_folder) / Path("combined_top")
-
-    bucket_name_bottom = create_bucket_from_logfile(bottom_data)
-    bucket_name_top = create_bucket_from_logfile(top_data)
-
-    create_project_if_not_exists("RC23-Hulks-half1-nao24-bottom", bucket_name_bottom)
-    create_project_if_not_exists("RC23-Hulks-half1-nao24-top", bucket_name_top)
+    import_labelstudio(data_top, "#D55C9D")
+    import_labelstudio(data_bottom, "#51AAFD")
