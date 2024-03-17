@@ -1,4 +1,5 @@
-FROM ubuntu:22.04
+FROM scm.cms.hu-berlin.de:4567/berlinunited/naoth-2020:develop
+
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
