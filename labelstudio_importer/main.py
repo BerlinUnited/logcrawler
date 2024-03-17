@@ -86,14 +86,7 @@ def import_labelstudio(data, color):
 
 if __name__ == "__main__":
     """
-    something like give the logpath as argument and then this code checks if its already done
     """
-    # TODO use argparse here
-    root_path = (
-        environ.get("LOG_ROOT") or "/mnt/q/"
-    )  # use or with environment variable to make sure it works in k8s as well
-    root_path = Path(root_path)
-
     data_top = get_logs_with_top_images()
     data_bottom = get_logs_with_bottom_images()
 
