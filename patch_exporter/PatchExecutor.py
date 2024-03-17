@@ -1,0 +1,285 @@
+"""
+    Patchexecutor handles the input and execution of the naoth lib
+"""
+
+import cppyy
+import os
+from cppyy_tools import get_naoth_dir, get_toolchain_dir, setup_shared_lib
+
+class PatchExecutor:
+    """
+    TODO add documentation here
+    """
+
+    def __init__(self):
+        orig_working_dir = os.getcwd()
+
+        setup_shared_lib(get_naoth_dir(), get_toolchain_dir())
+
+        # change working directory so that the configuration is found
+        os.chdir(os.path.join(get_naoth_dir(), "NaoTHSoccer"))
+
+        # start dummy simulator
+        cppyy.gbl.g_type_init()
+        self.sim = cppyy.gbl.DummySimulator(False, 5401)
+        cppyy.gbl.naoth.Platform.getInstance().init(self.sim)
+
+        # create the cognition and motion objects
+        cog = cppyy.gbl.createCognition()
+        mo = cppyy.gbl.createMotion()
+
+        # cast to callable
+        callable_cog = cppyy.bind_object(
+            cppyy.addressof(cog), cppyy.gbl.naoth.Callable)
+        callable_mo = cppyy.bind_object(
+            cppyy.addressof(mo), cppyy.gbl.naoth.Callable)
+
+        self.sim.registerCognition(callable_cog)
+        self.sim.registerMotion(callable_mo)
+
+        # get access to the module manager and return it to the calling function
+        self.moduleManager = cppyy.gbl.getModuleManager(cog)
+
+        # get the ball detector module
+        self.ball_detector = self.moduleManager.getModule("CNNBallDetector").getModule()
+
+        # disable the modules providing the camera matrix, because we want to use our own
+        self.moduleManager.getModule("CameraMatrixFinder").setEnabled(False)
+        self.moduleManager.getModule("FakeCameraMatrixFinder").setEnabled(False)
+
+        cppyy.cppdef("""
+               Pose3D* toPose3D(CameraMatrix* m) { return static_cast<Pose3D*>(m); }
+                """)
+
+        # restore original working directory
+        os.chdir(orig_working_dir)
+
+    def get_frames_for_dir(self, d):
+        """
+            This code assumes that annotations are in coco format for now
+        """
+        # ----------------------------------------------------------------------------------------
+        # Load COCO annotation data        
+        annotation_file = Path(self.output_folder) / "annotations/instances_default.json"
+        print("annotation file", annotation_file)
+        with open(annotation_file) as json_data:
+            annotation_data = json.load(json_data)
+        # ----------------------------------------------------------------------------------------
+        file_names = os.listdir(d)
+        file_names.sort()
+        image_files = [os.path.join(d, f) for f in file_names if os.path.isfile(
+            os.path.join(d, f)) and f.endswith(".png")]
+
+        result = list()
+        for file in image_files:
+            # ----------------------------------------------------------------------------------------
+            # actually load all the groundtruth ball data
+            gt_balls = list()
+            # get image id in coco annotation file for given image path
+            image_path_anno = file.split("images/")[-1]
+            for img in annotation_data["images"]:
+                if img["file_name"] == image_path_anno:
+                    id = img["id"]
+            # use id to locate the bounding box annotation data
+            for anno in annotation_data["annotations"]:
+                # when multiple balls are present the if clause hits multiple times
+                if anno["image_id"] == id:
+                    top_left = (round(anno["bbox"][0]), round(anno["bbox"][1]))
+                    bottom_right = (round(anno["bbox"][0] + anno["bbox"][2]), round(anno["bbox"][1] + anno["bbox"][3]))
+                    gt_rectangle = Rectangle(top_left, bottom_right)
+                    gt_balls.append(gt_rectangle)
+            # ----------------------------------------------------------------------------------------
+            # open image to get the metadata
+            img = PIL.Image.open(file)
+            bottom = img.info["CameraID"] == "1"
+            # parse camera matrix using metadata in the PNG file
+            cam_matrix_translation = (float(img.info["t_x"]), float(
+                img.info["t_y"]), float(img.info["t_z"]))
+
+            cam_matrix_rotation = np.array(
+                [
+                    [float(img.info["r_11"]), float(
+                        img.info["r_12"]), float(img.info["r_13"])],
+                    [float(img.info["r_21"]), float(
+                        img.info["r_22"]), float(img.info["r_23"])],
+                    [float(img.info["r_31"]), float(
+                        img.info["r_32"]), float(img.info["r_33"])]
+                ])
+
+            frame = Frame(file, bottom, gt_balls, cam_matrix_translation, cam_matrix_rotation)
+            result.append(frame)
+
+        return result
+
+    @staticmethod
+    def set_camera_matrix_representation(frame, cam_matrix):
+        """
+            reads the camera matrix information from a frame object and writes it to the
+            naoth camMatrix representation
+        """
+        p = cppyy.gbl.toPose3D(cam_matrix)
+        p.translation.x = frame.cam_matrix_translation[0]
+        p.translation.y = frame.cam_matrix_translation[1]
+        p.translation.z = frame.cam_matrix_translation[2]
+
+        for c in range(0, 3):
+            for r in range(0, 3):
+                p.rotation.c[c][r] = frame.cam_matrix_rotation[r, c]
+
+        return p
+
+    # helper: write a numpy array of data to an image representation
+    @staticmethod
+    def write_data_to_image_representation(data, image):
+        # create a pointer
+        p_data = data.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
+
+        # move image data into the Image representation that is defined in the Commons C++ project
+        # the copyImageDataYUV422 function is defined there
+        image.copyImageDataYUV422(p_data, data.size)
+
+    def set_current_frame(self, frame):
+
+        # get access to relevant representations
+        image_bottom = self.ball_detector.getRequire().at("Image")
+        image_top = self.ball_detector.getRequire().at("ImageTop")
+        cam_matrix_bottom = self.ball_detector.getRequire().at("CameraMatrix")
+        cam_matrix_top = self.ball_detector.getRequire().at("CameraMatrixTop")
+
+        cam_matrix_bottom.valid = False
+        cam_matrix_top.valid = False
+
+        # load image in YUV422 format
+        yuv422 = load_image_as_yuv422(frame.file)
+        black = np.zeros(640 * 480 * 2, np.uint8)
+
+        """
+        get reference to the image input representation, if the current image is from the bottom camera
+        we set the image for bottom image and the top image to black
+        """
+        if frame.bottom:
+            self.write_data_to_image_representation(yuv422, image_bottom)
+            self.write_data_to_image_representation(black, image_top)
+
+            self.set_camera_matrix_representation(frame, cam_matrix_bottom)
+            cam_matrix_bottom.valid = True
+        else:  # image is from top camera
+            self.write_data_to_image_representation(black, image_bottom)
+            self.write_data_to_image_representation(yuv422, image_top)
+
+            self.set_camera_matrix_representation(frame, cam_matrix_top)
+            cam_matrix_bottom.valid = False
+
+    def export_debug_images(self, frame: Frame):
+        """
+            this function exports the input images with the calculated patches overlayed
+        """
+        import cv2
+
+        # get the ball candidates from the module
+        if frame.bottom:
+            detected_balls = self.ball_detector.getProvide().at("BallCandidates")
+        else:
+            detected_balls = self.ball_detector.getProvide().at("BallCandidatesTop")
+
+        img = cv2.imread(frame.file)
+        for p in detected_balls.patchesYUVClassified:
+            cv2.rectangle(img, (p.min.x, p.min.y), (p.max.x, p.max.y), (0, 0, 255))
+
+        # draw groundtruth
+        for gt_ball in frame.gt_balls:
+            cv2.rectangle(img, gt_ball.top_left, gt_ball.bottom_right, (0, 255, 0))
+
+        output_file = self.output_folder / "debug_images" / Path(frame.file).name
+        Path(output_file.parent).mkdir(exist_ok=True, parents=True)
+        cv2.imwrite(str(output_file), img)
+
+    def export_patches2(self, frame: Frame):
+        """
+            This function exports patches as images for future training. All interesting meta information is saved inside the png header
+        """
+        import cv2
+
+        # get the ball candidates from the module
+        if frame.bottom:
+            detected_balls = self.ball_detector.getProvide().at("BallCandidates")
+            cam_id = 1
+        else:
+            detected_balls = self.ball_detector.getProvide().at("BallCandidatesTop")
+            cam_id = 0
+
+        img = cv2.imread(frame.file)
+        # create folder for the patches
+
+        patch_folder = self.output_folder / f"all_patches"
+        Path(patch_folder).mkdir(exist_ok=True, parents=True)
+
+        for idx, p in enumerate(detected_balls.patchesYUVClassified):
+            iou = 0.0
+            x = 0.0
+            y = 0.0
+            radius = 0.0
+            # calculate the best iou for a given patch
+            for gt_ball in frame.gt_balls:
+                new_iou = gt_ball.intersection_over_union(p.min.x, p.min.y, p.max.x, p.max.y)
+                if new_iou > iou:
+                    iou = new_iou
+                    # those values are relativ to the origin (top left) of the patch 
+                    x, y = gt_ball.get_center()
+                    x = x - p.min.x
+                    y = y - p.min.y
+                    radius = gt_ball.get_radius()
+
+
+            # crop full image to calculated patch
+            # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
+            crop_img = img[p.min.y:p.max.y, p.min.x:p.max.x]
+            print(f"size: {crop_img.size}")
+            #if crop_img.empt:
+            #    print(f"\timage with index {idx} was empty")
+            #    continue
+            # don't resize here. do it later
+            #crop_img = cv2.resize(crop_img, (patch_size, patch_size), interpolation=cv2.INTER_NEAREST)
+
+            # FIXME: here we save the image with opencv and then open it again with pil to add meta data
+            # can we do that without saving twice?
+            patch_file_name = patch_folder / (Path(frame.file).stem + f"_{idx}.png")
+            cv2.imwrite(str(patch_file_name), crop_img)
+
+            # section for writing meta data
+            meta = PngImagePlugin.PngInfo()
+            meta.add_text("CameraID", str(cam_id))
+            meta.add_text("iou", str(iou))
+            meta.add_text("center_x", str(x))
+            meta.add_text("center_y", str(y))
+            meta.add_text("radius", str(radius))
+
+            with PIL.Image.open(str(patch_file_name)) as im_pill:
+                im_pill.save(str(patch_file_name), pnginfo=meta)
+
+    @staticmethod
+    def get_output_folder(directory):
+        """
+            TODO can this be done cooler?
+            finds the parent folder of obj_train_data. In this folder new folders for various output are created.
+            This assumes we have yolo or coco output
+        """
+
+        # create output path for coco input structure
+
+        for parent_folder in Path(directory).parents:
+            if parent_folder.parent.name == "images":
+                print(parent_folder.parent)
+                return parent_folder.parent.parent
+
+    def execute(self, directories):
+        for d in sorted(directories):
+            print("working in", d)
+            self.output_folder = self.get_output_folder(d)
+            frames = self.get_frames_for_dir(d)
+
+            for f in frames:
+                self.set_current_frame(f)
+                self.sim.executeFrame()
+                # self.export_debug_images(f)
+                self.export_patches2(f)
