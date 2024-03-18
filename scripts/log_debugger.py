@@ -126,4 +126,6 @@ def add_images_to_game_log():
                 # write unmodified frame from game.log to the new log
                 output.write(bytes(frame))
 
-add_images_to_game_log()
+
+if __name__ == "__main__":
+    add_images_to_game_log()

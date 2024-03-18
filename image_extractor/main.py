@@ -162,7 +162,7 @@ if __name__ == "__main__":
             my_parser = Parser()
             with LogReader(log, my_parser) as reader:
                 images = map(get_images, reader.read())
-                export_images(log, images,output_folder_top, output_folder_bottom)
+                export_images(log, images, output_folder_top, output_folder_bottom)
 
         # write to db
         insert_statement = f"""

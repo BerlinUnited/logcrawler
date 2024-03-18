@@ -8,3 +8,6 @@ You can start the container locally as well and run the scripts in there:
 docker built -t logcrawler:latest
 docker run -it logcrawler:latest /bin/bash
 ```
+
+## Run locally
+You need to make sure that you have the required system packages installed. Have a look in the Dockerfile for the needed packages for an Ubuntu based distro.

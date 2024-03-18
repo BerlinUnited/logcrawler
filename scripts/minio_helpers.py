@@ -5,9 +5,16 @@ mclient = Minio("minio.berlinunited-cloud.de",
 )
 
 def remove_all_buckets():
-    # TODO not sure if this works or if I need to delete the objects in it before
+    """
+    delete all contents in all buckets and then delete all buckets
+    """
     buckets = mclient.list_buckets()
     for bucket in buckets:
+        print(f"deleting bucket {bucket.name}")
+        objects_to_delete = mclient.list_objects(bucket.name, recursive=True)
+        for obj in objects_to_delete:
+            mclient.remove_object(bucket.name, obj.object_name)
+
         mclient.remove_bucket(bucket.name)
 
 
@@ -21,4 +28,6 @@ def count_images():
 
     print(count)
 
-count_images()
+if __name__ == "__main__":
+    #count_images()
+    remove_all_buckets()
