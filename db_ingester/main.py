@@ -31,7 +31,9 @@ def create_log_table():
         combined_status BOOLEAN,
         extract_status BOOLEAN,
         bucket_top VARCHAR,
-        bucket_bottom    VARCHAR,
+        bucket_top_patches VARCHAR,
+        bucket_bottom VARCHAR,
+        bucket_bottom_patches VARCHAR,
         labelstudio_project VARCHAR, 
         CONSTRAINT my_constraint UNIQUE (log_path)
     );
@@ -84,6 +86,6 @@ def insert_data():
     # end handling an event
 
 if __name__ == "__main__":
-    cleanup()  # This is just for debug purposes use if not exists and unique constraints in the end to make sure to not have any duplicates
+    # cleanup()  # This is just for debug purposes use if not exists and unique constraints in the end to make sure to not have any duplicates
     create_log_table()
     insert_data()

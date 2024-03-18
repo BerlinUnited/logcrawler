@@ -72,8 +72,9 @@ def get_logs_with_bottom_images():
 
 def handle_bucket(data):
     # TODO: find better function name
+    # TODO make sure we always get the same order (comes in handy during debugging)
     for logpath, bucketname in data:
-        print(bucketname)
+        print(logpath)
         patch_bucket_name = bucketname + "-patches"
 
         # TODO add the new bucket to new column in postgres
@@ -94,7 +95,9 @@ def handle_bucket(data):
             
         evaluator = PatchExecutor()
         objects = mclient.list_objects(bucketname)
-        for obj in objects:
+        for count, obj in enumerate(objects):
+            if count > 20:
+                quit()
             print(obj.object_name)
             # TODO save it in a tmp folder
             mclient.fget_object(bucketname, obj.object_name, obj.object_name)
@@ -103,12 +106,13 @@ def handle_bucket(data):
             # TODO maybe have this constructor outside of the loop for speedup
             #evaluator = PatchExecutor()
             with cppyy.ll.signals_as_exception():  # this could go into the other file
-                folder = evaluator.execute_frame(obj.object_name) # FIXME the folder needs to be cleaned also the bucket should only contain the images and not the full path
-                for file in folder.iterdir():
-                    print(f"file: {file}")
-                    # check if it a file
-                    if file.is_file():
-                        result = mclient.fput_object(patch_bucket_name, str(file), str(file))
+                #folder = evaluator.execute_frame(obj.object_name) # FIXME the folder needs to be cleaned also the bucket should only contain the images and not the full path
+                evaluator.execute_frame(obj.object_name) # FIXME the folder needs to be cleaned also the bucket should only contain the images and not the full path
+                #for file in folder.iterdir():
+                #    print(f"file: {file}")
+                #    # check if it a file
+                #    if file.is_file():
+                #        result = mclient.fput_object(patch_bucket_name, str(file), str(file))
         quit()
 
 

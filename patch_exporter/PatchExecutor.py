@@ -165,8 +165,9 @@ class PatchExecutor:
         # draw groundtruth
         for gt_ball in frame.gt_balls:
             cv2.rectangle(img, gt_ball.top_left, gt_ball.bottom_right, (0, 255, 0))
-
-        output_file = "test.png"
+            Path(frame.file).stem + f"_debug.png"
+        print(Path(frame.file).stem + f"_debug.png")
+        output_file = Path(frame.file).stem + f"_debug.png"
         #Path(output_file.parent).mkdir(exist_ok=True, parents=True)
         cv2.imwrite(str(output_file), img)
 
@@ -242,6 +243,7 @@ class PatchExecutor:
         
         self.set_current_frame(frame)
         self.sim.executeFrame()
-        #self.export_debug_images(frame)
-        output_folder = self.export_patches2(frame)
-        return output_folder
+        self.export_debug_images(frame)
+
+        #output_folder = self.export_patches2(frame)
+        #return output_folder

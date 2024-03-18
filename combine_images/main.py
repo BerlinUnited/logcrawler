@@ -1,6 +1,8 @@
 """
     Combine Image and game logs the right way
-    see: https://scm.cms.hu-berlin.de/berlinunited/naoth-2020/-/commit/0a79c8c2ae1143ab63f8ec907580de9eae5bc509
+    see: https://scm.cms.hu-berlin.de/berlinunited/naoth-2020/-/commit/0a79c8c2ae1143ab63f8ec907580de9eae5bc50
+
+    FIXME: the image order might be wrong
 """
 
 from pathlib import Path
@@ -22,7 +24,7 @@ conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
 
-def create_image_log_dict(image_log, first_image_is_top=True):
+def create_image_log_dict(image_log, first_image_is_top):
     """
     Return a dictionary with frame numbers as key and (offset, size, is_camera_bottom) tuples of image data as values.
     """
@@ -85,6 +87,18 @@ def get_logs():
     logs = [x[0] for x in rtn_val]
     return logs
 
+def calculate_first_image(logpath):
+    """
+    TODO calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
+    """
+    event = logpath.split("_")[0]
+    print(event)
+    year = int(event.split("-")[0])
+    if year < 2023:
+        return True
+    else:
+        return False
+
 
 if __name__ == "__main__":
     root_path = (
@@ -92,7 +106,7 @@ if __name__ == "__main__":
     )  # use or with environment variable to make sure it works in k8s as well
     root_path = Path(root_path)
     log_list = get_logs()
-    overwrite = False
+    overwrite = True
     for log_folder in log_list:
         actual_log_folder = root_path / Path(log_folder)
         combined_log_path = actual_log_folder / "combined.log"
@@ -107,7 +121,7 @@ if __name__ == "__main__":
             and Path(img_log_path).is_file()
             and stat(str(img_log_path)).st_size > 0
         ):
-            print("can't combine anything here")
+            print("\tcan't combine anything here")
             insert_statement = f"""
             UPDATE robot_logs SET combined_status = false WHERE log_path = '{log_folder}';
             """
@@ -117,11 +131,13 @@ if __name__ == "__main__":
 
         if overwrite is True:
             # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
+            print("deleting the combined log")
             if combined_log_path.is_file():
                 combined_log_path.unlink()
 
         if not combined_log_path.is_file():
-            image_log_index = create_image_log_dict(str(img_log_path), False)
+            is_first_image_top = calculate_first_image(log_folder)
+            image_log_index = create_image_log_dict(str(img_log_path), first_image_is_top=is_first_image_top)
             # FIXME I could add sensor log to combined log as well
             with open(str(combined_log_path), "wb") as output, open(
                 str(img_log_path), "rb"
