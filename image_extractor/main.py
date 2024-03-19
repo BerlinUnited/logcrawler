@@ -9,6 +9,7 @@ from naoth.log import Reader as LogReader
 from naoth.log import Parser
 from os import environ
 import psycopg2
+import shutil
 
 
 params = {"host": "pg.berlinunited-cloud.de","port": 4000,"dbname": "logs","user": "naoth","password": "fsdjhwzuertuqg"}
@@ -132,6 +133,21 @@ if __name__ == "__main__":
     root_path = environ.get('LOG_ROOT') or '/mnt/q/'  # use or with environment variable to make sure it works in k8s as well
     root_path = Path(root_path)
     log_list = get_logs()
+    overwrite = True
+    if overwrite:
+        for log_folder in log_list:
+            actual_log_folder = root_path / Path(log_folder)
+            extracted_folder = Path(actual_log_folder).parent.parent / Path("extracted") / Path(actual_log_folder).name
+            output_folder_top = extracted_folder / Path("log_top")
+            output_folder_bottom = extracted_folder /Path("log_bottom")
+            print(f"deleting images for {log_folder}")
+            if output_folder_top.exists():
+                shutil.rmtree(output_folder_top)
+
+            if output_folder_bottom.exists():
+                shutil.rmtree(output_folder_bottom)
+                
+        
 
     for log_folder in log_list:
         actual_log_folder = root_path / Path(log_folder)
