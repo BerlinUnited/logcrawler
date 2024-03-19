@@ -11,6 +11,7 @@ from naoth.pb.Framework_Representations_pb2 import Image
 import psycopg2
 from os import environ, stat
 import os
+import argparse
 
 
 params = {
@@ -92,7 +93,6 @@ def calculate_first_image(logpath):
     TODO calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
     """
     event = logpath.split("_")[0]
-    print(event)
     year = int(event.split("-")[0])
     if year < 2023:
         return True
@@ -101,12 +101,27 @@ def calculate_first_image(logpath):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--delete", action="store_true")
+    args = parser.parse_args()    
+
     root_path = (
         environ.get("LOG_ROOT") or "/mnt/q/"
     )  # use or with environment variable to make sure it works in k8s as well
     root_path = Path(root_path)
     log_list = get_logs()
-    overwrite = True
+
+    if args.delete is True:
+        # we delete all combined logs in an extra loop,
+        # this the combine loop later can be disrupted without needing to do all the work again in case of overwrite
+        for log_folder in log_list:
+            actual_log_folder = root_path / Path(log_folder)
+            combined_log_path = actual_log_folder / "combined.log"
+            # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
+            print("\tdeleting the combined log")
+            if combined_log_path.is_file():
+                combined_log_path.unlink()
+
     for log_folder in log_list:
         actual_log_folder = root_path / Path(log_folder)
         combined_log_path = actual_log_folder / "combined.log"
@@ -129,11 +144,6 @@ if __name__ == "__main__":
             conn.commit()
             continue
 
-        if overwrite is True:
-            # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
-            print("deleting the combined log")
-            if combined_log_path.is_file():
-                combined_log_path.unlink()
 
         if not combined_log_path.is_file():
             is_first_image_top = calculate_first_image(log_folder)
@@ -176,6 +186,7 @@ if __name__ == "__main__":
 
         # insert in db if the file exists - so combining was successful
         if combined_log_path.is_file():
+            print("\tset combined status to true")
             insert_statement = f"""
             UPDATE robot_logs SET combined_status = true WHERE log_path = '{log_folder}';
             """
