@@ -1,6 +1,7 @@
 """
     Image Extractor
 """
+
 from pathlib import Path
 import numpy as np
 from PIL import PngImagePlugin
@@ -12,33 +13,43 @@ import psycopg2
 import shutil
 
 
-params = {"host": "pg.berlinunited-cloud.de","port": 4000,"dbname": "logs","user": "naoth","password": "fsdjhwzuertuqg"}
+params = {
+    "host": "pg.berlinunited-cloud.de",
+    "port": 4000,
+    "dbname": "logs",
+    "user": "naoth",
+    "password": "fsdjhwzuertuqg",
+}
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
 
 def export_images(logfile, img, output_folder_top, output_folder_bottom):
     """
-        creates two folders:
-            <logfile name>_top
-            <logfile name>_bottom
+    creates two folders:
+        <logfile name>_top
+        <logfile name>_bottom
 
-        and saves the images inside those folders
+    and saves the images inside those folders
     """
-    
-    # the order changed in 2023
-    # TODO add the code from max here
+
     for i, img_b, img_t, cm_b, cm_t in img:
-        frame_number = format(i, '07d')  # make frame number a fixed length string so that the images are in the correct order
+        frame_number = format(
+            i, "07d"
+        )  # make frame number a fixed length string so that the images are in the correct order
         if img_b:
-            img_b = img_b.convert('RGB')
-            save_image_to_png(frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile)
+            img_b = img_b.convert("RGB")
+            save_image_to_png(
+                frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile
+            )
 
         if img_t:
-            img_t = img_t.convert('RGB')
-            save_image_to_png(frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile)
+            img_t = img_t.convert("RGB")
+            save_image_to_png(
+                frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile
+            )
 
-        print("saving images from frame ", i)
+        print("\tsaving images from frame ", i, end="\r", flush=True)
 
 
 def get_images(frame):
@@ -62,8 +73,8 @@ def get_images(frame):
     except KeyError:
         cm_bottom = None
 
-    return [frame.number, image_bottom,
-            image_top, cm_bottom, cm_top]
+    return [frame.number, image_bottom, image_top, cm_bottom, cm_top]
+
 
 def image_from_proto(message):
     # read each channel of yuv422 separately
@@ -84,7 +95,9 @@ def image_from_proto(message):
     yuv888 = yuv888.reshape((message.height, message.width, 3))
 
     # convert the image to rgb and save it
-    img = PIL_Image.frombytes('YCbCr', (message.width, message.height), yuv888.tostring())
+    img = PIL_Image.frombytes(
+        "YCbCr", (message.width, message.height), yuv888.tostring()
+    )
     return img
 
 
@@ -130,35 +143,44 @@ if __name__ == "__main__":
     TODO set up argparser here, if no argument set get all logs from postgres
     """
     # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
-    root_path = environ.get('LOG_ROOT') or '/mnt/q/'  # use or with environment variable to make sure it works in k8s as well
+    root_path = (
+        environ.get("LOG_ROOT") or "/mnt/q/"
+    )  # use or with environment variable to make sure it works in k8s as well
     root_path = Path(root_path)
     log_list = get_logs()
     overwrite = True
     if overwrite:
         for log_folder in log_list:
             actual_log_folder = root_path / Path(log_folder)
-            extracted_folder = Path(actual_log_folder).parent.parent / Path("extracted") / Path(actual_log_folder).name
+            extracted_folder = (
+                Path(actual_log_folder).parent.parent
+                / Path("extracted")
+                / Path(actual_log_folder).name
+            )
             output_folder_top = extracted_folder / Path("log_top")
-            output_folder_bottom = extracted_folder /Path("log_bottom")
+            output_folder_bottom = extracted_folder / Path("log_bottom")
             print(f"deleting images for {log_folder}")
             if output_folder_top.exists():
                 shutil.rmtree(output_folder_top)
 
             if output_folder_bottom.exists():
                 shutil.rmtree(output_folder_bottom)
-                
-        
 
     for log_folder in log_list:
+        print(log_folder)
         actual_log_folder = root_path / Path(log_folder)
         combined_log = root_path / Path(actual_log_folder) / "combined.log"
         game_log = root_path / Path(actual_log_folder) / "game.log"
 
         # TODO dont do anything if extraced stuff already exists
-        extracted_folder = Path(actual_log_folder).parent.parent / Path("extracted") / Path(actual_log_folder).name
+        extracted_folder = (
+            Path(actual_log_folder).parent.parent
+            / Path("extracted")
+            / Path(actual_log_folder).name
+        )
 
         output_folder_top = extracted_folder / Path("log_top")
-        output_folder_bottom = extracted_folder /Path("log_bottom")
+        output_folder_bottom = extracted_folder / Path("log_bottom")
 
         if output_folder_top.exists() and output_folder_bottom.exists():
             pass
@@ -172,7 +194,7 @@ if __name__ == "__main__":
 
             elif game_log.is_file():
                 log = log = combined_log
-            else: 
+            else:
                 continue
 
             my_parser = Parser()
