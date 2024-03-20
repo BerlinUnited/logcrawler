@@ -171,7 +171,7 @@ class PatchExecutor:
         #Path(output_file.parent).mkdir(exist_ok=True, parents=True)
         cv2.imwrite(str(output_file), img)
 
-    def export_patches2(self, frame: Frame):
+    def export_patches(self, frame: Frame):
         """
             This function exports patches as images for future training. All interesting meta information is saved inside the png header
         """
@@ -211,7 +211,7 @@ class PatchExecutor:
             # crop full image to calculated patch
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             crop_img = img[p.min.y:p.max.y, p.min.x:p.max.x]
-            print(f"size: {crop_img.size}")
+            #print(f"size: {crop_img.size}")
             #if crop_img.empt:
             #    print(f"\timage with index {idx} was empty")
             #    continue
@@ -235,15 +235,3 @@ class PatchExecutor:
                 im_pill.save(str(patch_file_name), pnginfo=meta)
         
         return Path(patch_folder).resolve()
-
-
-    def execute_frame(self, path_to_image):
-        # TODO it looks like the first frame always has no patches (conspiracy???)
-        frame = self.convert_image_to_frame(path_to_image)
-        
-        self.set_current_frame(frame)
-        self.sim.executeFrame()
-        self.export_debug_images(frame)
-
-        #output_folder = self.export_patches2(frame)
-        #return output_folder

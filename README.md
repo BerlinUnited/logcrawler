@@ -7,6 +7,8 @@ You can start the container locally as well and run the scripts in there:
 ```
 docker build -t logcrawler:latest .
 docker run -it logcrawler:latest /bin/bash
+
+docker run -it -v ${PWD}:/test logcrawler:latest /bin/bash
 ```
 
 ## Run locally
