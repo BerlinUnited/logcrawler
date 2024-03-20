@@ -5,7 +5,7 @@ The Dockerfile contains all the python packages that are needed to run all the c
 
 You can start the container locally as well and run the scripts in there:
 ```
-docker built -t logcrawler:latest
+docker build -t logcrawler:latest .
 docker run -it logcrawler:latest /bin/bash
 ```
 

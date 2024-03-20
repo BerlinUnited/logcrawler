@@ -33,6 +33,7 @@ import psycopg2
 import cppyy
 from minio import Minio
 from minio.commonconfig import Tags
+from pathlib import Path
 
 from PatchExecutor import PatchExecutor
 
@@ -88,6 +89,11 @@ def handle_bucket(data):
             tags["log path"] = logpath
             mclient.set_bucket_tags(patch_bucket_name, tags)
             # TODO set naoth develop version as tag here
+        else:
+            tags = Tags.new_bucket_tags()
+            tags["log path"] = logpath
+            mclient.set_bucket_tags(patch_bucket_name, tags)
+            # TODO set naoth develop version as tag here
         
         #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
             
@@ -96,10 +102,11 @@ def handle_bucket(data):
         evaluator = PatchExecutor()
         objects = mclient.list_objects(bucketname)
         for count, obj in enumerate(objects):
-            if count > 20:
+            if count > 5:
                 quit()
             print(obj.object_name)
-            # TODO save it in a tmp folder
+            # Download an image from minio image bucket 
+            # FIXME save it in a tmp folder
             mclient.fget_object(bucketname, obj.object_name, obj.object_name)
 
             # TODO run patch extractor here
@@ -113,6 +120,7 @@ def handle_bucket(data):
                 #    # check if it a file
                 #    if file.is_file():
                 #        result = mclient.fput_object(patch_bucket_name, str(file), str(file))
+            Path(obj.object_name).unlink()
         quit()
 
 
