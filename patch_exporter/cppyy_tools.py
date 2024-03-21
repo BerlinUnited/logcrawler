@@ -57,6 +57,3 @@ def setup_shared_lib(naoth_dir, toolchain_dir):
     cppyy.include(str(naoth_dir / Path("NaoTHSoccer/Source/Cognition/Cognition.h")))
     cppyy.include(str(naoth_dir / Path("NaoTHSoccer/Source/Representations/Perception/BallCandidates.h")))
     cppyy.include(str(naoth_dir / Path("NaoTHSoccer/Source/Representations/Perception/CameraMatrix.h")))
-
-
-# dummy commit

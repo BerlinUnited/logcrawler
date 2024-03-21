@@ -23,16 +23,16 @@ class PatchExecutor:
         orig_working_dir = os.getcwd()
 
         setup_shared_lib(get_naoth_dir(), get_toolchain_dir())
-        
+
+
         # change working directory so that the configuration is found
         os.chdir(os.path.join(get_naoth_dir(), "NaoTHSoccer"))
         print(os.getcwd())
 
         # start dummy simulator
         cppyy.gbl.g_type_init()
-        self.sim = cppyy.gbl.DummySimulator(False, 5401)
+        self.sim = cppyy.gbl.DummySimulator(True, 5401)
         cppyy.gbl.naoth.Platform.getInstance().init(self.sim)
-
         # create the cognition and motion objects
         cog = cppyy.gbl.createCognition()
         mo = cppyy.gbl.createMotion()
@@ -59,7 +59,6 @@ class PatchExecutor:
         cppyy.cppdef("""
                Pose3D* toPose3D(CameraMatrix* m) { return static_cast<Pose3D*>(m); }
                 """)
-        
         # restore original working directory
         os.chdir(orig_working_dir)
 
@@ -211,6 +210,7 @@ class PatchExecutor:
             # crop full image to calculated patch
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             crop_img = img[p.min.y:p.max.y, p.min.x:p.max.x]
+
             #print(f"size: {crop_img.size}")
             #if crop_img.empt:
             #    print(f"\timage with index {idx} was empty")
@@ -221,7 +221,13 @@ class PatchExecutor:
             # FIXME: here we save the image with opencv and then open it again with pil to add meta data
             # can we do that without saving twice?
             patch_file_name = Path(patch_folder) / (Path(frame.file).stem + f"_{idx}.png")
-            cv2.imwrite(str(patch_file_name), crop_img)
+            try:
+                cv2.imwrite(str(patch_file_name), crop_img)
+            except:
+                #print("error writing file with cv2")
+                #print(f"file: {frame.file}")
+                #print(f"size: {crop_img.size}")
+                continue
 
             # section for writing meta data
             meta = PngImagePlugin.PngInfo()
