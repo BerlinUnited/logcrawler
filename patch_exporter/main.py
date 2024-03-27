@@ -40,7 +40,7 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": "fsdjhwzuertuqg",
+    "password": environ.get('DB_PASS')
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()

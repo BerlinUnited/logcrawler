@@ -13,3 +13,11 @@ docker run -it -v ${PWD}:/test logcrawler:latest /bin/bash
 
 ## Run locally
 You need to make sure that you have the required system packages installed. Have a look in the Dockerfile for the needed packages for an Ubuntu based distro.
+
+The code expects it has filesystem access to the logs folder. You can use sshfs for that.
+
+You need to set the environment variables:
+```bash
+export LOG_ROOT=
+export DB_PASS=
+```

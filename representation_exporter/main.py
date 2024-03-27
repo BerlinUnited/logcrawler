@@ -9,7 +9,13 @@ import psycopg2
 from os import environ, stat
 import json
 
-params = {"host": "pg.berlinunited-cloud.de","port": 4000,"dbname": "logs","user": "naoth","password": "fsdjhwzuertuqg"}
+params = {
+    "host": "pg.berlinunited-cloud.de",
+    "port": 4000,
+    "dbname": "logs",
+    "user": "naoth",
+    "password": environ.get('DB_PASS')
+}
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 

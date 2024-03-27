@@ -1,10 +1,17 @@
 import psycopg2
 from pathlib import Path
 from os import environ
+import argparse
 from event_list import event_list
 
 # connect to database
-params = {"host": "pg.berlinunited-cloud.de","port": 4000,"dbname": "logs","user": "naoth","password": "fsdjhwzuertuqg"}
+params = {
+    "host": "pg.berlinunited-cloud.de",
+    "port": 4000,
+    "dbname": "logs",
+    "user": "naoth",
+    "password": environ.get('DB_PASS')
+}
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
@@ -12,7 +19,6 @@ def cleanup():
     cur.execute("DROP TABLE robot_logs")
 
 def create_log_table():
-    # TODO use postgres date / datetime later with actual time of game 
     # log_path is the unique identifier of the row
     sql_query = """
     CREATE TABLE IF NOT EXISTS robot_logs (
@@ -42,12 +48,10 @@ def create_log_table():
     conn.commit()
 
 def insert_data():
-    # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
-    root_path = environ.get('LOG_ROOT') or '/mnt/q/'  # use or with environment variable to make sure it works in k8s as well
+    root_path = environ.get('LOG_ROOT')
     for event in [f for f in Path(root_path).iterdir() if f.is_dir()]:
         if event.name in event_list:
             print(event)
-            event_name = event.name
             for game in [f for f in event.iterdir() if f.is_dir()]:
                 print(f"\t{game}")
                 # ignore test games - FIXME (i should not do that but I have to make sure testgames are in correct format before)
@@ -86,6 +90,13 @@ def insert_data():
     # end handling an event
 
 if __name__ == "__main__":
-    # cleanup()  # This is just for debug purposes use if not exists and unique constraints in the end to make sure to not have any duplicates
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--cleanup", action="store_true")
+    args = parser.parse_args() 
+    
+    if args.delete is True:
+        # This is just for debug purposes
+        cleanup()
+
     create_log_table()
     insert_data()
