@@ -1,5 +1,5 @@
 """
-    Set of function that are occasionally used manually
+    Set of functions that are occasionally used manually
 """
 from label_studio_sdk import Client
 
@@ -14,4 +14,10 @@ def delete_all_projects():
         project.delete_all_tasks()
         ls.delete_project(project.id)
 
-delete_all_projects()
+
+def create_labelstudio_user():
+    print(ls.get_users())
+    ls.create_user({'username':'label_bot', 'email':'bot@berlinunited.com', 'first_name':'eliza', 'last_name':'bot'}, exist_ok=True)
+
+if __name__ == "__main__":
+    delete_all_projects()

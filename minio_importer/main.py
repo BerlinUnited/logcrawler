@@ -5,12 +5,26 @@ from minio import Minio
 from minio.commonconfig import Tags
 import random
 import string
+import json
 
 mclient = Minio(
     "minio.berlinunited-cloud.de",
     access_key="naoth",
-    secret_key="HAkPYLnAvydQA",
+    secret_key=environ.get("MINIO_PASS"),
 )
+
+# Hack we set a global policy on all buckets, technically we only need to set it once
+# The only thing this prevents is deletion of buckets when the last element was deleted
+minio_policy = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Deny",
+            "Action": ["s3:ForceDeleteBucket", "s3:DeleteBucket"],
+            "Resource": "arn:aws:s3:::*",
+        }
+    ],
+    }
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -50,6 +64,7 @@ def upload_to_minio(data_folder):
     tags = Tags.new_bucket_tags()
     tags["data path"] = str(data_folder)
     mclient.set_bucket_tags(bucket_name, tags)
+    mclient.set_bucket_policy(bucket_name, json.dumps(minio_policy))
     
     print("Created bucket", bucket_name)
 
@@ -72,11 +87,7 @@ if __name__ == "__main__":
     TODO set up argparser here, if no argument set get all logs from postgres
     FIXME: this cant be executed twice yet
     """
-    # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
-    root_path = (
-        environ.get("LOG_ROOT") or "/mnt/q/"
-    )  # use or with environment variable to make sure it works in k8s as well
-    root_path = Path(root_path)
+    root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
 
     for log_folder in log_list:
@@ -93,6 +104,7 @@ if __name__ == "__main__":
         data_folder_bottom = extracted_folder / Path("log_bottom")
 
         # check if bucket for top data exists (FIXME make this code cooler)
+        # TODO can we have a policy against bucket deletion?
         select_statement = f"""
         SELECT bucket_top FROM robot_logs WHERE log_path = '{log_folder}' 
         """

@@ -29,11 +29,7 @@ def get_logs():
 
 
 if __name__ == "__main__":
-    # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
-    root_path = (
-        environ.get("LOG_ROOT") or "/mnt/q/"
-    )  # use or with environment variable to make sure it works in k8s as well
-    root_path = Path(root_path)
+    root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
 
     for log_folder in log_list:
@@ -41,8 +37,6 @@ if __name__ == "__main__":
         actual_log_folder = root_path / Path(log_folder)
         representation_file = actual_log_folder / "representation.json"
 
-        # if Path(img_log_path).is_file() and stat(str(img_log_path)).st_size > 0:
-        #
         with open(str(representation_file), "r", encoding="utf-8") as f:
             data = json.load(f)
 

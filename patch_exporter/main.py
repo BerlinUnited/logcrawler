@@ -32,6 +32,7 @@ from minio.commonconfig import Tags
 from pathlib import Path
 import shutil
 import time
+from os import environ
 
 from PatchExecutor import PatchExecutor
 
@@ -47,7 +48,7 @@ cur = conn.cursor()
 
 mclient = Minio("minio.berlinunited-cloud.de",
     access_key="naoth",
-    secret_key="HAkPYLnAvydQA",
+    secret_key=environ.get("MINIO_PASS"),
 )
 
 evaluator = PatchExecutor()

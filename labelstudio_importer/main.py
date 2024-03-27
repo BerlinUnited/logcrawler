@@ -3,7 +3,6 @@
 """
 from pathlib import Path
 from label_studio_sdk import Client
-from minio import Minio
 import psycopg2
 from os import environ
 
@@ -22,6 +21,7 @@ LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
 API_KEY = "6cb437fb6daf7deb1694670a6f00120112535687"
 ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
+
 label_config_bb = """
     <View>
         <Image name="image" value="$image" rotateControl="true"/>

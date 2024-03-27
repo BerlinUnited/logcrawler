@@ -63,7 +63,6 @@ def create_image_log_dict(image_log, first_image_is_top):
                         frame_number, image_log, f.tell() + 1 - file_size
                     )
                 )
-                print("Info: Last frame seems to be incomplete.")
                 break
 
             if frame_number not in images_dict:
@@ -79,7 +78,6 @@ def create_image_log_dict(image_log, first_image_is_top):
 
 
 def get_logs():
-    # FIXME i could create two functions like this one for each version of the combine script
     select_statement = f"""
     SELECT log_path FROM robot_logs
     """
@@ -90,7 +88,7 @@ def get_logs():
 
 def calculate_first_image(logpath):
     """
-    TODO calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
+    calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
     """
     event = logpath.split("_")[0]
     year = int(event.split("-")[0])
@@ -103,23 +101,21 @@ def calculate_first_image(logpath):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", action="store_true")
-    args = parser.parse_args()    
+    args = parser.parse_args()
 
-    root_path = (
-        environ.get("LOG_ROOT") or "/mnt/q/"
-    )  # use or with environment variable to make sure it works in k8s as well
-    root_path = Path(root_path)
+    root_path = Path(environ.get('LOG_ROOT'))
     log_list = get_logs()
 
     if args.delete is True:
         # we delete all combined logs in an extra loop,
         # this the combine loop later can be disrupted without needing to do all the work again in case of overwrite
         for log_folder in log_list:
+            print(log_folder)
             actual_log_folder = root_path / Path(log_folder)
             combined_log_path = actual_log_folder / "combined.log"
             # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
-            print("\tdeleting the combined log")
             if combined_log_path.is_file():
+                print("\tdeleting the combined log")
                 combined_log_path.unlink()
 
     for log_folder in log_list:

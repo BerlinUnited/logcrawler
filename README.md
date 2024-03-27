@@ -20,4 +20,5 @@ You need to set the environment variables:
 ```bash
 export LOG_ROOT=
 export DB_PASS=
+export MINIO_PASS=
 ```
