@@ -83,6 +83,12 @@ def import_labelstudio(data, color):
             storage_id = rt_val["id"]
             project.sync_import_storage(rt_val["type"], storage_id)
 
+            insert_statement = f"""
+            UPDATE robot_logs SET labelstudio_project = '{bucketname}' WHERE log_path = '{logpath}';
+            """
+            cur.execute(insert_statement)
+            conn.commit()
+
 
 if __name__ == "__main__":
     """
