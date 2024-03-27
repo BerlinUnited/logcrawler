@@ -94,7 +94,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--cleanup", action="store_true")
     args = parser.parse_args() 
     
-    if args.delete is True:
+    if args.cleanup is True:
         # This is just for debug purposes
         cleanup()
 
