@@ -28,3 +28,4 @@ COPY check_images /scripts/check_images
 COPY combine_images /scripts/combine_images
 COPY minio_importer /scripts/minio_importer
 COPY patch_exporter /scripts/patch_exporter
+COPY backup /scripts/backup
