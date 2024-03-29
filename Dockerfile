@@ -4,7 +4,7 @@ ENV PYTHONUNBUFFERED=1
 ENV NAOTH_REPO=/naoth/repo
 ENV TOOLCHAIN_REPO=/naoth/toolchain
 
-RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $UBUNTU_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
