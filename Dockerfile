@@ -4,6 +4,9 @@ ENV PYTHONUNBUFFERED=1
 ENV NAOTH_REPO=/naoth/repo
 ENV TOOLCHAIN_REPO=/naoth/toolchain
 
+RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+
 RUN apt-get update && apt-get -y --no-install-recommends install \
     wget \
     git \
@@ -11,7 +14,8 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     python3-pip \
     nano \
     python-is-python3 \
-    python3-dev
+    python3-dev \
+    postgresql-client-16
 
 ADD requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
