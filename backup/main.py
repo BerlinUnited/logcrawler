@@ -4,10 +4,9 @@
 from label_studio_sdk import Client
 import time
 import psycopg2
+from os import environ
 
-LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
-API_KEY = "6cb437fb6daf7deb1694670a6f00120112535687"
-ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
+ls = Client(url=environ.get('LS_URL'), api_key=environ.get('LS_KEY'))
 ls.check_connection()
 
 params = {
@@ -15,10 +14,11 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": "fsdjhwzuertuqg",
+    "password": environ.get('DB_PASS'),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
+
 
 def backup_annotations():
     """

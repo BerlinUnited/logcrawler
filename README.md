@@ -21,4 +21,6 @@ You need to set the environment variables:
 export LOG_ROOT=
 export DB_PASS=
 export MINIO_PASS=
+export LS_URL=
+export LS_KEY=
 ```
