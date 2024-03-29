@@ -23,4 +23,5 @@ export DB_PASS=
 export MINIO_PASS=
 export LS_URL=
 export LS_KEY=
+export BACKUPS_ROOT=
 ```

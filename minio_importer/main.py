@@ -1,3 +1,6 @@
+"""
+    TODO: I could put all the images in a folder inside the bucket, this would leave room for also putting sound and other data in the bucket
+"""
 from os import environ
 import psycopg2
 from pathlib import Path

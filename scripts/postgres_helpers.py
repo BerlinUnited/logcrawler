@@ -46,6 +46,7 @@ def datetime_test(log_time):
     cur.execute(insert_statement)
     conn.commit()
 
+
 def query_test():
     select_statement = f"""
     SELECT log_path FROM robot_logs WHERE date_part('hour',CAST(time AS timestamp)) > 12;
@@ -55,7 +56,21 @@ def query_test():
     print(rtn_val)
 
 
-# TODO implement a function that can add columns
+def add_column():
+    sql_statement = f"""
+    ALTER TABLE robot_logs ADD broken_images VARCHAR;
+    """
+    cur.execute(sql_statement)
+    conn.commit()
 
-ALTER TABLE cars
-ADD color VARCHAR(255);
+
+def set_broken_images(bucket_id):
+    """
+    useful when we notice during training that all images are scrambled (we have a few of those)
+    FIXME: implement this
+    """
+    pass
+
+
+if __name__ == "__main__":
+    pass
