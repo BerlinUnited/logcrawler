@@ -54,9 +54,6 @@ def insert_data():
             print(event)
             for game in [f for f in event.iterdir() if f.is_dir()]:
                 print(f"\t{game}")
-                # ignore test games - FIXME (i should not do that but I have to make sure testgames are in correct format before)
-                if "test" in str(game.name).lower(): 
-                    continue
                 # for now we allow only on folder called Experiments to also exist inside the Event folder -> TODO have discussion about additional folders
                 if str(game.name) == "Experiments":
                     continue
