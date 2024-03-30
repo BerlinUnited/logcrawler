@@ -8,6 +8,7 @@ from naoth.log import Parser
 import psycopg2
 from os import environ, stat
 import json
+import argparse
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -30,17 +31,19 @@ def get_logs():
 
 
 if __name__ == "__main__":
-    # FIXME '/mnt/q/' is specific to my windows setup - make sure it works on other machines as well
-    root_path = environ.get('LOG_ROOT') or '/mnt/q/'  # use or with environment variable to make sure it works in k8s as well
-    root_path = Path(root_path)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--delete", action="store_true")
+    args = parser.parse_args()
+
+    root_path = Path(environ.get('LOG_ROOT'))
     log_list = get_logs()
-    overwrite = False
+
     for log_folder in log_list:
         actual_log_folder = root_path / Path(log_folder)
         output_file = actual_log_folder / 'representation.json'
         print(log_folder)
 
-        if overwrite is True:
+        if args.delete is True:
             # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
             if output_file.is_file():
                 output_file.unlink()

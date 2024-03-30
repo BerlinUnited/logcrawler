@@ -49,3 +49,11 @@ if __name__ == "__main__":
             """
             cur.execute(insert_statement)
             conn.commit()
+        else:
+            # write to db
+            insert_statement = f"""
+            UPDATE robot_logs SET images_exist = false WHERE log_path = '{log_folder}';
+            """
+            cur.execute(insert_statement)
+            conn.commit()
+

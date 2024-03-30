@@ -58,6 +58,7 @@ def generate_unique_name():
 
 
 def upload_to_minio(data_folder):
+    # TODO check if a name in db exist already and use that 
     bucket_name = generate_unique_name()
 
     # Make the bucket
@@ -114,6 +115,7 @@ if __name__ == "__main__":
         cur.execute(select_statement)
         rtn_val = cur.fetchall()[0][0]
         if rtn_val is not None:
+            # TODO this must be handled better for example what if minio goes down and looses all the data, I need to recreate it the same way. this way I can also use the labelstudio backup
             print("bucket already exists")
         else:
             bucket_name_top = upload_to_minio(data_folder_top)

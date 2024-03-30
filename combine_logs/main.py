@@ -2,7 +2,8 @@
     Combine Image and game logs the right way
     see: https://scm.cms.hu-berlin.de/berlinunited/naoth-2020/-/commit/0a79c8c2ae1143ab63f8ec907580de9eae5bc50
 
-    FIXME: the image order might be wrong
+    # TODO: we have stuff like this: /vol/repl261-vol4/naoth/logs/2023-08-cccamp/2023-08-18-testgame_04/2_22_Nao0004_230818-1213
+    were we only have an image log and no game.log
 """
 
 from pathlib import Path
@@ -123,7 +124,6 @@ if __name__ == "__main__":
         combined_log_path = actual_log_folder / "combined.log"
         gamelog_path = actual_log_folder / "game.log"
         img_log_path = actual_log_folder / "images.log"
-        sensor_log_path = actual_log_folder / "sensor.log"
         print(log_folder)
 
         if not (
@@ -144,41 +144,48 @@ if __name__ == "__main__":
         if not combined_log_path.is_file():
             is_first_image_top = calculate_first_image(log_folder)
             image_log_index = create_image_log_dict(str(img_log_path), first_image_is_top=is_first_image_top)
-            # FIXME I could add sensor log to combined log as well
-            with open(str(combined_log_path), "wb") as output, open(
-                str(img_log_path), "rb"
-            ) as image_log, LogReader(str(gamelog_path)) as reader:
-                for frame in reader.read():
-                    # only write frames which have corresponding images
-                    if frame.number in image_log_index:
+            try:
+                with open(str(combined_log_path), "wb") as output, open(
+                    str(img_log_path), "rb"
+                ) as image_log, LogReader(str(gamelog_path)) as reader:
+                    for frame in reader.read():
+                        # only write frames which have corresponding images
+                        if frame.number in image_log_index:
 
-                        # may contain 'ImageTop' and 'Image'
-                        for image_name, (offset, size) in image_log_index[
-                            frame.number
-                        ].items():
-                            # load image data
-                            image_log.seek(offset)
-                            image_data = image_log.read(size)
+                            # may contain 'ImageTop' and 'Image'
+                            for image_name, (offset, size) in image_log_index[
+                                frame.number
+                            ].items():
+                                # load image data
+                                image_log.seek(offset)
+                                image_data = image_log.read(size)
 
-                            # add image from image.log
-                            msg = Image()
-                            msg.height = 480
-                            msg.width = 640
-                            msg.format = Image.YUV422
-                            msg.data = image_data
+                                # add image from image.log
+                                msg = Image()
+                                msg.height = 480
+                                msg.width = 640
+                                msg.format = Image.YUV422
+                                msg.data = image_data
 
-                            frame.add_field(image_name, msg)
+                                frame.add_field(image_name, msg)
 
-                        # write the modified frame to the new log
-                        output.write(bytes(frame))
+                            # write the modified frame to the new log
+                            output.write(bytes(frame))
 
-                        # HACK: Frames are indexed by the log reader. Remove the image of already processed frames to preserve memory.
-                        for image_name in image_log_index[frame.number]:
-                            frame.remove(image_name)
+                            # HACK: Frames are indexed by the log reader. Remove the image of already processed frames to preserve memory.
+                            for image_name in image_log_index[frame.number]:
+                                frame.remove(image_name)
 
-                    else:
-                        # write unmodified frame from game.log to the new log
-                        output.write(bytes(frame))
+                        else:
+                            # write unmodified frame from game.log to the new log
+                            output.write(bytes(frame))
+            except:
+                print("failed to combine file")
+                # TODO set a status in the db so that no one tries to parse this again
+                # check 2023-08-cccamp/2023-08-17_12-00-00_Berlin United_vs_TestOpponent_testgame-02/game_logs/1_21_Nao0041_230817-1136
+                # Maybe we can handle weird broken files better than completely ignoring them??
+                if combined_log_path.is_file():
+                    combined_log_path.unlink()
 
         # insert in db if the file exists - so combining was successful
         if combined_log_path.is_file():

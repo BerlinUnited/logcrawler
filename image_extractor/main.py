@@ -139,10 +139,25 @@ def get_logs():
     return logs
 
 
+def delete_everything(log_list):
+    for log_folder in log_list:
+        actual_log_folder = root_path / Path(log_folder)
+        extracted_folder = (
+            Path(actual_log_folder).parent.parent
+            / Path("extracted")
+            / Path(actual_log_folder).name
+        )
+        output_folder_top = extracted_folder / Path("log_top")
+        output_folder_bottom = extracted_folder / Path("log_bottom")
+        print(f"deleting images for {log_folder}")
+        if output_folder_top.exists():
+            shutil.rmtree(output_folder_top)
+
+        if output_folder_bottom.exists():
+            shutil.rmtree(output_folder_bottom)
+
+
 if __name__ == "__main__":
-    """
-    TODO set up argparser here, if no argument set get all logs from postgres
-    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", action="store_true")
     args = parser.parse_args()
@@ -151,21 +166,7 @@ if __name__ == "__main__":
     log_list = get_logs()
 
     if args.delete is True:
-        for log_folder in log_list:
-            actual_log_folder = root_path / Path(log_folder)
-            extracted_folder = (
-                Path(actual_log_folder).parent.parent
-                / Path("extracted")
-                / Path(actual_log_folder).name
-            )
-            output_folder_top = extracted_folder / Path("log_top")
-            output_folder_bottom = extracted_folder / Path("log_bottom")
-            print(f"deleting images for {log_folder}")
-            if output_folder_top.exists():
-                shutil.rmtree(output_folder_top)
-
-            if output_folder_bottom.exists():
-                shutil.rmtree(output_folder_bottom)
+        delete_everything(log_list)
 
     for log_folder in log_list:
         print(log_folder)
@@ -173,7 +174,6 @@ if __name__ == "__main__":
         combined_log = root_path / Path(actual_log_folder) / "combined.log"
         game_log = root_path / Path(actual_log_folder) / "game.log"
 
-        # TODO dont do anything if extraced stuff already exists
         extracted_folder = (
             Path(actual_log_folder).parent.parent
             / Path("extracted")
@@ -183,6 +183,7 @@ if __name__ == "__main__":
         output_folder_top = extracted_folder / Path("log_top")
         output_folder_bottom = extracted_folder / Path("log_bottom")
 
+        # dont do anything if extraced stuff already exists
         if output_folder_top.exists() and output_folder_bottom.exists():
             pass
         else:

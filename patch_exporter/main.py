@@ -75,6 +75,7 @@ def get_logs_with_bottom_images():
 def handle_bucket(data, db_field, debug):
     # TODO: find better function name
     # TODO make sure we always get the same order (comes in handy during debugging)
+    # TODO put data in same bucket (maybe)
     for logpath, bucketname in data:
         print(logpath)
         patch_bucket_name = bucketname + "-patches"

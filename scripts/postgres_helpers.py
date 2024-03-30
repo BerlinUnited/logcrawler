@@ -69,6 +69,7 @@ def set_broken_images(bucket_id):
     useful when we notice during training that all images are scrambled (we have a few of those)
     FIXME: implement this
     """
+    # ixqkzkgunsabiftgweefvp (partially)
     pass
 
 
