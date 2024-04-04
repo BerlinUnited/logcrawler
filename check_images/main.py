@@ -36,24 +36,24 @@ if __name__ == "__main__":
         print(log_folder)
         actual_log_folder = root_path / Path(log_folder)
         representation_file = actual_log_folder / "representation.json"
+        if representation_file.exists():
+            with open(str(representation_file), "r", encoding="utf-8") as f:
+                data = json.load(f)
 
-        with open(str(representation_file), "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        representations = data["representations"]
-        if "Image" in representations or "ImageTop" in representations:
-            print("\tfound images")
-            # write to db
-            insert_statement = f"""
-            UPDATE robot_logs SET images_exist = true WHERE log_path = '{log_folder}';
-            """
-            cur.execute(insert_statement)
-            conn.commit()
-        else:
-            # write to db
-            insert_statement = f"""
-            UPDATE robot_logs SET images_exist = false WHERE log_path = '{log_folder}';
-            """
-            cur.execute(insert_statement)
-            conn.commit()
+            representations = data["representations"]
+            if "Image" in representations or "ImageTop" in representations:
+                print("\tfound images")
+                # write to db
+                insert_statement = f"""
+                UPDATE robot_logs SET images_exist = true WHERE log_path = '{log_folder}';
+                """
+                cur.execute(insert_statement)
+                conn.commit()
+            else:
+                # write to db
+                insert_statement = f"""
+                UPDATE robot_logs SET images_exist = false WHERE log_path = '{log_folder}';
+                """
+                cur.execute(insert_statement)
+                conn.commit()
 
