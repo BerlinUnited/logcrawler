@@ -91,11 +91,12 @@ def import_labelstudio(data, color):
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
             project.sync_import_storage(import_storage["type"], storage_id)
 
-            insert_statement = f"""
-            UPDATE robot_logs SET labelstudio_project = '{bucketname}' WHERE log_path = '{logpath}';
-            """
-            cur.execute(insert_statement)
-            conn.commit()
+            # FIXME that needs to be done to bottom and top, also it should add the project id instead of the name
+            #insert_statement = f"""
+            #UPDATE robot_logs SET labelstudio_project = '{bucketname}' WHERE log_path = '{logpath}';
+            #"""
+            #cur.execute(insert_statement)
+            #conn.commit()
 
 
 if __name__ == "__main__":
