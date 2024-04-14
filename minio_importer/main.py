@@ -37,7 +37,7 @@ minio_policy = {
 
 # FIXME make this auto detect if its running inside the cluster or not
 params = {
-    "host": "postgres-postgresql.default.svc",
+    "host": "postgres-postgresql.postgres.svc.cluster.local",
     "port": 5432,
     "dbname": "logs",
     "user": "naoth",
