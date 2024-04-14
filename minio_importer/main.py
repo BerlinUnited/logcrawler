@@ -36,8 +36,13 @@ minio_policy = {
 }
 
 # FIXME make this auto detect if its running inside the cluster or not
+if "KUBERNETES_SERVICE_HOST" in environ:
+    postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
+else:
+    postgres_host = "pg.berlinunited-cloud.de"
+
 params = {
-    "host": "postgres-postgresql.postgres.svc.cluster.local",
+    "host": postgres_host,
     "port": 5432,
     "dbname": "logs",
     "user": "naoth",
