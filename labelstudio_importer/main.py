@@ -5,6 +5,8 @@ from pathlib import Path
 from label_studio_sdk import Client
 import psycopg2
 from os import environ
+import time
+import datetime
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -51,21 +53,21 @@ def get_logs_with_bottom_images():
     return logs
 
 def import_labelstudio(data, color):
+    existing_projects = [a.title for a in ls.list_projects()]
     for logpath, bucketname in data:
         print(f"handling data from {logpath}")
-        log_name = str(Path(logpath).name)
-        game_name = str(Path(logpath).parent.parent.name)
-        event_name = str(Path(logpath).parent.parent.parent.name)
-        description = f"""
-        event: {event_name} < /br>
-        game: {game_name} < /br>
-        log: {log_name}
-        """
-        existing_projects = [a.title for a in ls.list_projects()]
         if bucketname in existing_projects:
             print("\tproject already exists")
             continue
         else:
+            log_name = str(Path(logpath).name)
+            game_name = str(Path(logpath).parent.parent.name)
+            event_name = str(Path(logpath).parent.parent.parent.name)
+            description = f"""
+            event: {event_name} < /br>
+            game: {game_name} < /br>
+            log: {log_name}
+            """
             print(f"\tcreating project {bucketname}")
             project = ls.start_project(
                 title=bucketname,
@@ -73,15 +75,21 @@ def import_labelstudio(data, color):
                 description=description,
                 color=color
             )
-            rt_val = project.connect_s3_import_storage(
+            import_storage = project.connect_s3_import_storage(
                 bucket=bucketname,
                 title=bucketname,
                 aws_access_key_id="naoth",
                 aws_secret_access_key="HAkPYLnAvydQA",
                 s3_endpoint="https://minio.berlinunited-cloud.de",
             )
-            storage_id = rt_val["id"]
-            project.sync_import_storage(rt_val["type"], storage_id)
+            
+            environ["TIMEOUT"] = "300"
+            storage_id = import_storage["id"]
+            print(datetime.datetime.now())
+            # this function waits till storage is synchronized
+            # TODO check closer what this does, docs imply the stream data from minio, but logs say something about copying
+            # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
+            project.sync_import_storage(import_storage["type"], storage_id)
 
             insert_statement = f"""
             UPDATE robot_logs SET labelstudio_project = '{bucketname}' WHERE log_path = '{logpath}';
