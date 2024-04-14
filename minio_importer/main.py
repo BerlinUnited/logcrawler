@@ -43,9 +43,7 @@ params = {
     "user": "naoth",
     "password": environ.get('DB_PASS')
 }
-#pool = psycopg2.pool.SimpleConnectionPool( 
-#    2, 3, user='naoth', password= environ.get('DB_PASS'), 
-#    host="pg.berlinunited-cloud.de", port='4000', database='logs')
+
 conn = psycopg2.connect(**params)
 cursor = conn.cursor()
 
@@ -54,12 +52,10 @@ def get_logs():
     select_statement = f"""
     SELECT log_path FROM robot_logs WHERE extract_status = true 
     """
-    #connection = pool.getconn()
-    #cursor = connection.cursor() 
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
     logs = [x[0] for x in rtn_val]
-    #pool.putconn(connection) 
+
     return logs
 
 
@@ -125,11 +121,9 @@ if __name__ == "__main__":
         select_statement = f"""
         SELECT bucket_top FROM robot_logs WHERE log_path = '{log_folder}' 
         """
-        #connection = pool.getconn()
-        #cursor = connection.cursor()
         cursor.execute(select_statement)
         rtn_val = cursor.fetchall()[0][0]
-        #pool.putconn(connection) 
+
         if rtn_val is not None:
             # TODO this must be handled better for example what if minio goes down and looses all the data, I need to recreate it the same way. this way I can also use the labelstudio backup
             print("\tbucket already exists")
@@ -139,21 +133,18 @@ if __name__ == "__main__":
             insert_statement = f"""
             UPDATE robot_logs SET bucket_top = '{bucket_name_top}' WHERE log_path = '{log_folder}';
             """
-            #connection = pool.getconn()
-            #cursor = connection.cursor()
+
             cursor.execute(insert_statement)
             conn.commit()
-            #pool.putconn(connection) 
 
             upload_to_minio(bucket_name_top, data_folder_top)
 
-        continue
         # check if bucket for bottom data exists (FIXME make this code cooler)
         select_statement = f"""
         SELECT bucket_bottom FROM robot_logs WHERE log_path = '{log_folder}' 
         """
-        cur.execute(select_statement)
-        rtn_val = cur.fetchall()[0][0]
+        cursor.execute(select_statement)
+        rtn_val = cursor.fetchall()[0][0]
         if rtn_val is not None:
             print("\tbucket already exists")
         else:
@@ -162,7 +153,7 @@ if __name__ == "__main__":
             insert_statement = f"""
             UPDATE robot_logs SET bucket_bottom = '{bucket_name_bottom}' WHERE log_path = '{log_folder}';
             """
-            cur.execute(insert_statement)
+            cursor.execute(insert_statement)
             conn.commit()
             
             upload_to_minio(bucket_name_bottom, data_folder_bottom)
