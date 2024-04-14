@@ -68,7 +68,7 @@ def upload_to_minio(data_folder):
     tags = Tags.new_bucket_tags()
     tags["data path"] = str(data_folder)
     mclient.set_bucket_tags(bucket_name, tags)
-    mclient.set_bucket_policy(bucket_name, json.dumps(minio_policy))
+    #mclient.set_bucket_policy(bucket_name, json.dumps(minio_policy))
     
     print("Created bucket", bucket_name)
 
