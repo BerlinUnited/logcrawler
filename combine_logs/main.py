@@ -25,6 +25,8 @@ params = {
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
+# this is for making it easier to test something in another table
+db_name = "robot_logs" # experiment_logs or robot_logs
 
 def create_image_log_dict(image_log, first_image_is_top):
     """
@@ -80,7 +82,7 @@ def create_image_log_dict(image_log, first_image_is_top):
 
 def get_logs():
     select_statement = f"""
-    SELECT log_path FROM robot_logs
+    SELECT log_path FROM {db_name}
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
@@ -134,7 +136,7 @@ if __name__ == "__main__":
         ):
             print("\tcan't combine anything here")
             insert_statement = f"""
-            UPDATE robot_logs SET combined_status = false WHERE log_path = '{log_folder}';
+            UPDATE {db_name} SET combined_status = false WHERE log_path = '{log_folder}';
             """
             cur.execute(insert_statement)
             conn.commit()
@@ -191,7 +193,7 @@ if __name__ == "__main__":
         if combined_log_path.is_file():
             print("\tset combined status to true")
             insert_statement = f"""
-            UPDATE robot_logs SET combined_status = true WHERE log_path = '{log_folder}';
+            UPDATE {db_name} SET combined_status = true WHERE log_path = '{log_folder}';
             """
             cur.execute(insert_statement)
             conn.commit()

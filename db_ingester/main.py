@@ -2,7 +2,7 @@ import psycopg2
 from pathlib import Path
 from os import environ
 import argparse
-from event_list import event_list
+from event_list import event_list, experiment_list
 
 # connect to database
 params = {
@@ -18,10 +18,10 @@ cur = conn.cursor()
 def cleanup():
     cur.execute("DROP TABLE robot_logs")
 
-def create_log_table():
+def create_log_table(db_name: str):
     # log_path is the unique identifier of the row
-    sql_query = """
-    CREATE TABLE IF NOT EXISTS robot_logs (
+    sql_query = f"""
+    CREATE TABLE IF NOT EXISTS {db_name} (
         log_path VARCHAR, 
         event_name VARCHAR,
         half VARCHAR,
@@ -41,13 +41,13 @@ def create_log_table():
         bucket_bottom VARCHAR,
         bucket_bottom_patches VARCHAR,
         labelstudio_project VARCHAR, 
-        CONSTRAINT my_constraint UNIQUE (log_path)
+        CONSTRAINT my_constraint_{db_name} UNIQUE (log_path)
     );
     """
     cur.execute(sql_query)
     conn.commit()
 
-def insert_data():
+def insert_log_data():
     root_path = environ.get('LOG_ROOT')
     for event in [f for f in Path(root_path).iterdir() if f.is_dir()]:
         if event.name in event_list:
@@ -86,6 +86,21 @@ def insert_data():
             # end handling a game
     # end handling an event
 
+
+def insert_experiment_data(db_name):
+    for logfile in experiment_list:
+        print(logfile)
+        event_name = str(logfile).split("/")[0]
+
+        insert_statement1 = f"""
+        INSERT INTO {db_name} (log_path, event_name, half) 
+        VALUES ('{logfile}', '{event_name}', 'experiment')
+        ON CONFLICT DO NOTHING
+        """
+        cur.execute(insert_statement1)
+        conn.commit()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--cleanup", action="store_true")
@@ -95,5 +110,7 @@ if __name__ == "__main__":
         # This is just for debug purposes
         cleanup()
 
-    create_log_table()
-    insert_data()
+    create_log_table("robot_logs")
+    insert_log_data()
+    # create_log_table("experiment_logs")  # could be used to test stuff in a separate table 
+    insert_experiment_data("robot_logs")
