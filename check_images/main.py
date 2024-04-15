@@ -34,8 +34,14 @@ if __name__ == "__main__":
 
     for log_folder in log_list:
         print(log_folder)
-        actual_log_folder = root_path / Path(log_folder)
-        representation_file = actual_log_folder / "representation.json"
+        log_path_w_prefix = root_path / Path(log_folder)
+        if Path(log_path_w_prefix).is_file():
+            actual_log_folder = root_path / Path(log_folder).parent
+            representation_file = actual_log_folder / str(Path(log_folder).name + '.representation.json')
+        else:
+            actual_log_folder = root_path / Path(log_folder)
+            representation_file = actual_log_folder / "representation.json"
+            
         if representation_file.exists():
             with open(str(representation_file), "r", encoding="utf-8") as f:
                 data = json.load(f)
