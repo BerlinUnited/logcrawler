@@ -18,8 +18,11 @@ params = {
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
+if "KUBERNETES_SERVICE_HOST" in environ:
+    LABEL_STUDIO_URL = "http://labelstudio-ls-app.labelstudio.svc.cluster.local"
+else:
+    LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
 
-LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
 API_KEY = "6cb437fb6daf7deb1694670a6f00120112535687"
 ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
@@ -61,7 +64,7 @@ def import_labelstudio(data, camera):
     existing_projects = [(a.title, a) for a in ls.list_projects()]
     existing_projects = dict(existing_projects)
     
-    for logpath, bucketname in data:
+    for logpath, bucketname in sorted(data):
         print(f"handling data from {logpath}")
         if bucketname in existing_projects.keys():
             project_id = existing_projects[bucketname].id
@@ -102,11 +105,11 @@ def import_labelstudio(data, camera):
             )
             if camera == "top":
                 insert_statement = f"""
-                UPDATE robot_logs SET ls_project_top = '{project_id}' WHERE log_path = '{logpath}';
+                UPDATE robot_logs SET ls_project_top = '{project.id}' WHERE log_path = '{logpath}';
                 """
             else:
                 insert_statement = f"""
-                UPDATE robot_logs SET ls_project_bottom = '{project_id}' WHERE log_path = '{logpath}';
+                UPDATE robot_logs SET ls_project_bottom = '{project.id}' WHERE log_path = '{logpath}';
                 """
             cur.execute(insert_statement)
             conn.commit()
@@ -118,17 +121,6 @@ def import_labelstudio(data, camera):
             # TODO check closer what this does, docs imply the stream data from minio, but logs say something about copying
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
             project.sync_import_storage(import_storage["type"], storage_id)
-
-            if camera == "top":
-                insert_statement = f"""
-                UPDATE robot_logs SET ls_project_top = '{project_id}' WHERE log_path = '{logpath}';
-                """
-            else:
-                insert_statement = f"""
-                UPDATE robot_logs SET ls_project_bottom = '{project_id}' WHERE log_path = '{logpath}';
-                """
-            cur.execute(insert_statement)
-            conn.commit()
 
 
 if __name__ == "__main__":
