@@ -140,6 +140,7 @@ def get_logs():
 
 
 def delete_everything(log_list):
+    # FIXME: cant handle experiment logs yet
     for log_folder in log_list:
         actual_log_folder = root_path / Path(log_folder)
         extracted_folder = (
@@ -157,6 +158,45 @@ def delete_everything(log_list):
             shutil.rmtree(output_folder_bottom)
 
 
+def calculate_output_path(log_folder: str):
+    log_path_w_prefix = root_path / Path(log_folder)
+    if Path(log_path_w_prefix).is_file():
+        print("\tdetected experiment log")
+        actual_log_folder = root_path / Path(log_folder).parent
+        log = log_path_w_prefix
+
+        extracted_folder = (
+            Path(actual_log_folder)
+            / Path("extracted")
+            / Path(log_path_w_prefix).stem
+        )
+        output_folder_top = extracted_folder / Path("log_top")
+        output_folder_bottom = extracted_folder / Path("log_bottom")
+
+        print(f"\toutput folder will be {extracted_folder}")
+    else:
+        print("\tdetected normal game log")
+        actual_log_folder = root_path / Path(log_folder)
+        combined_log = root_path / Path(actual_log_folder) / "combined.log"
+        game_log = root_path / Path(actual_log_folder) / "game.log"
+        if combined_log.is_file():
+            log = combined_log
+        elif game_log.is_file():
+            log = log = combined_log
+        else:
+            log = None
+
+        extracted_folder = (
+            Path(actual_log_folder).parent.parent
+            / Path("extracted")
+            / Path(actual_log_folder).name
+        )
+
+        output_folder_top = extracted_folder / Path("log_top")
+        output_folder_bottom = extracted_folder / Path("log_bottom")
+    
+    return log, output_folder_top, output_folder_bottom
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", action="store_true")
@@ -170,39 +210,21 @@ if __name__ == "__main__":
 
     for log_folder in log_list:
         print(log_folder)
-        actual_log_folder = root_path / Path(log_folder)
-        combined_log = root_path / Path(actual_log_folder) / "combined.log"
-        game_log = root_path / Path(actual_log_folder) / "game.log"
-
-        extracted_folder = (
-            Path(actual_log_folder).parent.parent
-            / Path("extracted")
-            / Path(actual_log_folder).name
-        )
-
-        output_folder_top = extracted_folder / Path("log_top")
-        output_folder_bottom = extracted_folder / Path("log_bottom")
+        log, out_top, out_bottom = calculate_output_path(log_folder)
+        if log is None:
+            continue
 
         # dont do anything if extraced stuff already exists
-        if output_folder_top.exists() and output_folder_bottom.exists():
+        if out_top.exists() and out_bottom.exists():
             pass
         else:
-            output_folder_top.mkdir(exist_ok=True, parents=True)
-            output_folder_bottom.mkdir(exist_ok=True, parents=True)
-
-            if combined_log.is_file():
-                # export from combined log
-                log = combined_log
-
-            elif game_log.is_file():
-                log = log = combined_log
-            else:
-                continue
+            out_top.mkdir(exist_ok=True, parents=True)
+            out_bottom.mkdir(exist_ok=True, parents=True)
 
             my_parser = Parser()
             with LogReader(log, my_parser) as reader:
                 images = map(get_images, reader.read())
-                export_images(log, images, output_folder_top, output_folder_bottom)
+                export_images(log, images, out_top, out_bottom)
 
         # write to db
         insert_statement = f"""
