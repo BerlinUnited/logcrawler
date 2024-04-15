@@ -97,6 +97,32 @@ def upload_to_minio(bucket_name, data_folder):
             source_file,
         )
 
+def find_extracted_image_paths(log_folder: str):
+    log_path_w_prefix = root_path / Path(log_folder)
+    if Path(log_path_w_prefix).is_file():
+        print("\tdetected experiment log")
+        actual_log_folder = root_path / Path(log_folder).parent
+        extracted_folder = (
+            Path(actual_log_folder)
+            / Path("extracted")
+            / Path(log_path_w_prefix).stem
+        )
+        data_folder_top = extracted_folder / Path("log_top")
+        data_folder_bottom = extracted_folder / Path("log_bottom")
+    else:
+        print("\tdetected normal game log")
+        actual_log_folder = root_path / Path(log_folder)
+        # calculate the location of the folders for the images
+        extracted_folder = (
+            Path(actual_log_folder).parent.parent
+            / Path("extracted")
+            / Path(actual_log_folder).name
+        )
+
+        data_folder_top = extracted_folder / Path("log_top")
+        data_folder_bottom = extracted_folder / Path("log_bottom")
+
+    return data_folder_top, data_folder_bottom
 
 if __name__ == "__main__":
     """
@@ -108,18 +134,8 @@ if __name__ == "__main__":
 
     for log_folder in log_list:
         print(log_folder)
-        actual_log_folder = root_path / Path(log_folder)
-        combined_log = root_path / Path(actual_log_folder) / "combined.log"
-        game_log = root_path / Path(actual_log_folder) / "game.log"
-
-        # calculate the location of the folders for the images 
-        extracted_folder = (
-            Path(actual_log_folder).parent.parent
-            / Path("extracted")
-            / Path(actual_log_folder).name
-        )
-        data_folder_top = extracted_folder / Path("log_top")
-        data_folder_bottom = extracted_folder / Path("log_bottom")
+        data_folder_top, data_folder_bottom = find_extracted_image_paths(log_folder)
+        
 
         # check if bucket for top data exists (FIXME make this code cooler)
         # TODO can we have a policy against bucket deletion?
