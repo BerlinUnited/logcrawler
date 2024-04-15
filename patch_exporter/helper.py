@@ -35,12 +35,14 @@ class Rectangle(NamedTuple):
         width = round((self.bottom_right[0] - self.top_left[0]) / 2)
         height = round((self.bottom_right[1] - self.top_left[1]) / 2)
 
+        # FIXME if the patch is on the image border it should be max
         return min(width, height)
 
     def get_center(self):
         """
             this will calculate the center of the rectangle in the coordinate frame the coordinates are in
         """
+        # FIXME if the patch is on the image border it imagine that its a square based on the max
         width = self.bottom_right[0] - self.top_left[0]
         height = self.bottom_right[1] - self.top_left[1]
 

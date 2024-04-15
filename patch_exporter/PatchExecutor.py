@@ -62,7 +62,8 @@ class PatchExecutor:
         # restore original working directory
         os.chdir(orig_working_dir)
 
-    def convert_image_to_frame(self, image_path):
+    def convert_image_to_frame(self, image_path, gt_balls=list()):
+        # HACK - we need to figure out a good way to handle groundtruth also not just for balls
         img = PIL.Image.open(image_path)
 
         bottom = img.info["CameraID"] == "1"
@@ -80,9 +81,6 @@ class PatchExecutor:
                     img.info["r_32"]), float(img.info["r_33"])]
             ])
         
-        # HACK - we need to figure out a good way to handle groundtruth also not just for balls
-        gt_balls = []
-
         return Frame(image_path, bottom, gt_balls, cam_matrix_translation, cam_matrix_rotation)
 
 
@@ -185,7 +183,11 @@ class PatchExecutor:
             cam_id = 0
 
         img = cv2.imread(frame.file)
-
+        ball_folder = output_patch_folder / "ball"
+        non_ball_folder = output_patch_folder / "other"
+        Path(ball_folder).mkdir(exist_ok=True, parents=True)
+        Path(non_ball_folder).mkdir(exist_ok=True, parents=True)
+        
         for idx, p in enumerate(detected_balls.patchesYUVClassified):
             iou = 0.0
             x = 0.0
@@ -216,7 +218,11 @@ class PatchExecutor:
 
             # FIXME: here we save the image with opencv and then open it again with pil to add meta data
             # can we do that without saving twice?
-            patch_file_name = Path(output_patch_folder) / (Path(frame.file).stem + f"_{idx}.png")
+            if iou > 0.5:
+                output_folder = ball_folder
+            else:
+                output_folder = non_ball_folder
+            patch_file_name = Path(output_folder) / (Path(frame.file).stem + f"_{idx}_iou_{iou}.png")
             try:
                 cv2.imwrite(str(patch_file_name), crop_img)
             except:
@@ -228,7 +234,7 @@ class PatchExecutor:
             # section for writing meta data
             meta = PngImagePlugin.PngInfo()
             meta.add_text("CameraID", str(cam_id))
-            meta.add_text("iou", str(iou))
+            meta.add_text("ball_iou", str(iou))
             meta.add_text("center_x", str(x))
             meta.add_text("center_y", str(y))
             meta.add_text("radius", str(radius))

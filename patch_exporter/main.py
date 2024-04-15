@@ -37,6 +37,7 @@ from os import environ
 from label_studio_sdk import Client
 from PatchExecutor import PatchExecutor
 import tempfile
+from helper import Rectangle, Point2D
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -133,42 +134,55 @@ def handle_bucket(data, db_field, debug):
         patch_bucket_name = create_patch_bucket(logpath, bucketname, db_field)
 
         # TODO setup temp dir for downloaded images
-        with tempfile.TemporaryDirectory() as tmp_download_folder:
-            print('\tcreated temporary directory', tmp_download_folder)
-            # get list of tasks
-            task_ids = ls_project.get_labeled_tasks_ids()
-            for task in tqdm(task_ids):
-                image_file_name = ls_project.get_task(task)["storage_filename"]
-                output_file = Path(tmp_download_folder) / image_file_name
-                # download the image from minio
-                mclient.fget_object(bucketname, image_file_name, str(output_file))
-                # TODO get meta information from png header
+        tmp_download_folder = tempfile.TemporaryDirectory()
 
-                # TODO get the annotation
-                annotations = ls_project.get_task(task)["annotations"]
-                for anno in annotations:
-                    results = anno["result"]
-                    # print(anno)
-                    for result in results:
-                        # x,y,width,height are all percentages within [0,100]
-                        x, y, width, height = result["value"]["x"], result["value"]["y"], result["value"]["width"], result["value"]["height"]
-                        img_width = result['original_width']
-                        img_height = result['original_height']
-                        actual_label = result["value"]["rectanglelabels"][0]
-                        #label_id = label_dict[actual_label]
-                # TODO get all the bboxes in the correct format in a list
+        print('\tcreated temporary directory', tmp_download_folder)
+        # get list of tasks
+        task_ids = ls_project.get_labeled_tasks_ids()
+        for task in tqdm(task_ids):
+            image_file_name = ls_project.get_task(task)["storage_filename"]
+            output_file = Path(tmp_download_folder.name) / image_file_name
+            # download the image from minio
+            mclient.fget_object(bucketname, image_file_name, str(output_file))
+            # TODO get meta information from png header
+
+            # TODO get the annotation
+            ball_list = list()
+            annotations = ls_project.get_task(task)["annotations"]
+            for anno in annotations:
+                results = anno["result"]
+                # print(anno)
+                for result in results:
+                    # x,y,width,height are all percentages within [0,100]
+                    x, y, width, height = result["value"]["x"], result["value"]["y"], result["value"]["width"], result["value"]["height"]
+                    img_width = result['original_width']
+                    img_height = result['original_height']
+                    actual_label = result["value"]["rectanglelabels"][0]
+                    if actual_label == "ball":
+                        x_px = x / 100 * img_width
+                        y_px = y / 100 * img_height
+                        width_px = width / 100 * img_width
+                        height_px = height / 100 * img_height
+                        ball_list.append(Rectangle(Point2D(x_px, y_px), Point2D(x_px + width_px, y_px + height_px)))
+
+                    #label_id = label_dict[actual_label]
+            
+            # TODO get all the bboxes in the correct format in a list
+            
+            output_patch_folder = Path(tmp_download_folder.name) / "patches"
+            output_patch_folder.mkdir(exist_ok=True)
+            # get patches
+            with cppyy.ll.signals_as_exception():  # this could go into the other file
+                frame = evaluator.convert_image_to_frame(str(output_file), ball_list)
+                evaluator.set_current_frame(frame)
+                evaluator.sim.executeFrame()
                 
-                output_patch_folder = Path(tmp_download_folder) / "patches"
-                # get patches
-                with cppyy.ll.signals_as_exception():  # this could go into the other file
-                    frame = evaluator.convert_image_to_frame(str(output_file))
-                    evaluator.set_current_frame(frame)
-                    evaluator.sim.executeFrame()
-                    # HACK it will be the same folder for each frame
-                    
-                    evaluator.export_patches(frame, output_patch_folder)
+                evaluator.export_patches(frame, output_patch_folder)
 
-        #objects = mclient.list_objects(bucketname)
+        print("\tcreating archive of all the patches")
+        # creates patches.zip in the current folder
+        shutil.make_archive("patches", 'zip', str(output_patch_folder))
+        tmp_download_folder.cleanup()
         quit()
         # iterate over bucket data (assumes that there are only images and nothing else in the bucket)
         for count, obj in enumerate(objects):
@@ -206,6 +220,7 @@ def handle_bucket(data, db_field, debug):
             Path("patches.zip").unlink()
 
 def delete_data(data):
+    # FIXME move to minio tools
     for logpath, bucketname in data:
         print(logpath)
         patch_bucket_name = bucketname + "-patches"
