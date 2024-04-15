@@ -52,12 +52,30 @@ def get_logs_with_bottom_images():
     logs = [x for x in rtn_val]
     return logs
 
-def import_labelstudio(data, color):
-    existing_projects = [a.title for a in ls.list_projects()]
+def import_labelstudio(data, camera):
+    if camera == "top":
+        color = "#D55C9D"
+    else:
+        color = "#51AAFD"
+    
+    existing_projects = [(a.title, a) for a in ls.list_projects()]
+    existing_projects = dict(existing_projects)
+    
     for logpath, bucketname in data:
         print(f"handling data from {logpath}")
-        if bucketname in existing_projects:
-            print("\tproject already exists")
+        if bucketname in existing_projects.keys():
+            project_id = existing_projects[bucketname].id
+            print(f"\tproject {project_id} already exists")
+            if camera == "top":
+                insert_statement = f"""
+                UPDATE robot_logs SET ls_project_top = '{project_id}' WHERE log_path = '{logpath}';
+                """
+            else:
+                insert_statement = f"""
+                UPDATE robot_logs SET ls_project_bottom = '{project_id}' WHERE log_path = '{logpath}';
+                """
+            cur.execute(insert_statement)
+            conn.commit()
             continue
         else:
             log_name = str(Path(logpath).name)
@@ -82,7 +100,17 @@ def import_labelstudio(data, color):
                 aws_secret_access_key="HAkPYLnAvydQA",
                 s3_endpoint="https://minio.berlinunited-cloud.de",
             )
-            
+            if camera == "top":
+                insert_statement = f"""
+                UPDATE robot_logs SET ls_project_top = '{project_id}' WHERE log_path = '{logpath}';
+                """
+            else:
+                insert_statement = f"""
+                UPDATE robot_logs SET ls_project_bottom = '{project_id}' WHERE log_path = '{logpath}';
+                """
+            cur.execute(insert_statement)
+            conn.commit()
+
             environ["TIMEOUT"] = "300"
             storage_id = import_storage["id"]
             print(datetime.datetime.now())
@@ -91,12 +119,16 @@ def import_labelstudio(data, color):
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
             project.sync_import_storage(import_storage["type"], storage_id)
 
-            # FIXME that needs to be done to bottom and top, also it should add the project id instead of the name
-            #insert_statement = f"""
-            #UPDATE robot_logs SET labelstudio_project = '{bucketname}' WHERE log_path = '{logpath}';
-            #"""
-            #cur.execute(insert_statement)
-            #conn.commit()
+            if camera == "top":
+                insert_statement = f"""
+                UPDATE robot_logs SET ls_project_top = '{project_id}' WHERE log_path = '{logpath}';
+                """
+            else:
+                insert_statement = f"""
+                UPDATE robot_logs SET ls_project_bottom = '{project_id}' WHERE log_path = '{logpath}';
+                """
+            cur.execute(insert_statement)
+            conn.commit()
 
 
 if __name__ == "__main__":
@@ -105,5 +137,5 @@ if __name__ == "__main__":
     data_top = get_logs_with_top_images()
     data_bottom = get_logs_with_bottom_images()
 
-    import_labelstudio(data_top, "#D55C9D")
-    import_labelstudio(data_bottom, "#51AAFD")
+    import_labelstudio(data_top, "top")
+    import_labelstudio(data_bottom, "bottom")

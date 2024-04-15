@@ -56,9 +56,16 @@ def query_test():
     print(rtn_val)
 
 
-def add_column():
+def add_column(column_name):
     sql_statement = f"""
-    ALTER TABLE robot_logs ADD broken_images VARCHAR;
+    ALTER TABLE robot_logs ADD {column_name} VARCHAR;
+    """
+    cur.execute(sql_statement)
+    conn.commit()
+
+def delete_column(column_name):
+    sql_statement = f"""
+    ALTER TABLE robot_logs DROP COLUMN {column_name};
     """
     cur.execute(sql_statement)
     conn.commit()

@@ -170,7 +170,7 @@ class PatchExecutor:
         #Path(output_file.parent).mkdir(exist_ok=True, parents=True)
         cv2.imwrite(str(output_file), img)
 
-    def export_patches(self, frame: Frame):
+    def export_patches(self, frame: Frame, output_patch_folder: Path):
         """
             This function exports patches as images for future training. All interesting meta information is saved inside the png header
         """
@@ -185,10 +185,6 @@ class PatchExecutor:
             cam_id = 0
 
         img = cv2.imread(frame.file)
-        # create folder for the patches
-
-        patch_folder = "patch_output"
-        Path(patch_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, p in enumerate(detected_balls.patchesYUVClassified):
             iou = 0.0
@@ -220,7 +216,7 @@ class PatchExecutor:
 
             # FIXME: here we save the image with opencv and then open it again with pil to add meta data
             # can we do that without saving twice?
-            patch_file_name = Path(patch_folder) / (Path(frame.file).stem + f"_{idx}.png")
+            patch_file_name = Path(output_patch_folder) / (Path(frame.file).stem + f"_{idx}.png")
             try:
                 cv2.imwrite(str(patch_file_name), crop_img)
             except:
@@ -239,5 +235,3 @@ class PatchExecutor:
 
             with PIL.Image.open(str(patch_file_name)) as im_pill:
                 im_pill.save(str(patch_file_name), pnginfo=meta)
-        
-        return Path(patch_folder).resolve()

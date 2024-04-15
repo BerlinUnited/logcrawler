@@ -40,7 +40,9 @@ def create_log_table(db_name: str):
         bucket_top_patches VARCHAR,
         bucket_bottom VARCHAR,
         bucket_bottom_patches VARCHAR,
-        labelstudio_project VARCHAR, 
+        labelstudio_project VARCHAR,
+        ls_project_bottom VARCHAR,
+        ls_project_top  VARCHAR,
         CONSTRAINT my_constraint_{db_name} UNIQUE (log_path)
     );
     """

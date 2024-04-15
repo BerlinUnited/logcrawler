@@ -32,9 +32,11 @@ from minio.commonconfig import Tags
 from pathlib import Path
 import shutil
 import time
+from tqdm import tqdm
 from os import environ
 from label_studio_sdk import Client
 from PatchExecutor import PatchExecutor
+import tempfile
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -61,7 +63,7 @@ evaluator = PatchExecutor()
 
 def get_logs_with_top_images():
     select_statement = f"""
-    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL 
+    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL AND ls_project_top IS NOT NULL
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
@@ -71,66 +73,103 @@ def get_logs_with_top_images():
 
 def get_logs_with_bottom_images():
     select_statement = f"""
-    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL 
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL AND ls_project_bottom IS NOT NULL
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
     return logs
 
-def get_ls_project_from_name(project_name: str) -> label_studio_sdk.project.Project:
+def get_ls_project_from_name(project_name: str):
     """
     In our database the project name is the same as the bucket name. For interacting with the labelstudio API we need the project ID
     """
-    project_list = ls.list_projects() # TODO speed it up by creating the list only once outside the loop
+    project_list = ls.list_projects()
     for project in project_list:
         if project.title == project_name:
             return project
+
+def create_patch_bucket(logpath, bucketname, db_field):
+    patch_bucket_name = bucketname + "-patches"
+    if not mclient.bucket_exists(patch_bucket_name):
+        mclient.make_bucket(patch_bucket_name)
+        print("\tcreated bucket", patch_bucket_name)
+        # annotate the bucket with the name of the log
+        
+        tags = Tags.new_bucket_tags()
+        tags["log path"] = logpath
+        mclient.set_bucket_tags(patch_bucket_name, tags)
+        # TODO set naoth develop version as tag here
+        
+    else:
+        print(f"\tbucket {patch_bucket_name} already exists")
+        tags = Tags.new_bucket_tags()
+        tags["log path"] = logpath
+        mclient.set_bucket_tags(patch_bucket_name, tags)
+        # TODO set naoth develop version as tag here
+    
+        
+    # add bucketname to postgres
+    insert_statement = f"""
+    UPDATE robot_logs SET {db_field} = '{patch_bucket_name}' WHERE log_path = '{logpath}';
+    """
+    cur.execute(insert_statement)
+    conn.commit()
+    #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
+    return patch_bucket_name
 
 def handle_bucket(data, db_field, debug):
     # TODO: find better function name
     # TODO make sure we always get the same order (comes in handy during debugging)
     # TODO put data in same bucket (maybe)
-    for logpath, bucketname in data:
+    for logpath, bucketname in sorted(data):
         print(logpath)
 
-        # get corresponding project here
-        # HACK assumes that ls project name is the same as bucket name
+        # get project matching the bucket here HACK assumes that ls project name is the same as bucket name
+        # probably we can get the bucket name directly from the projects somehow. -> would be more future prove
         ls_project = get_ls_project_from_name(bucketname)
-        quit()
-        # get list of tasks
-        task_ids = ls_project.get_labeled_tasks_ids()
+        
         # Create the bucket for the patches
-        patch_bucket_name = bucketname + "-patches"
-        if not mclient.bucket_exists(patch_bucket_name):
-            mclient.make_bucket(patch_bucket_name)
-            print("\tcreated bucket", patch_bucket_name)
-            # annotate the bucket with the name of the log
-            
-            tags = Tags.new_bucket_tags()
-            tags["log path"] = logpath
-            mclient.set_bucket_tags(patch_bucket_name, tags)
-            # TODO set naoth develop version as tag here
-            
-        else:
-            print(f"\tbucket {patch_bucket_name} already exists")
-            tags = Tags.new_bucket_tags()
-            tags["log path"] = logpath
-            mclient.set_bucket_tags(patch_bucket_name, tags)
-            # TODO set naoth develop version as tag here
-            
-        # add bucketname to postgres
-        insert_statement = f"""
-        UPDATE robot_logs SET {db_field} = '{patch_bucket_name}' WHERE log_path = '{logpath}';
-        """
-        cur.execute(insert_statement)
-        conn.commit()
-        #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
+        patch_bucket_name = create_patch_bucket(logpath, bucketname, db_field)
 
-        for task in task_ids:
-            image_file_name = ls_project.get_task(task)["storage_filename"]
-        objects = mclient.list_objects(bucketname)
+        # TODO setup temp dir for downloaded images
+        with tempfile.TemporaryDirectory() as tmp_download_folder:
+            print('\tcreated temporary directory', tmp_download_folder)
+            # get list of tasks
+            task_ids = ls_project.get_labeled_tasks_ids()
+            for task in tqdm(task_ids):
+                image_file_name = ls_project.get_task(task)["storage_filename"]
+                output_file = Path(tmp_download_folder) / image_file_name
+                # download the image from minio
+                mclient.fget_object(bucketname, image_file_name, str(output_file))
+                # TODO get meta information from png header
 
+                # TODO get the annotation
+                annotations = ls_project.get_task(task)["annotations"]
+                for anno in annotations:
+                    results = anno["result"]
+                    # print(anno)
+                    for result in results:
+                        # x,y,width,height are all percentages within [0,100]
+                        x, y, width, height = result["value"]["x"], result["value"]["y"], result["value"]["width"], result["value"]["height"]
+                        img_width = result['original_width']
+                        img_height = result['original_height']
+                        actual_label = result["value"]["rectanglelabels"][0]
+                        #label_id = label_dict[actual_label]
+                # TODO get all the bboxes in the correct format in a list
+                
+                output_patch_folder = Path(tmp_download_folder) / "patches"
+                # get patches
+                with cppyy.ll.signals_as_exception():  # this could go into the other file
+                    frame = evaluator.convert_image_to_frame(str(output_file))
+                    evaluator.set_current_frame(frame)
+                    evaluator.sim.executeFrame()
+                    # HACK it will be the same folder for each frame
+                    
+                    evaluator.export_patches(frame, output_patch_folder)
+
+        #objects = mclient.list_objects(bucketname)
+        quit()
         # iterate over bucket data (assumes that there are only images and nothing else in the bucket)
         for count, obj in enumerate(objects):
             #print(obj.object_name)
