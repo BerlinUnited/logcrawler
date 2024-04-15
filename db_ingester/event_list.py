@@ -74,8 +74,8 @@ experiment_list = [
     "2019-07-02_RC19/Experiments/path2018_usoa_futureball/1_94_Nao0338_090918-1315/game.log",
     "2019-07-02_RC19/Experiments/3_94_Nao0338_090918-2203_scangridedgeldetector_uniform_lengths/game.log",
     "2020-03-08-RoDeo-Experiments/rodeo20_test1.log",
-    "2020-03-08-RoDeo-Experiments/0_16_nao_lola_200308-1343/cognition.log", # TODO check this manually
-    "2023-07-04_RC23/Experiments/3_16_Nao0017_230704-0846/combined.log",
+    #"2020-03-08-RoDeo-Experiments/0_16_nao_lola_200308-1343/cognition.log", # TODO check this manually
+    #"2023-07-04_RC23/Experiments/3_16_Nao0017_230704-0846/combined.log", # FIXME manually combine this again so that the image order is correct
     "2023-07-04_RC23/Experiments/cognition_fall_down_tests_markus.log",
     "2023-07-04_RC23/Experiments/cognition1_ball.log",
     "2023-07-04_RC23/Experiments/cognition2_ball.log",

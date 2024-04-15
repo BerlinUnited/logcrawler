@@ -107,27 +107,35 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root_path = Path(environ.get('LOG_ROOT'))
+    # FIXME now log list can contain folders and actual logs
     log_list = get_logs()
 
     if args.delete is True:
         # we delete all combined logs in an extra loop,
         # this the combine loop later can be disrupted without needing to do all the work again in case of overwrite
-        for log_folder in log_list:
-            print(log_folder)
-            actual_log_folder = root_path / Path(log_folder)
+        for log in log_list:
+            print(log)
+            actual_log_folder = root_path / Path(log)
+            if Path(actual_log_folder).is_file():
+                print("\tpath is a experiment log - there wont be a combined file here - nothing to delete")
+                continue
+            
             combined_log_path = actual_log_folder / "combined.log"
             # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
             if combined_log_path.is_file():
                 print("\tdeleting the combined log")
                 combined_log_path.unlink()
 
-    for log_folder in log_list:
-        actual_log_folder = root_path / Path(log_folder)
+    for log in log_list:
+        print(log)
+        actual_log_folder = root_path / Path(log)
+        if Path(actual_log_folder).is_file():
+            print("\tpath is a experiment log - no automatic combining here. If needed combine the log manually and add to the event list")
+            continue
         combined_log_path = actual_log_folder / "combined.log"
         gamelog_path = actual_log_folder / "game.log"
         img_log_path = actual_log_folder / "images.log"
-        print(log_folder)
-
+        
         if not (
             Path(gamelog_path).is_file()
             and stat(str(gamelog_path)).st_size > 0
@@ -136,7 +144,7 @@ if __name__ == "__main__":
         ):
             print("\tcan't combine anything here")
             insert_statement = f"""
-            UPDATE {db_name} SET combined_status = false WHERE log_path = '{log_folder}';
+            UPDATE {db_name} SET combined_status = false WHERE log_path = '{log}';
             """
             cur.execute(insert_statement)
             conn.commit()
@@ -144,7 +152,7 @@ if __name__ == "__main__":
 
 
         if not combined_log_path.is_file():
-            is_first_image_top = calculate_first_image(log_folder)
+            is_first_image_top = calculate_first_image(log)
             image_log_index = create_image_log_dict(str(img_log_path), first_image_is_top=is_first_image_top)
             try:
                 with open(str(combined_log_path), "wb") as output, open(
@@ -193,7 +201,7 @@ if __name__ == "__main__":
         if combined_log_path.is_file():
             print("\tset combined status to true")
             insert_statement = f"""
-            UPDATE {db_name} SET combined_status = true WHERE log_path = '{log_folder}';
+            UPDATE {db_name} SET combined_status = true WHERE log_path = '{log}';
             """
             cur.execute(insert_statement)
             conn.commit()
