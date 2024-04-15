@@ -57,9 +57,9 @@ def get_logs_with_bottom_images():
 
 def import_labelstudio(data, camera):
     if camera == "top":
-        color = "#D55C9D"
+        color = "#D55C9D" # pink
     else:
-        color = "#51AAFD"
+        color = "#51AAFD" # blue
     
     existing_projects = [(a.title, a) for a in ls.list_projects()]
     existing_projects = dict(existing_projects)
@@ -120,7 +120,12 @@ def import_labelstudio(data, camera):
             # this function waits till storage is synchronized
             # TODO check closer what this does, docs imply the stream data from minio, but logs say something about copying
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
-            project.sync_import_storage(import_storage["type"], storage_id)
+            try:
+                project.sync_import_storage(import_storage["type"], storage_id)
+            except:
+                # MEGA HACK 
+                import os, sys
+                os.execv(sys.executable, ['python'] + sys.argv)
 
 
 if __name__ == "__main__":
