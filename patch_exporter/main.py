@@ -33,7 +33,7 @@ from pathlib import Path
 import shutil
 import time
 from os import environ
-
+from label_studio_sdk import Client
 from PatchExecutor import PatchExecutor
 
 params = {
@@ -50,6 +50,12 @@ mclient = Minio("minio.berlinunited-cloud.de",
     access_key="naoth",
     secret_key=environ.get("MINIO_PASS"),
 )
+
+LABEL_STUDIO_URL = 'https://ls.berlinunited-cloud.de/'
+API_KEY = '6cb437fb6daf7deb1694670a6f00120112535687'
+
+ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
+ls.check_connection()
 
 evaluator = PatchExecutor()
 
@@ -72,15 +78,30 @@ def get_logs_with_bottom_images():
     logs = [x for x in rtn_val]
     return logs
 
+def get_ls_project_from_name(project_name: str) -> label_studio_sdk.project.Project:
+    """
+    In our database the project name is the same as the bucket name. For interacting with the labelstudio API we need the project ID
+    """
+    project_list = ls.list_projects() # TODO speed it up by creating the list only once outside the loop
+    for project in project_list:
+        if project.title == project_name:
+            return project
+
 def handle_bucket(data, db_field, debug):
     # TODO: find better function name
     # TODO make sure we always get the same order (comes in handy during debugging)
     # TODO put data in same bucket (maybe)
     for logpath, bucketname in data:
         print(logpath)
+
+        # get corresponding project here
+        # HACK assumes that ls project name is the same as bucket name
+        ls_project = get_ls_project_from_name(bucketname)
+        quit()
+        # get list of tasks
+        task_ids = ls_project.get_labeled_tasks_ids()
+        # Create the bucket for the patches
         patch_bucket_name = bucketname + "-patches"
-        
-        # Make the patch_bucket_name
         if not mclient.bucket_exists(patch_bucket_name):
             mclient.make_bucket(patch_bucket_name)
             print("\tcreated bucket", patch_bucket_name)
@@ -106,7 +127,8 @@ def handle_bucket(data, db_field, debug):
         conn.commit()
         #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
 
-        
+        for task in task_ids:
+            image_file_name = ls_project.get_task(task)["storage_filename"]
         objects = mclient.list_objects(bucketname)
 
         # iterate over bucket data (assumes that there are only images and nothing else in the bucket)
@@ -158,9 +180,8 @@ def delete_data(data):
 
 if __name__ == "__main__":
     # TODO use argparse for overwrite flag
-    overwrite = True    
-    
-        
+    overwrite = False    
+
     data_top = get_logs_with_top_images()
     data_bottom = get_logs_with_bottom_images()
     
