@@ -25,6 +25,7 @@ def create_log_table(db_name: str):
         log_path VARCHAR, 
         event_name VARCHAR,
         half VARCHAR,
+        robot_version VARCHAR,
         playernumber INT,
         headnumber INT,
         bodynumber VARCHAR,
@@ -43,6 +44,8 @@ def create_log_table(db_name: str):
         labelstudio_project VARCHAR,
         ls_project_bottom VARCHAR,
         ls_project_top  VARCHAR,
+        bottom_validated BOOLEAN,
+        top_validated BOOLEAN,
         CONSTRAINT my_constraint_{db_name} UNIQUE (log_path)
     );
     """

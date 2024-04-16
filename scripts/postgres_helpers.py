@@ -56,9 +56,9 @@ def query_test():
     print(rtn_val)
 
 
-def add_column(column_name):
+def add_column(column_name, type="VARCHAR"):
     sql_statement = f"""
-    ALTER TABLE robot_logs ADD {column_name} VARCHAR;
+    ALTER TABLE robot_logs ADD {column_name} {type};
     """
     cur.execute(sql_statement)
     conn.commit()
