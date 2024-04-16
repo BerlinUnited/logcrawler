@@ -79,6 +79,19 @@ def set_broken_images(bucket_id):
     # ixqkzkgunsabiftgweefvp (partially)
     pass
 
+def set_validated_flag_top(ls_id):
+    sql_statement = f"""
+    UPDATE robot_logs SET top_validated = true WHERE ls_project_top = '{ls_id}';    
+    """
+    cur.execute(sql_statement)
+    conn.commit()
+
+def set_validated_flag_bottom(ls_id):
+    sql_statement = f"""
+    UPDATE robot_logs SET bottom_validated = true WHERE ls_project_bottom = '{ls_id}';    
+    """
+    cur.execute(sql_statement)
+    conn.commit()
 
 if __name__ == "__main__":
     pass
