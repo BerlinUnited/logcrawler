@@ -183,41 +183,14 @@ def handle_bucket(data, db_field, debug):
         # creates patches.zip in the current folder
         shutil.make_archive("patches", 'zip', str(output_patch_folder))
         tmp_download_folder.cleanup()
-        quit()
-        # iterate over bucket data (assumes that there are only images and nothing else in the bucket)
-        for count, obj in enumerate(objects):
-            #print(obj.object_name)
-            # Download an image from minio image bucket 
-            # FIXME save it in a tmp folder instead of current working directory
-            mclient.fget_object(bucketname, obj.object_name, obj.object_name)
 
-            with cppyy.ll.signals_as_exception():  # this could go into the other file
-                frame = evaluator.convert_image_to_frame(obj.object_name)
-                evaluator.set_current_frame(frame)
-                evaluator.sim.executeFrame()
-                # HACK it will be the same folder for each frame
-                folder = evaluator.export_patches(frame)
-                
-                if debug:
-                    # FIXME not really implemented yet
-                    # TODO rewrite this to return the image
-                    return evaluator.export_debug_images(frame)                
-            # delete the full size image
-            Path(obj.object_name).unlink()
-
-        shutil.make_archive("patches", 'zip', folder)
         print(f"uploading object to {patch_bucket_name}")
         mclient.fput_object(
             patch_bucket_name,
             "patches.zip",
             "patches.zip",
         )
-        
-        # delete the folder with the patches
-        if Path(folder).exists():
-            shutil.rmtree(folder)
-        if Path("patches.zip").exists():
-            Path("patches.zip").unlink()
+
 
 def delete_data(data):
     # FIXME move to minio tools
