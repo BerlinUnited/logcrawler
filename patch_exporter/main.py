@@ -177,7 +177,7 @@ def handle_bucket(data, db_field, debug):
                 evaluator.set_current_frame(frame)
                 evaluator.sim.executeFrame()
                 
-                evaluator.export_patches(frame, output_patch_folder)
+                evaluator.export_patches(frame, output_patch_folder, bucketname)
 
         print("\tcreating archive of all the patches")
         # creates patches.zip in the current folder

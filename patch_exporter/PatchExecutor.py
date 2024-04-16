@@ -168,7 +168,7 @@ class PatchExecutor:
         #Path(output_file.parent).mkdir(exist_ok=True, parents=True)
         cv2.imwrite(str(output_file), img)
 
-    def export_patches(self, frame: Frame, output_patch_folder: Path):
+    def export_patches(self, frame: Frame, output_patch_folder: Path, bucketname):
         """
             This function exports patches as images for future training. All interesting meta information is saved inside the png header
         """
@@ -222,7 +222,7 @@ class PatchExecutor:
                 output_folder = ball_folder
             else:
                 output_folder = non_ball_folder
-            patch_file_name = Path(output_folder) / (Path(frame.file).stem + f"_{idx}_iou_{iou}.png")
+            patch_file_name = Path(output_folder) / (bucketname + "_" + Path(frame.file).stem + f"_{idx}_iou_{iou}.png")
             try:
                 cv2.imwrite(str(patch_file_name), crop_img)
             except:
