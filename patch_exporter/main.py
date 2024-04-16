@@ -64,7 +64,7 @@ evaluator = PatchExecutor()
 
 def get_logs_with_top_images():
     select_statement = f"""
-    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL AND top_validated IS TRUE
+    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
@@ -74,7 +74,7 @@ def get_logs_with_top_images():
 
 def get_logs_with_bottom_images():
     select_statement = f"""
-    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL AND bottom_validated IS TRUE
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
