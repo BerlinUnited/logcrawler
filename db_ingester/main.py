@@ -52,6 +52,16 @@ def create_log_table(db_name: str):
     cur.execute(sql_query)
     conn.commit()
 
+def get_robot_version(head_number):
+    head_number = int(head_number)
+    
+    if head_number > 90:
+        return "v5"
+    elif head_number < 30:
+        return "v6"
+    else:
+        return "unknown" 
+
 def insert_log_data():
     root_path = environ.get('LOG_ROOT')
     for event in [f for f in Path(root_path).iterdir() if f.is_dir()]:
@@ -78,6 +88,7 @@ def insert_log_data():
                     head_number = logfolder_parsed[1]
                     body_number = logfolder_parsed[2]
 
+                    version = get_robot_version(head_number)
                     # its really important that logfolder does not have a leading slash
                     logfolder_w_prefix = str(logfolder).removeprefix(str(root_path)).removeprefix("/")
                     insert_statement1 = f"""
@@ -86,6 +97,12 @@ def insert_log_data():
                     ON CONFLICT DO NOTHING
                     """
                     cur.execute(insert_statement1)
+                    conn.commit()
+                    # TODO this is stupid - can we do it better?
+                    insert_statement2 = f"""
+                    UPDATE robot_logs SET robot_version = '{version}' WHERE log_path = '{logfolder_w_prefix}';
+                    """
+                    cur.execute(insert_statement2)
                     conn.commit()
                 # end handling a log
             # end handling a game
