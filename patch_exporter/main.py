@@ -1,29 +1,5 @@
 """
-ARRRRGH: https://github.com/wlav/cppyy/issues/176
-
-FIXME: ignore cancelled tasks (we have logs with broken images)
-Run the patch export v1
-    - get logs with image data from postgres
-    - get the bucket
-    - create new bucket with name: old_bucketname_patches
-    - download image
-        - run patch extraction on the image (patches are named: image_name_patch{number}
-        - upload patches to new bucket
-        - delete image and patches to conserve space
-
-Run the patch export v2
-    - get logs with image data from postgres
-    - get labelstudio project
-    - get the bucket corresponding to the project
-    - create new bucket with name: old_bucketname_patches
-    - for each task in project:
-        - download image
-        - run patch extraction on the image it should return the pixel locations of the patch and export the image to png (patches are named: image_name_patch{number})
-        - for each patch:
-            - calculate the overlap with each annotation region
-            - if overlap is high enough put the image in a different folder (maybe)
-        - upload patches to new bucket
-        - delete image and patches to conserve space
+ Pretty ulgy implementation for patch detection. Has a ton of problems!!!
 """
 import psycopg2
 import cppyy
@@ -60,6 +36,7 @@ API_KEY = '6cb437fb6daf7deb1694670a6f00120112535687'
 
 ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
+all_projects = ls.list_projects()
 
 evaluator = PatchExecutor()
 
@@ -86,8 +63,7 @@ def get_ls_project_from_name(project_name: str):
     """
     In our database the project name is the same as the bucket name. For interacting with the labelstudio API we need the project ID
     """
-    project_list = ls.list_projects()
-    for project in project_list:
+    for project in all_projects:
         if project.title == project_name:
             return project
 
@@ -126,15 +102,17 @@ def handle_bucket(data, db_field, my_argument_list=None):
     # TODO: find better function name
     # TODO put data in same bucket (maybe)
     for logpath, bucketname in sorted(data):
-        print(logpath)
+        #print(logpath)
 
         # get project matching the bucket here HACK assumes that ls project name is the same as bucket name
         # probably we can get the bucket name directly from the projects somehow. -> would be more future prove
         ls_project = get_ls_project_from_name(bucketname)
+        print("my_argument_list: ", my_argument_list)
         if my_argument_list:
-            if ls_project.id not in my_argument_list:
+            if str(ls_project.id) not in my_argument_list:
                 continue
         
+        print("ls_project", ls_project.title)
         # Create the bucket for the patches
         patch_bucket_name, exists = create_patch_bucket(logpath, bucketname, db_field)
         if exists:
