@@ -2,6 +2,7 @@
     holds or generates the list of events that should be added to postgres/minio/labelstudio.
     everything inside those event folders need to be in proper structure
 """
+
 # TODO if in k8s I should read this from a configmap, else from a local file
 
 event_list = [
@@ -18,7 +19,7 @@ event_list = [
     "2023-04-29-GORE",
     "2023-08-cccamp",
     "2023-12-03-RoHOW",
-    "2023-10-18-semesterproject-intro-R0101"
+    "2023-10-18-semesterproject-intro-R0101",
 ]
 
 experiment_list = [
@@ -74,14 +75,17 @@ experiment_list = [
     "2019-07-02_RC19/Experiments/path2018_usoa_futureball/1_94_Nao0338_090918-1315/game.log",
     "2019-07-02_RC19/Experiments/3_94_Nao0338_090918-2203_scangridedgeldetector_uniform_lengths/game.log",
     "2020-03-08-RoDeo-Experiments/rodeo20_test1.log",
-    #"2020-03-08-RoDeo-Experiments/0_16_nao_lola_200308-1343/cognition.log", # TODO check this manually
-    #"2023-07-04_RC23/Experiments/3_16_Nao0017_230704-0846/combined.log", # FIXME manually combine this again so that the image order is correct
-    #"2023-07-04_RC23/Experiments/cognition_fall_down_tests_markus.log", FIXME seems to not have meta information
+    # "2020-03-08-RoDeo-Experiments/0_16_nao_lola_200308-1343/cognition.log", # TODO check this manually
+    # "2023-07-04_RC23/Experiments/3_16_Nao0017_230704-0846/combined.log", # FIXME manually combine this again so that the image order is correct
+    # "2023-07-04_RC23/Experiments/cognition_fall_down_tests_markus.log", FIXME seems to not have meta information
     "2023-07-04_RC23/Experiments/cognition1_ball.log",
     "2023-07-04_RC23/Experiments/cognition2_ball.log",
     "2023-07-04_RC23/Experiments/cognition3_ball.log",
     "2023-07-04_RC23/Experiments/cognition4_ball.log",
     "2023-07-04_RC23/Experiments/cognition5_ball.log",
     "2024-04-17_GO24/Experiments/first.log",
-    "2023-07-17_GO24/Experiments/second.log"
+    "2023-07-17_GO24/Experiments/second.log",
+    "2023-07-17_GO24/Experiments/ball_in_the_wall_1.log",
+    "2023-07-17_GO24/Experiments/ball_in_the_wall_2.log",
+    "2023-07-17_GO24/Experiments/ball_in_the_wall_3.log",
 ]
