@@ -84,8 +84,8 @@ experiment_list = [
     "2023-07-04_RC23/Experiments/cognition4_ball.log",
     "2023-07-04_RC23/Experiments/cognition5_ball.log",
     "2024-04-17_GO24/Experiments/first.log",
-    "2023-07-17_GO24/Experiments/second.log",
-    "2023-07-17_GO24/Experiments/ball_in_the_wall_1.log",
-    "2023-07-17_GO24/Experiments/ball_in_the_wall_2.log",
-    "2023-07-17_GO24/Experiments/ball_in_the_wall_3.log",
+    "2024-04-17_GO24/Experiments/second.log",
+    "2024-04-17_GO24/Experiments/ball_in_the_wall_1.log",
+    "2024-04-17_GO24/Experiments/ball_in_the_wall_2.log",
+    "2024-04-17_GO24/Experiments/ball_in_the_wall_3.log",
 ]
