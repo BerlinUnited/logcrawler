@@ -38,6 +38,7 @@ from label_studio_sdk import Client
 from PatchExecutor import PatchExecutor
 import tempfile
 from helper import Rectangle, Point2D
+import argparse
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -121,9 +122,8 @@ def create_patch_bucket(logpath, bucketname, db_field):
     #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
     return patch_bucket_name, exists
 
-def handle_bucket(data, db_field, debug):
+def handle_bucket(data, db_field, my_argument_list=None):
     # TODO: find better function name
-    # TODO make sure we always get the same order (comes in handy during debugging)
     # TODO put data in same bucket (maybe)
     for logpath, bucketname in sorted(data):
         print(logpath)
@@ -131,6 +131,9 @@ def handle_bucket(data, db_field, debug):
         # get project matching the bucket here HACK assumes that ls project name is the same as bucket name
         # probably we can get the bucket name directly from the projects somehow. -> would be more future prove
         ls_project = get_ls_project_from_name(bucketname)
+        if my_argument_list:
+            if ls_project.id not in my_argument_list:
+                continue
         
         # Create the bucket for the patches
         patch_bucket_name, exists = create_patch_bucket(logpath, bucketname, db_field)
@@ -195,7 +198,7 @@ def handle_bucket(data, db_field, debug):
             "patches.zip",
         )
 
-
+"""
 def delete_data(data):
     # FIXME move to minio tools
     for logpath, bucketname in data:
@@ -208,20 +211,27 @@ def delete_data(data):
             for obj in objects_to_delete:
                 print(f"\t\tremoving {obj.object_name}")
                 mclient.remove_object(patch_bucket_name, obj.object_name)
+"""
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p','--project', nargs='+', help='Labelstudio project ids separated by a space', required=False)  
+    args = parser.parse_args()
+    if args.project:
+        for prj_id in args.project:
+            data_top = get_buckets_with_top_images()
+            data_bottom = get_buckets_with_bottom_images()
+            handle_bucket(data_top, db_field="bucket_top_patches", my_argument_list=args.project)
+            handle_bucket(data_bottom, db_field="bucket_bottom_patches", my_argument_list=args.project)
+            # use labelstudio id to get name
+
+    #for id in args.project:
     # TODO use argparse for overwrite flag
     #TODO make it possible to export specific buckets
-    #parser.add_argument('-p','--project', nargs='+', help='Labelstudio project ids separated by a space', required=True)
-    overwrite = False    
+    #parser.add_argument('-p','--project', nargs='+', help='Labelstudio project ids separated by a space', required=True)   
+    else:
+        data_top = get_buckets_with_top_images()
+        data_bottom = get_buckets_with_bottom_images()
 
-    data_top = get_buckets_with_top_images()
-    data_bottom = get_buckets_with_bottom_images()
-    
-    if overwrite:
-        delete_data(data_top)
-        delete_data(data_bottom)
-        time.sleep(15)
-
-    handle_bucket(data_top, db_field="bucket_top_patches", debug=False)
-    handle_bucket(data_bottom, db_field="bucket_bottom_patches", debug=False)
+        handle_bucket(data_top, db_field="bucket_top_patches")
+        handle_bucket(data_bottom, db_field="bucket_bottom_patches")
