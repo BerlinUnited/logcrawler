@@ -88,4 +88,10 @@ experiment_list = [
     "2024-04-17_GO24/Experiments/ball_in_the_wall_1.log",
     "2024-04-17_GO24/Experiments/ball_in_the_wall_2.log",
     "2024-04-17_GO24/Experiments/ball_in_the_wall_3.log",
+    "2024-04-17_GO24/Experiments/felda_cognition1.log",
+    "2024-04-17_GO24/Experiments/felda_cognition2.log",
+    "2024-04-17_GO24/Experiments/felda_cognition3.log",
+    "2024-04-17_GO24/Experiments/feldb_cognition1.log",
+    "2024-04-17_GO24/Experiments/feldb_cognition2.log",
+    "2024-04-17_GO24/Experiments/feldb_cognition3.log",
 ]
