@@ -211,6 +211,8 @@ def delete_data(data):
 
 if __name__ == "__main__":
     # TODO use argparse for overwrite flag
+    #TODO make it possible to export specific buckets
+    #parser.add_argument('-p','--project', nargs='+', help='Labelstudio project ids separated by a space', required=True)
     overwrite = False    
 
     data_top = get_buckets_with_top_images()
