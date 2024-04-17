@@ -7,7 +7,6 @@ from minio import Minio
 from minio.commonconfig import Tags
 from pathlib import Path
 import shutil
-import time
 from tqdm import tqdm
 from os import environ
 from label_studio_sdk import Client
@@ -102,20 +101,21 @@ def handle_bucket(data, db_field, my_argument_list=None):
     # TODO: find better function name
     # TODO put data in same bucket (maybe)
     for logpath, bucketname in sorted(data):
-        #print(logpath)
+        print(logpath)
 
         # get project matching the bucket here HACK assumes that ls project name is the same as bucket name
         # probably we can get the bucket name directly from the projects somehow. -> would be more future prove
         ls_project = get_ls_project_from_name(bucketname)
-        print("my_argument_list: ", my_argument_list)
+        
+        # more hacks for also supporting a list of projects as argument
         if my_argument_list:
             if str(ls_project.id) not in my_argument_list:
                 continue
         
-        print("ls_project", ls_project.title)
         # Create the bucket for the patches
         patch_bucket_name, exists = create_patch_bucket(logpath, bucketname, db_field)
         if exists:
+            # FIXME Not always good sometimes we want to override
             continue
 
         # TODO setup temp dir for downloaded images
