@@ -62,7 +62,7 @@ ls.check_connection()
 
 evaluator = PatchExecutor()
 
-def get_logs_with_top_images():
+def get_buckets_with_top_images():
     select_statement = f"""
     SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL
     """
@@ -72,7 +72,7 @@ def get_logs_with_top_images():
     return logs
 
 
-def get_logs_with_bottom_images():
+def get_buckets_with_bottom_images():
     select_statement = f"""
     SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL
     """
@@ -100,7 +100,8 @@ def create_patch_bucket(logpath, bucketname, db_field):
         tags = Tags.new_bucket_tags()
         tags["log path"] = logpath
         mclient.set_bucket_tags(patch_bucket_name, tags)
-        # TODO set naoth develop version as tag here
+        # TODO set naoth develop version as tag 
+        exists = False
         
     else:
         print(f"\tbucket {patch_bucket_name} already exists")
@@ -108,6 +109,7 @@ def create_patch_bucket(logpath, bucketname, db_field):
         tags["log path"] = logpath
         mclient.set_bucket_tags(patch_bucket_name, tags)
         # TODO set naoth develop version as tag here
+        exists = True
     
         
     # add bucketname to postgres
@@ -117,7 +119,7 @@ def create_patch_bucket(logpath, bucketname, db_field):
     cur.execute(insert_statement)
     conn.commit()
     #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
-    return patch_bucket_name
+    return patch_bucket_name, exists
 
 def handle_bucket(data, db_field, debug):
     # TODO: find better function name
@@ -131,7 +133,9 @@ def handle_bucket(data, db_field, debug):
         ls_project = get_ls_project_from_name(bucketname)
         
         # Create the bucket for the patches
-        patch_bucket_name = create_patch_bucket(logpath, bucketname, db_field)
+        patch_bucket_name, exists = create_patch_bucket(logpath, bucketname, db_field)
+        if exists:
+            continue
 
         # TODO setup temp dir for downloaded images
         tmp_download_folder = tempfile.TemporaryDirectory()
@@ -209,8 +213,8 @@ if __name__ == "__main__":
     # TODO use argparse for overwrite flag
     overwrite = False    
 
-    data_top = get_logs_with_top_images()
-    data_bottom = get_logs_with_bottom_images()
+    data_top = get_buckets_with_top_images()
+    data_bottom = get_buckets_with_bottom_images()
     
     if overwrite:
         delete_data(data_top)
