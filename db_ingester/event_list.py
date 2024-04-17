@@ -82,5 +82,6 @@ experiment_list = [
     "2023-07-04_RC23/Experiments/cognition3_ball.log",
     "2023-07-04_RC23/Experiments/cognition4_ball.log",
     "2023-07-04_RC23/Experiments/cognition5_ball.log",
-
+    "2024-04-17_GO24/Experiments/first.log",
+    "2023-07-17_GO24/Experiments/second.log"
 ]
