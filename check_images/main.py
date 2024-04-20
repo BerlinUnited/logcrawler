@@ -32,7 +32,7 @@ if __name__ == "__main__":
     root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
 
-    for log_folder in log_list:
+    for log_folder in sorted(log_list):
         print(log_folder)
         log_path_w_prefix = root_path / Path(log_folder)
         if Path(log_path_w_prefix).is_file():
