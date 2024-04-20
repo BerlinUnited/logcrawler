@@ -64,7 +64,8 @@ def get_robot_version(head_number):
 
 def insert_log_data():
     root_path = environ.get('LOG_ROOT')
-    for event in [f for f in Path(root_path).iterdir() if f.is_dir()]:
+    all_events = [f for f in Path(root_path).iterdir() if f.is_dir()]
+    for event in sorted(all_events):
         if event.name in event_list:
             print(event)
             for game in [f for f in event.iterdir() if f.is_dir()]:
@@ -110,7 +111,7 @@ def insert_log_data():
 
 
 def insert_experiment_data(db_name):
-    for logfile in experiment_list:
+    for logfile in sorted(experiment_list):
         print(logfile)
         event_name = str(logfile).split("/")[0]
 
