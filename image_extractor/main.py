@@ -208,7 +208,7 @@ if __name__ == "__main__":
     if args.delete is True:
         delete_everything(log_list)
 
-    for log_folder in log_list:
+    for log_folder in sorted(log_list):
         print(log_folder)
         log, out_top, out_bottom = calculate_output_path(log_folder)
         if log is None:
