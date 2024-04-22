@@ -118,4 +118,7 @@ experiment_list = [
     "2024-04-17_GO24/Experiments/2024-04-18_no_ball_logs_24_Nao0011/21.log",
     "2024-04-17_GO24/Experiments/2024-04-18_no_ball_logs_24_Nao0011/22.log",
     "2024-04-17_GO24/Experiments/2024-04-18_no_ball_logs_24_Nao0011/23.log",
+    "2024-04-17_GO24/Experiments/readyNoGloves.log",
+    "2024-04-17_GO24/Experiments/readyWithGloves.log",
+    "2024-04-17_GO24/Experiments/readyWithGlovesAndJersey.log",
 ]

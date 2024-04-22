@@ -134,6 +134,6 @@ if __name__ == "__main__":
         cleanup()
 
     create_log_table("robot_logs")
-    #insert_log_data()
+    insert_log_data()
     # create_log_table("experiment_logs")  # could be used to test stuff in a separate table 
     insert_experiment_data("robot_logs")
