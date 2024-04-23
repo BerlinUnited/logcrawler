@@ -45,7 +45,8 @@ def import_annotation():
             print(annotation)
             a = my_project.create_annotation(task_id, **annotation)
 
-        
+def update_label_config():
+    pass    
 
 if __name__ == "__main__":
     pass
