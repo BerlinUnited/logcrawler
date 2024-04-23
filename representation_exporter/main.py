@@ -38,7 +38,7 @@ if __name__ == "__main__":
     root_path = Path(environ.get('LOG_ROOT'))
     log_list = get_logs()
     # FIXME naming and order ist just very hard to understand
-    for log_folder in log_list:
+    for log_folder in sorted(log_list):
         print(log_folder)
         experiment_log = root_path / Path(log_folder)
         if Path(experiment_log).is_file():

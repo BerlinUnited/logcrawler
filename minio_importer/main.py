@@ -72,7 +72,8 @@ def generate_unique_name():
 
 
 def upload_to_minio(bucket_name, data_folder):
-    # TODO check if a name in db exist already and use that 
+    # TODO check if a name in db exist already and use that
+    # FIXME actually check if image exists in bucket not just if the bucket exists
 
     # Make the bucket
     # TODO maybe add a try here so that we can remove the bucket if something goes wrong
@@ -132,7 +133,7 @@ if __name__ == "__main__":
     root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
 
-    for log_folder in log_list:
+    for log_folder in sorted(log_list):
         print(log_folder)
         data_folder_top, data_folder_bottom = find_extracted_image_paths(log_folder)
         
