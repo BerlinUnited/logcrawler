@@ -4,6 +4,8 @@
 from label_studio_sdk import Client
 import json
 from os import environ
+import requests
+from time import sleep
 
 ls = Client(url=environ.get('LS_URL'), api_key=environ.get('LS_KEY'))
 ls.check_connection()
@@ -46,7 +48,40 @@ def import_annotation():
             a = my_project.create_annotation(task_id, **annotation)
 
 def update_label_config():
-    pass    
+    my_project = ls.get_project(351)
+    new_label_config_bb = """
+    <View>
+    <Image name="image" value="$image"/>
+    <RectangleLabels name="label" toName="image">
+        <Label value="ball" background="#9eaeff"/>
+        <Label value="nao" background="#D4380D"/>
+        <Label value="penalty_mark" background="#e109da"/>
+        <Label value="referee" background="#000000"/>
+    </RectangleLabels>
+    <Number name="blurry" toName="image" />
+    </View>
+    """
+    my_json = {"title": "blub", "label_config": new_label_config_bb}
+    my_project.set_params(**my_json)
+
+def sync_storage(project_id):
+    my_project = ls.get_project(project_id)
+    a = my_project.get_import_storages()
+    storage_id = a[0]["id"]
+
+    url = f'https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync'
+    
+    while True:
+        try:
+            x = requests.post(url, headers={"Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"})
+            print(x.json()["status"])
+            if x.json()["status"] == "completed":
+                break
+            else:
+                sleep(1)
+        except requests.exceptions.ReadTimeout: 
+            sleep(1)
+    
 
 if __name__ == "__main__":
     pass
@@ -55,3 +90,5 @@ if __name__ == "__main__":
     #my_project.export_snapshot_download(1)
     #my_project.export_snapshot_list()
     #import_annotation()
+    #update_label_config()
+    sync_storage(359)

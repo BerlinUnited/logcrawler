@@ -5,8 +5,8 @@ from pathlib import Path
 from label_studio_sdk import Client
 import psycopg2
 from os import environ
-import time
-import datetime
+import requests
+from time import sleep
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -116,16 +116,21 @@ def import_labelstudio(data, camera):
 
             environ["TIMEOUT"] = "300"
             storage_id = import_storage["id"]
-            print(datetime.datetime.now())
             # this function waits till storage is synchronized
             # TODO check closer what this does, docs imply the stream data from minio, but logs say something about copying
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
-            try:
-                project.sync_import_storage(import_storage["type"], storage_id)
-            except:
-                # MEGA HACK 
-                import os, sys
-                os.execv(sys.executable, ['python'] + sys.argv)
+            url = f'https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync'
+            while True:
+                try:
+                    x = requests.post(url, headers={"Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"})
+                    print(f"\tsync status: {x.json()['status']}")
+                    if x.json()["status"] == "completed":
+                        break
+                    else:
+                        sleep(1)
+                except:
+                    print("\ttimeout on sync - should retry now")
+                    sleep(1)
 
 
 if __name__ == "__main__":
