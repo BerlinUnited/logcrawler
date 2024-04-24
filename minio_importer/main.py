@@ -1,49 +1,24 @@
-"""
-    TODO: I could put all the images in a folder inside the bucket, this would leave room for also putting sound and other data in the bucket
-"""
-from os import environ
 import psycopg2
 import psycopg2.pool
+from os import environ
 from pathlib import Path
 from minio import Minio
 from minio.commonconfig import Tags
+from tqdm import tqdm
 import random
 import string
-import json
 
-mclient = Minio(
-    "minio.berlinunited-cloud.de",
-    access_key="naoth",
-    secret_key=environ.get("MINIO_PASS"),
-)
-
-# Hack we set a global policy on all buckets, technically we only need to set it once
-# The only thing this prevents is deletion of buckets when the last element was deleted
-minio_policy = {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Deny",
-            "Action": [
-                "s3:DeleteBucket",
-                "s3:ForceDeleteBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::*"
-            ]
-        }
-    ]
-}
-
-# FIXME make this auto detect if its running inside the cluster or not
+# make this auto detect if its running inside the cluster or not
 if "KUBERNETES_SERVICE_HOST" in environ:
     postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
+    postgres_port = 5432
 else:
     postgres_host = "pg.berlinunited-cloud.de"
+    postgres_port = 4000
 
 params = {
     "host": postgres_host,
-    "port": 5432,
+    "port": postgres_port,
     "dbname": "logs",
     "user": "naoth",
     "password": environ.get('DB_PASS')
@@ -52,17 +27,11 @@ params = {
 conn = psycopg2.connect(**params)
 cursor = conn.cursor()
 
-
-def get_logs():
-    select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE extract_status = true 
-    """
-    cursor.execute(select_statement)
-    rtn_val = cursor.fetchall()
-    logs = [x[0] for x in rtn_val]
-
-    return logs
-
+mclient = Minio(
+    "minio.berlinunited-cloud.de",
+    access_key="naoth",
+    secret_key=environ.get("MINIO_PASS"),
+)
 
 def generate_unique_name():
     while True:
@@ -70,35 +39,28 @@ def generate_unique_name():
         if not mclient.bucket_exists(name):
             return name
 
+def get_bottom_data():
+    select_statement = f"""
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE extract_status = true 
+    """
+    cursor.execute(select_statement)
+    rtn_val = cursor.fetchall()
+    logs = [x for x in rtn_val]
 
-def upload_to_minio(bucket_name, data_folder):
-    # TODO check if a name in db exist already and use that
-    # FIXME actually check if image exists in bucket not just if the bucket exists
+    return logs
 
-    # Make the bucket
-    # TODO maybe add a try here so that we can remove the bucket if something goes wrong
-    mclient.make_bucket(bucket_name)
-    # set tag to annotate the bucket with the name of the source image folder
-    tags = Tags.new_bucket_tags()
-    tags["data path"] = str(data_folder)
-    mclient.set_bucket_tags(bucket_name, tags)
-    #mclient.set_bucket_policy(bucket_name, json.dumps(minio_policy))
-    
-    print("\t\tCreated bucket", bucket_name)
+def get_top_data():
+    select_statement = f"""
+    SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true 
+    """
+    cursor.execute(select_statement)
+    rtn_val = cursor.fetchall()
+    logs = [x for x in rtn_val]
 
-    print(f"\t\tUpload files in {data_folder}")
-    files = Path(data_folder).glob("*")
-    for file in files:
-        print(f"\t\t{file.name}", end="\r", flush=True)
-        source_file = file
-        destination_file = Path(file).name
-        mclient.fput_object(
-            bucket_name,
-            destination_file,
-            source_file,
-        )
+    return logs
 
 def find_extracted_image_paths(log_folder: str):
+    root_path = Path(environ.get("LOG_ROOT"))
     log_path_w_prefix = root_path / Path(log_folder)
     if Path(log_path_w_prefix).is_file():
         print("\tdetected experiment log")
@@ -125,57 +87,99 @@ def find_extracted_image_paths(log_folder: str):
 
     return data_folder_top, data_folder_bottom
 
+
 if __name__ == "__main__":
     """
     TODO set up argparser here, if no argument set get all logs from postgres
-    FIXME: this cant be executed twice yet
     """
     root_path = Path(environ.get("LOG_ROOT"))
-    log_list = get_logs()
+    bottom_data = get_bottom_data()
+    for log_path, bucket_name in sorted(bottom_data):
+        print(log_path)
 
-    for log_folder in sorted(log_list):
-        print(log_folder)
-        data_folder_top, data_folder_bottom = find_extracted_image_paths(log_folder)
-        
+        if not bucket_name:
+            bucket_name = generate_unique_name()
+            print(f"\tcreated new bucket {bucket_name}")
 
-        # check if bucket for top data exists (FIXME make this code cooler)
-        # TODO can we have a policy against bucket deletion?
-        select_statement = f"""
-        SELECT bucket_top FROM robot_logs WHERE log_path = '{log_folder}' 
-        """
-        cursor.execute(select_statement)
-        rtn_val = cursor.fetchall()[0][0]
+            mclient.make_bucket(bucket_name)    
+            tags = Tags.new_bucket_tags()
+            tags["data path"] = str(log_path) # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
+            mclient.set_bucket_tags(bucket_name, tags)
 
-        if rtn_val is not None:
-            # TODO this must be handled better for example what if minio goes down and looses all the data, I need to recreate it the same way. this way I can also use the labelstudio backup
-            print("\tbucket already exists")
-        else:
-            bucket_name_top = generate_unique_name()
-            print(f"\tupload data for upper camera to bucket {bucket_name_top}")
             insert_statement = f"""
-            UPDATE robot_logs SET bucket_top = '{bucket_name_top}' WHERE log_path = '{log_folder}';
-            """
-
-            cursor.execute(insert_statement)
-            conn.commit()
-
-            upload_to_minio(bucket_name_top, data_folder_top)
-
-        # check if bucket for bottom data exists (FIXME make this code cooler)
-        select_statement = f"""
-        SELECT bucket_bottom FROM robot_logs WHERE log_path = '{log_folder}' 
-        """
-        cursor.execute(select_statement)
-        rtn_val = cursor.fetchall()[0][0]
-        if rtn_val is not None:
-            print("\tbucket already exists")
-        else:
-            bucket_name_bottom = generate_unique_name()
-            print(f"\tupload data for lower camera to bucket {bucket_name_bottom}")
-            insert_statement = f"""
-            UPDATE robot_logs SET bucket_bottom = '{bucket_name_bottom}' WHERE log_path = '{log_folder}';
+            UPDATE robot_logs SET bucket_bottom = '{bucket_name}' WHERE log_path = '{log_path}';
             """
             cursor.execute(insert_statement)
             conn.commit()
-            
-            upload_to_minio(bucket_name_bottom, data_folder_bottom)
+
+        else:  # FIXME this should not be in an else instead this should run always no matter if the bucket existed a long time or was just created
+            # TODO upload to minio and check each image if it is already uploaded
+            # FIXME: make sure we dont have any stale buckets that are not used
+            print(f"\tuploading to bucket {bucket_name}")
+            data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
+            minio_files = [mobject.object_name for mobject in mclient.list_objects(bucket_name)]
+            local_files = Path(data_folder_bottom).glob("*")
+            for file in tqdm(local_files):
+                if file.name in minio_files:
+                    #print(file.name)
+                    pass
+                else:
+                    print(f"\t\tuploading {file.name}", end="\r", flush=True)
+                    source_file = file
+                    destination_file = Path(file).name
+                    mclient.fput_object(
+                        bucket_name,
+                        destination_file,
+                        source_file,
+                    )
+            insert_statement = f"""
+            UPDATE robot_logs SET bucket_bottom = '{bucket_name}' WHERE log_path = '{log_path}';
+            """
+            cursor.execute(insert_statement)
+            conn.commit()
+
+    #########################################
+    top_data = get_top_data()
+    for log_path, bucket_name in sorted(top_data):
+        print(log_path)
+
+        if not bucket_name:
+            bucket_name = generate_unique_name()
+            print(f"\tcreated new bucket {bucket_name}")
+
+            mclient.make_bucket(bucket_name)    
+            tags = Tags.new_bucket_tags()
+            tags["data path"] = str(log_path) # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
+            mclient.set_bucket_tags(bucket_name, tags)
+
+            insert_statement = f"""
+            UPDATE robot_logs SET bucket_top = '{bucket_name}' WHERE log_path = '{log_path}';
+            """
+            cursor.execute(insert_statement)
+            conn.commit()
+
+        else:  # FIXME this should not be in an else instead this should run always no matter if the bucket existed a long time or was just created
+            # TODO upload to minio and check each image if it is already uploaded
+            # FIXME: make sure we dont have any stale buckets that are not used
+            print(f"\tuploading to bucket {bucket_name}")
+            data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
+            minio_files = [mobject.object_name for mobject in mclient.list_objects(bucket_name)]
+            local_files = Path(data_folder_top).glob("*")
+            for file in tqdm(local_files):
+                if file.name in minio_files:
+                    #print(file.name)
+                    pass
+                else:
+                    print(f"\t\tuploading {file.name}", end="\r", flush=True)
+                    source_file = file
+                    destination_file = Path(file).name
+                    mclient.fput_object(
+                        bucket_name,
+                        destination_file,
+                        source_file,
+                    )
+            insert_statement = f"""
+            UPDATE robot_logs SET bucket_top = '{bucket_name}' WHERE log_path = '{log_path}';
+            """
+            cursor.execute(insert_statement)
+            conn.commit()
