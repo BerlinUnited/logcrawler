@@ -73,6 +73,7 @@ def sync_storage(project_id):
     
     while True:
         try:
+            # TODO I could get the status first and then abort before trying to sync?
             x = requests.post(url, headers={"Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"})
             print(x.json()["status"])
             if x.json()["status"] == "completed":
