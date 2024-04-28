@@ -102,6 +102,8 @@ def mark_project_done2(project_id):
         project.set_params(**{"color": f"{top_base_color}&linear-gradient(90deg, rgba({r}, {g}, {b},0.7) 0%, rgba(253,187,45,0.7) 100%)"})
 
 if __name__ == "__main__":
-    mark_project_done2(120)
+    # FIXME built a function that can revert the setting
+    mark_project_done2(410)
 
+    
     
