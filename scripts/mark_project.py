@@ -1,14 +1,14 @@
 """
-    Mark a project as labeled
+Mark a project as labeled by applying a color gradient in label studio 
+and updating the database to reflect the validation status.
 """
-from label_studio_sdk import Client
-import json
-import psycopg2
-from os import environ
-import requests
-from time import sleep
 
-ls = Client(url=environ.get('LS_URL'), api_key=environ.get('LS_KEY'))
+from os import environ
+
+import psycopg2
+from label_studio_sdk import Client
+
+ls = Client(url=environ.get("LS_URL"), api_key=environ.get("LS_KEY"))
 ls.check_connection()
 
 params = {
@@ -16,94 +16,115 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS'),
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
+
+TOP_BASE_COLOR = "#D55C9D"  # pink
+BOTTOM_BASE_COLOR = "#51AAFD"  # blue
+
+
 def hex_to_rgb(value):
-        value = value.lstrip('#')
-        lv = len(value)
-        return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+    value = value.lstrip("#")
+    lv = len(value)
+    return tuple(int(value[i : i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
-def mark_project_done(project_id):
-    """
-    this is only needed once to color everything that is already validated - use this if we want to change colors
-    """
-    print(project_id)
-    # Find out if the project is bottom or top
-    top_base_color = "#D55C9D"  # pink
-    bottom_base_color = "#51AAFD"  # blue
 
-    select_statement1 = f"""
+def check_if_is_bottom(project_id):
+    top_or_bottom_select_statement = f"""
     SELECT exists (SELECT 1 FROM robot_logs WHERE ls_project_bottom = '{project_id}' LIMIT 1);
     """
-    cur.execute(select_statement1)
-    rtn_val = cur.fetchall()[0][0]
-    if rtn_val:
-        # is_bottom = True
-        select_statement1 = f"""
-        SELECT bottom_validated FROM robot_logs where ls_project_bottom = '{project_id}'
-        """
-        cur.execute(select_statement1)
-        output = cur.fetchall()
-        print(f"\t{output}")
-        validated = output[0][0]
+    cur.execute(top_or_bottom_select_statement)
+    is_bottom = cur.fetchall()[0][0]
 
-        if validated:
-            project = ls.get_project(project_id)
-            r, g, b = hex_to_rgb(bottom_base_color)
-            project.set_params(**{"color": f"{bottom_base_color}&linear-gradient(90deg, rgba({r}, {g}, {b},0.7) 0%, rgba(253,187,45,0.7) 100%)"})
-    else:
-        # is_bottom = False
-        print(f"\ttop")
-        select_statement1 = f"""
-        SELECT top_validated FROM robot_logs where ls_project_top = '{project_id}'
-        """
-        cur.execute(select_statement1)
-        output = cur.fetchall()
-        print(f"\t{output}")
-        validated = output[0][0]
+    return is_bottom
 
-        if validated:
-            project = ls.get_project(project_id)
-            r, g, b = hex_to_rgb(top_base_color)
-            project.set_params(**{"color": f"{top_base_color}&linear-gradient(90deg, rgba({r}, {g}, {b},0.7) 0%, rgba(253,187,45,0.7) 100%)"})
 
-def mark_project_done2(project_id):
+def validated_color_from(base_color):
+    r, g, b = hex_to_rgb(base_color)
+    return f"{base_color}&linear-gradient(90deg, rgba({r}, {g}, {b},0.7) 0%, rgba(253,187,45,0.7) 100%)"
+
+
+def set_ls_project_color(project_id, color):
+    project = ls.get_project(project_id)
+    project.set_params(**{"color": color})
+
+
+def db_mark_top_validated(project_id, validated=True):
+    validated_sql = "true" if validated else "NULL"
+
+    update_statement = f"""
+    UPDATE robot_logs
+    SET top_validated = {validated_sql}
+    WHERE ls_project_top = '{project_id}';
     """
-    
+    cur.execute(update_statement)
+    assert cur.rowcount == 1, "Aborting, updated more than one row."
+    conn.commit()
+
+
+def db_mark_bottom_validated(project_id, validated=True):
+    validated_sql = "true" if validated else "NULL"
+
+    update_statement = f"""
+    UPDATE robot_logs
+    SET bottom_validated = {validated_sql}
+    WHERE ls_project_bottom = '{project_id}';
     """
-    print(project_id)
+    cur.execute(update_statement)
+    assert cur.rowcount == 1, "Aborting, updated more than one row."
+    conn.commit()
+
+
+def mark_project_done(project_id, mark_validated_db=True):
+    """
+    This function colors a project in label studio as done by applying a gradient color
+    to the project. By default, it will also mark the project as validated in the DB.
+    """
+    print(f"Marking {project_id} as done")
+
     # Find out if the project is bottom or top
-    top_base_color = "#D55C9D"  # pink
-    bottom_base_color = "#51AAFD"  # blue
+    is_bottom = check_if_is_bottom(project_id)
 
-    select_statement1 = f"""
-    SELECT exists (SELECT 1 FROM robot_logs WHERE ls_project_bottom = '{project_id}' LIMIT 1);
-    """
-    cur.execute(select_statement1)
-    rtn_val = cur.fetchall()[0][0]
-    if rtn_val:
-        # is_bottom = True
-        select_statement1 = f"""
-        UPDATE robot_logs SET bottom_validated = true
-        """
-        project = ls.get_project(project_id)
-        r, g, b = hex_to_rgb(bottom_base_color)
-        project.set_params(**{"color": f"{bottom_base_color}&linear-gradient(90deg, rgba({r}, {g}, {b},0.7) 0%, rgba(253,187,45,0.7) 100%)"})
+    if is_bottom:
+        if mark_validated_db:
+            db_mark_bottom_validated(project_id)
+
+        set_ls_project_color(project_id, color=validated_color_from(BOTTOM_BASE_COLOR))
+
     else:
-        #is_bottom = False
-        select_statement1 = f"""
-        UPDATE robot_logs SET top_validated = true
-        """
-        project = ls.get_project(project_id)
-        r, g, b = hex_to_rgb(top_base_color)
-        project.set_params(**{"color": f"{top_base_color}&linear-gradient(90deg, rgba({r}, {g}, {b},0.7) 0%, rgba(253,187,45,0.7) 100%)"})
+        # is top
+        if mark_validated_db:
+            db_mark_top_validated(project_id)
+
+        set_ls_project_color(project_id, color=validated_color_from(TOP_BASE_COLOR))
+
+
+def mark_project_not_done(project_id, mark_validated_db=True):
+    """
+    This function colors a project in label studio as not by applying a solid color
+    to the project. By default, it will  mark the project as not validated in the DB.
+    """
+    print(f"Marking {project_id} as done")
+
+    # Find out if the project is bottom or top
+    is_bottom = check_if_is_bottom(project_id)
+
+    if is_bottom:
+        if mark_validated_db:
+            db_mark_bottom_validated(project_id, validated=False)
+
+        set_ls_project_color(project_id, color=BOTTOM_BASE_COLOR)
+
+    else:
+        # is top
+        if mark_validated_db:
+            db_mark_top_validated(project_id, validated=False)
+
+        set_ls_project_color(project_id, color=TOP_BASE_COLOR)
+
 
 if __name__ == "__main__":
-    # FIXME built a function that can revert the setting
-    mark_project_done2(410)
-
-    
-    
+    mark_project_done(623)
