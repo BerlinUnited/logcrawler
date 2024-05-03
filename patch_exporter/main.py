@@ -1,70 +1,101 @@
 """
  Pretty ulgy implementation for patch detection. Has a ton of problems!!!
 """
-import psycopg2
+
+import argparse
+import shutil
+import tempfile
+from os import environ
+from pathlib import Path
+from typing import Optional
+
 import cppyy
+import psycopg2
+from helper import Point2D, Rectangle
+from label_studio_sdk import Client
 from minio import Minio
 from minio.commonconfig import Tags
-from pathlib import Path
-import shutil
-from tqdm import tqdm
-from os import environ
-from label_studio_sdk import Client
 from PatchExecutor import PatchExecutor
-import tempfile
-from helper import Rectangle, Point2D
-import argparse
+from tqdm import tqdm
 
 params = {
     "host": "pg.berlinunited-cloud.de",
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
-mclient = Minio("minio.berlinunited-cloud.de",
+mclient = Minio(
+    "minio.berlinunited-cloud.de",
     access_key="naoth",
     secret_key=environ.get("MINIO_PASS"),
 )
 
-LABEL_STUDIO_URL = 'https://ls.berlinunited-cloud.de/'
-API_KEY = '6cb437fb6daf7deb1694670a6f00120112535687'
+LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
+API_KEY = "6cb437fb6daf7deb1694670a6f00120112535687"
 
 ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
-all_projects = ls.list_projects()
 
 evaluator = PatchExecutor()
 
-def get_buckets_with_top_images():
-    select_statement = f"""
-    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL
+
+def get_buckets_with_top_images(
+    event_names=None, ls_project_ids=None, validated_only=True
+):
+
+    select_statement = f"""        
+    SELECT log_path, bucket_top, ls_project_top
+    FROM robot_logs
+    WHERE bucket_top IS NOT NULL
     """
+
+    if event_names:
+        event_names_str = ", ".join([f"'{x}'" for x in event_names])
+        select_statement += f"AND event_name IN ({event_names_str})\n"
+
+    if ls_project_ids:
+        project_ids_str = ", ".join([f"'{x}'" for x in ls_project_ids])
+        select_statement += f"AND ls_project_top IN ({project_ids_str})\n"
+
+    if validated_only:
+        select_statement += "AND top_validated = true\n"
+
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
     return logs
 
 
-def get_buckets_with_bottom_images():
-    select_statement = f"""
-    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL
+def get_buckets_with_bottom_images(
+    event_names=None, ls_project_ids=None, validated_only=True
+):
+
+    select_statement = f"""        
+    SELECT log_path, bucket_bottom, ls_project_bottom
+    FROM robot_logs
+    WHERE bucket_bottom IS NOT NULL
     """
+
+    if event_names:
+        event_names_str = ", ".join([f"'{x}'" for x in event_names])
+        select_statement += f"AND event_name IN ({event_names_str})\n"
+
+    if ls_project_ids:
+        project_ids_str = ", ".join([f"'{x}'" for x in ls_project_ids])
+        select_statement += f"AND ls_project_bottom IN ({project_ids_str})\n"
+
+    if validated_only:
+        select_statement += "AND bottom_validated = true\n"
+
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
     return logs
 
-def get_ls_project_from_name(project_name: str):
-    """
-    In our database the project name is the same as the bucket name. For interacting with the labelstudio API we need the project ID
-    """
-    for project in all_projects:
-        if project.title == project_name:
-            return project
 
 def create_patch_bucket(logpath, bucketname, db_field):
     patch_bucket_name = bucketname + "-patches"
@@ -72,13 +103,13 @@ def create_patch_bucket(logpath, bucketname, db_field):
         mclient.make_bucket(patch_bucket_name)
         print("\tcreated bucket", patch_bucket_name)
         # annotate the bucket with the name of the log
-        
+
         tags = Tags.new_bucket_tags()
         tags["log path"] = logpath
         mclient.set_bucket_tags(patch_bucket_name, tags)
-        # TODO set naoth develop version as tag 
+        # TODO set naoth develop version as tag
         exists = False
-        
+
     else:
         print(f"\tbucket {patch_bucket_name} already exists")
         tags = Tags.new_bucket_tags()
@@ -86,130 +117,183 @@ def create_patch_bucket(logpath, bucketname, db_field):
         mclient.set_bucket_tags(patch_bucket_name, tags)
         # TODO set naoth develop version as tag here
         exists = True
-    
-        
+
     # add bucketname to postgres
     insert_statement = f"""
     UPDATE robot_logs SET {db_field} = '{patch_bucket_name}' WHERE log_path = '{logpath}';
     """
     cur.execute(insert_statement)
     conn.commit()
-    #TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
+    # TODO add an option for deleting bucket data and replacing it - maybe based on develop versions?
     return patch_bucket_name, exists
 
-def handle_bucket(data, db_field, my_argument_list=None):
-    # TODO: find better function name
+
+def create_patches_from_annotations(
+    logpath,
+    bucketname,
+    ls_project_id,
+    db_field,
+    overwrite=False,
+    verbose=True,
+):
     # TODO put data in same bucket (maybe)
-    for logpath, bucketname in sorted(data):
-        print(logpath)
+    # TODO get meta information from png header
+    # TODO get all the bboxes in the correct format in a list
+    # TODO handle penalty marks
 
-        # get project matching the bucket here HACK assumes that ls project name is the same as bucket name
-        # probably we can get the bucket name directly from the projects somehow. -> would be more future prove
-        ls_project = get_ls_project_from_name(bucketname)
-        
-        # more hacks for also supporting a list of projects as argument
-        if my_argument_list:
-            if str(ls_project.id) not in my_argument_list:
-                continue
-        
-        # Create the bucket for the patches
-        patch_bucket_name, exists = create_patch_bucket(logpath, bucketname, db_field)
-        if exists:
-            # FIXME Not always good sometimes we want to override
-            continue
+    ls_project = ls.get_project(id=ls_project_id)  # id can be int or str
 
-        # TODO setup temp dir for downloaded images
-        tmp_download_folder = tempfile.TemporaryDirectory()
+    # Create the bucket for the patches
+    patch_bucket_name, patch_bucket_exists = create_patch_bucket(
+        logpath, bucketname, db_field
+    )
 
-        print('\tcreated temporary directory', tmp_download_folder)
-        # get list of tasks
-        task_ids = ls_project.get_labeled_tasks_ids()
-        for task in tqdm(task_ids):
-            image_file_name = ls_project.get_task(task)["storage_filename"]
-            output_file = Path(tmp_download_folder.name) / image_file_name
-            # download the image from minio
-            mclient.fget_object(bucketname, image_file_name, str(output_file))
-            # TODO get meta information from png header
+    if patch_bucket_exists and not overwrite:
+        return
 
-            # TODO get the annotation
-            ball_list = list()
-            annotations = ls_project.get_task(task)["annotations"]
-            for anno in annotations:
-                results = anno["result"]
-                # print(anno)
-                for result in results:
-                    # x,y,width,height are all percentages within [0,100]
-                    x, y, width, height = result["value"]["x"], result["value"]["y"], result["value"]["width"], result["value"]["height"]
-                    img_width = result['original_width']
-                    img_height = result['original_height']
-                    actual_label = result["value"]["rectanglelabels"][0]
-                    if actual_label == "ball":
-                        x_px = x / 100 * img_width
-                        y_px = y / 100 * img_height
-                        width_px = width / 100 * img_width
-                        height_px = height / 100 * img_height
-                        ball_list.append(Rectangle(Point2D(x_px, y_px), Point2D(x_px + width_px, y_px + height_px)))
+    tmp_download_folder = tempfile.TemporaryDirectory()
+    if verbose:
+        print("\tcreated temporary directory", tmp_download_folder)
 
-                    #label_id = label_dict[actual_label]
-            
-            # TODO get all the bboxes in the correct format in a list
-            
-            output_patch_folder = Path(tmp_download_folder.name) / "patches"
-            output_patch_folder.mkdir(exist_ok=True)
-            # get patches
-            with cppyy.ll.signals_as_exception():  # this could go into the other file
-                frame = evaluator.convert_image_to_frame(str(output_file), ball_list)
-                evaluator.set_current_frame(frame)
-                evaluator.sim.executeFrame()
-                
-                evaluator.export_patches(frame, output_patch_folder, bucketname)
+    for task in tqdm(ls_project.get_labeled_tasks()):
+        image_file_name = task["storage_filename"]
+        output_file = Path(tmp_download_folder.name) / image_file_name
 
+        # download the image from minio
+        mclient.fget_object(bucketname, image_file_name, str(output_file))
+
+        ball_list = list()
+
+        # we can have more than one set of annotations in LabelStudio,
+        # but we assume that all of them are valid here.
+        for annotation in task["annotations"]:
+            for result in annotation["result"]:
+                # x,y,width,height are all percentages within [0,100]
+                x, y, width, height = (
+                    result["value"]["x"],
+                    result["value"]["y"],
+                    result["value"]["width"],
+                    result["value"]["height"],
+                )
+                img_width = result["original_width"]
+                img_height = result["original_height"]
+                actual_label = result["value"]["rectanglelabels"][0]
+
+                if actual_label == "ball":
+                    x_px = x / 100 * img_width
+                    y_px = y / 100 * img_height
+                    width_px = width / 100 * img_width
+                    height_px = height / 100 * img_height
+                    ball_list.append(
+                        Rectangle(
+                            Point2D(x_px, y_px),
+                            Point2D(x_px + width_px, y_px + height_px),
+                        )
+                    )
+
+                # label_id = label_dict[actual_label]
+
+        output_patch_folder = Path(tmp_download_folder.name) / "patches"
+        output_patch_folder.mkdir(exist_ok=True)
+
+        # export patches with naoth cpp code
+        with cppyy.ll.signals_as_exception():  # this could go into the other file
+            frame = evaluator.convert_image_to_frame(
+                str(output_file), gt_balls=ball_list
+            )
+            evaluator.set_current_frame(frame)
+            evaluator.sim.executeFrame()
+            evaluator.export_patches(frame, output_patch_folder, bucketname)
+
+    # creates patches.zip in the current folder
+    if verbose:
         print("\tcreating archive of all the patches")
-        # creates patches.zip in the current folder
-        shutil.make_archive("patches", 'zip', str(output_patch_folder))
-        tmp_download_folder.cleanup()
 
+    shutil.make_archive("patches", "zip", str(output_patch_folder))
+    tmp_download_folder.cleanup()
+
+    # upload patches.zip to the patch bucket
+    if verbose:
         print(f"uploading object to {patch_bucket_name}")
-        mclient.fput_object(
-            patch_bucket_name,
-            "patches.zip",
-            "patches.zip",
-        )
 
-"""
-def delete_data(data):
-    # FIXME move to minio tools
-    for logpath, bucketname in data:
-        print(logpath)
-        patch_bucket_name = bucketname + "-patches"
-        if overwrite and mclient.bucket_exists(patch_bucket_name):
-            # delete every object in this bucket
-            print(f"\tdeleting files in {patch_bucket_name}")
-            objects_to_delete = mclient.list_objects(patch_bucket_name, recursive=True)
-            for obj in objects_to_delete:
-                print(f"\t\tremoving {obj.object_name}")
-                mclient.remove_object(patch_bucket_name, obj.object_name)
-"""
+    mclient.fput_object(
+        patch_bucket_name,
+        "patches.zip",
+        "patches.zip",
+    )
+
 
 if __name__ == "__main__":
+    # TODO make it possible to export specific buckets
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--project', nargs='+', help='Labelstudio project ids separated by a space', required=False)  
+    parser.add_argument(
+        "-p",
+        "--project",
+        nargs="+",
+        type=int,
+        required=False,
+        help="Labelstudio project ids separated by a space",
+    )
+    parser.add_argument(
+        "-e",
+        "--event",
+        nargs="+",
+        type=str,
+        required=False,
+        help="Event names separated by a space",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="Set flag to overwrite existing patch data",
+    )
+    parser.add_argument(
+        "--unvalidated",
+        action="store_true",
+        default=False,
+        help="Set flag to export unvalidated patches, default is to only export validated LabelStudio projects",
+    )
+
     args = parser.parse_args()
-    if args.project:
-        for prj_id in args.project:
-            data_top = get_buckets_with_top_images()
-            data_bottom = get_buckets_with_bottom_images()
-            handle_bucket(data_top, db_field="bucket_top_patches", my_argument_list=args.project)
-            handle_bucket(data_bottom, db_field="bucket_bottom_patches", my_argument_list=args.project)
-            # use labelstudio id to get name
+    events = args.event  # None or List[str]
+    projects = args.project  # None or List[int]
+    overwrite = args.overwrite  # bool, default is False
+    validated_only = not args.unvalidated  # bool, default is True
 
-    #for id in args.project:
-    # TODO use argparse for overwrite flag
-    #TODO make it possible to export specific buckets
-    #parser.add_argument('-p','--project', nargs='+', help='Labelstudio project ids separated by a space', required=True)   
-    else:
-        data_top = get_buckets_with_top_images()
-        data_bottom = get_buckets_with_bottom_images()
+    # get the buckets with top and bottom images,
+    # use LabelStudio project IDs as a filter if they were provided
+    data_top = get_buckets_with_top_images(
+        event_names=events, ls_project_ids=projects, validated_only=validated_only
+    )
+    data_bottom = get_buckets_with_bottom_images(
+        event_names=events, ls_project_ids=projects, validated_only=validated_only
+    )
 
-        handle_bucket(data_top, db_field="bucket_top_patches")
-        handle_bucket(data_bottom, db_field="bucket_bottom_patches")
+    # TODO: Move all top/bottom logic into one function
+    # add the db_field info to the data
+    data_top = [
+        (logpath, bucketname, ls_project_id, "bucket_top_patches")
+        for logpath, bucketname, ls_project_id in data_top
+    ]
+    data_bottom = [
+        (logpath, bucketname, ls_project_id, "bucket_bottom_patches")
+        for logpath, bucketname, ls_project_id in data_bottom
+    ]
+
+    data_combined = data_top + data_bottom
+
+    # for each bucket, loop over all annotated images in LabelStudio and create patches
+    # with the naoth cpp code using the annotations as ball ground truth
+    for logpath, bucketname, ls_project_id, db_field in data_combined:
+        print(f"Creating {db_field} patches for ", end="")
+        print(f"Log: {logpath}, Bucket: {bucketname}, LS Project: {ls_project_id}")
+
+        create_patches_from_annotations(
+            logpath=logpath,
+            bucketname=bucketname,
+            ls_project_id=ls_project_id,
+            db_field=db_field,
+            overwrite=overwrite,
+        )
