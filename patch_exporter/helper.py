@@ -30,6 +30,56 @@ class Rectangle(NamedTuple):
 
         # return the intersecton over union
         return intersection_area / float(self_area + other_area - intersection_area)
+    
+    def chatgpt_iou(self, box1, box2):
+        """
+        Compute the Intersection over Union (IoU) of two bounding boxes.
+        
+        Args:
+        - box1: A list of 4 elements [x_min, y_min, x_max, y_max].
+        - box2: A list of 4 elements [x_min, y_min, x_max, y_max].
+        
+        Returns:
+        - IoU as a float.
+        """
+        x1_min, y1_min, x1_max, y1_max = box1
+        x2_min, y2_min, x2_max, y2_max = box2
+
+        # Calculate the intersection box
+        inter_x_min = max(x1_min, x2_min)
+        inter_y_min = max(y1_min, y2_min)
+        inter_x_max = min(x1_max, x2_max)
+        inter_y_max = min(y1_max, y2_max)
+
+        # If there's no intersection, IoU is 0
+        if inter_x_max < inter_x_min or inter_y_max < inter_y_min:
+            return 0.0
+
+        # Calculate the area of the intersection
+        inter_area = (inter_x_max - inter_x_min) * (inter_y_max - inter_y_min)
+
+        # Calculate the area of each box
+        box1_area = (x1_max - x1_min) * (y1_max - y1_min)
+        box2_area = (x2_max - x2_min) * (y2_max - y2_min)
+
+        # Calculate the union area
+        union_area = box1_area + box2_area - inter_area
+
+        # IoU is intersection over union
+        iou = inter_area / union_area
+
+        return iou
+    
+    def containment_iou(self, xtl: float, ytl: float, xbr: float, ybr: float):
+        # self is groundtruth
+        x1_min, y1_min = self.top_left
+        x1_max, y1_max = self.bottom_right
+
+        if (x1_min >= xtl and y1_min >= ytl and x1_max <= xbr and y1_max <= ybr):
+        # If the ground truth is fully contained within the prediction, return 1
+            return 1.0
+        
+        return self.chatgpt_iou((xtl, ytl, xbr, ybr), (x1_min, y1_min, x1_max, y1_max))
 
     def get_radius(self):
         width = round((self.bottom_right[0] - self.top_left[0]) / 2)

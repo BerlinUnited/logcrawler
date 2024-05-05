@@ -158,7 +158,7 @@ class PatchExecutor:
         img = cv2.imread(frame.file)
         for p in detected_balls.patchesYUVClassified:
             cv2.rectangle(img, (p.min.x, p.min.y), (p.max.x, p.max.y), (0, 0, 255))
-
+            print((p.min.x, p.min.y), (p.max.x, p.max.y))
         # draw groundtruth
         for gt_ball in frame.gt_balls:
             cv2.rectangle(img, gt_ball.top_left, gt_ball.bottom_right, (0, 255, 0))
@@ -195,7 +195,7 @@ class PatchExecutor:
             radius = 0.0
             # calculate the best iou for a given patch
             for gt_ball in frame.gt_balls:
-                new_iou = gt_ball.intersection_over_union(p.min.x, p.min.y, p.max.x, p.max.y)
+                new_iou = gt_ball.containment_iou(p.min.x, p.min.y, p.max.x, p.max.y)
                 if new_iou > iou:
                     iou = new_iou
                     # those values are relativ to the origin (top left) of the patch 
