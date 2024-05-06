@@ -7,11 +7,11 @@ import shutil
 import tempfile
 from os import environ
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import cppyy
 import psycopg2
-from helper import Point2D, Rectangle
+from helper import BoundingBox, Point2D
 from label_studio_sdk import Client
 from minio import Minio
 from minio.commonconfig import Tags
@@ -44,8 +44,10 @@ evaluator = PatchExecutor()
 
 
 def get_buckets_with_top_images(
-    event_names=None, ls_project_ids=None, validated_only=True
-):
+    event_names: Optional[List[str]] = None,
+    ls_project_ids: Optional[List[Union[str, int]]] = None,
+    validated_only: bool = True,
+) -> Tuple[str, str, str]:
 
     select_statement = f"""        
     SELECT log_path, bucket_top, ls_project_top
@@ -71,8 +73,10 @@ def get_buckets_with_top_images(
 
 
 def get_buckets_with_bottom_images(
-    event_names=None, ls_project_ids=None, validated_only=True
-):
+    event_names: Optional[List[str]] = None,
+    ls_project_ids: Optional[List[Union[str, int]]] = None,
+    validated_only: bool = True,
+) -> Tuple[str, str, str]:
 
     select_statement = f"""        
     SELECT log_path, bucket_bottom, ls_project_bottom
@@ -97,7 +101,7 @@ def get_buckets_with_bottom_images(
     return logs
 
 
-def create_patch_bucket(logpath, bucketname, db_field):
+def create_patch_bucket(logpath: str, bucketname, db_field: str) -> Tuple[str, bool]:
     patch_bucket_name = bucketname + "-patches"
     if not mclient.bucket_exists(patch_bucket_name):
         mclient.make_bucket(patch_bucket_name)
@@ -128,20 +132,71 @@ def create_patch_bucket(logpath, bucketname, db_field):
     return patch_bucket_name, exists
 
 
+def gt_ball_bounding_boxes_from_labelstudio_task(task: Dict) -> List[BoundingBox]:
+    ball_list = list()
+
+    for annotation in task["annotations"]:
+        for result in annotation["result"]:
+            # x,y,width,height are all percentages within [0,100]
+            x, y, width, height = (
+                result["value"]["x"],
+                result["value"]["y"],
+                result["value"]["width"],
+                result["value"]["height"],
+            )
+            img_width = result["original_width"]
+            img_height = result["original_height"]
+            actual_label = result["value"]["rectanglelabels"][0]
+
+            if actual_label == "ball":
+                x_px = x / 100 * img_width
+                y_px = y / 100 * img_height
+                width_px = width / 100 * img_width
+                height_px = height / 100 * img_height
+
+                top_left = Point2D(x_px, y_px)
+                bottom_right = Point2D(x_px + width_px, y_px + height_px)
+                bounding_box = BoundingBox(top_left, bottom_right)
+
+                ball_list.append(bounding_box)
+
+    return ball_list
+
+
+def upload_patches_zip_to_bucket(
+    patch_bucket_name: str, output_patch_folder: Union[str, Path]
+):
+    shutil.make_archive("patches", "zip", str(output_patch_folder))
+
+    # upload patches.zip to the patch bucket
+    print(f"uploading object to {patch_bucket_name}")
+
+    mclient.fput_object(
+        patch_bucket_name,
+        "patches.zip",
+        "patches.zip",
+    )
+
+
 def create_patches_from_annotations(
-    logpath,
-    bucketname,
-    ls_project_id,
-    db_field,
-    overwrite=False,
-    verbose=True,
+    logpath: str,
+    bucketname: str,
+    ls_project_id: Union[int, str],
+    db_field: str,
+    overwrite: bool = False,
+    debug: bool = False,
 ):
     # TODO put data in same bucket (maybe)
     # TODO get meta information from png header
     # TODO get all the bboxes in the correct format in a list
     # TODO handle penalty marks
 
-    ls_project = ls.get_project(id=ls_project_id)  # id can be int or str
+    ls_project = ls.get_project(id=ls_project_id)
+    labeled_tasks = ls_project.get_labeled_tasks()
+
+    if not labeled_tasks:
+        print("\tNo labeled tasks found for this project, skipping...")
+        return
 
     # Create the bucket for the patches
     patch_bucket_name, patch_bucket_exists = create_patch_bucket(
@@ -149,52 +204,24 @@ def create_patches_from_annotations(
     )
 
     if patch_bucket_exists and not overwrite:
+        print("\tBucket already exists and overwrite is not set, skipping...")
         return
 
     tmp_download_folder = tempfile.TemporaryDirectory()
-    if verbose:
-        print("\tcreated temporary directory", tmp_download_folder)
+    output_patch_folder = Path(tmp_download_folder.name) / "patches"
+    output_patch_folder.mkdir(exist_ok=True, parents=True)
 
-    for task in tqdm(ls_project.get_labeled_tasks()):
+    print(f"\t Created temporary directory {tmp_download_folder}")
+
+    for task in tqdm(labeled_tasks):
         image_file_name = task["storage_filename"]
         output_file = Path(tmp_download_folder.name) / image_file_name
 
         # download the image from minio
         mclient.fget_object(bucketname, image_file_name, str(output_file))
 
-        ball_list = list()
-
-        # we can have more than one set of annotations in LabelStudio,
-        # but we assume that all of them are valid here.
-        for annotation in task["annotations"]:
-            for result in annotation["result"]:
-                # x,y,width,height are all percentages within [0,100]
-                x, y, width, height = (
-                    result["value"]["x"],
-                    result["value"]["y"],
-                    result["value"]["width"],
-                    result["value"]["height"],
-                )
-                img_width = result["original_width"]
-                img_height = result["original_height"]
-                actual_label = result["value"]["rectanglelabels"][0]
-
-                if actual_label == "ball":
-                    x_px = x / 100 * img_width
-                    y_px = y / 100 * img_height
-                    width_px = width / 100 * img_width
-                    height_px = height / 100 * img_height
-                    ball_list.append(
-                        Rectangle(
-                            Point2D(x_px, y_px),
-                            Point2D(x_px + width_px, y_px + height_px),
-                        )
-                    )
-
-                # label_id = label_dict[actual_label]
-
-        output_patch_folder = Path(tmp_download_folder.name) / "patches"
-        output_patch_folder.mkdir(exist_ok=True)
+        # get the bounding boxes from the task
+        ball_list = gt_ball_bounding_boxes_from_labelstudio_task(task)
 
         # export patches with naoth cpp code
         with cppyy.ll.signals_as_exception():  # this could go into the other file
@@ -203,24 +230,22 @@ def create_patches_from_annotations(
             )
             evaluator.set_current_frame(frame)
             evaluator.sim.executeFrame()
-            evaluator.export_patches(frame, output_patch_folder, bucketname)
 
-    # creates patches.zip in the current folder
-    if verbose:
-        print("\tcreating archive of all the patches")
+            evaluator.export_patches(
+                frame,
+                output_patch_folder,
+                bucketname,
+                debug=debug,
+            )
 
-    shutil.make_archive("patches", "zip", str(output_patch_folder))
+            if debug:
+                evaluator.export_debug_images(frame)
+
+    # upload the patches to the bucket
+    upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder)
+
+    # cleanup
     tmp_download_folder.cleanup()
-
-    # upload patches.zip to the patch bucket
-    if verbose:
-        print(f"uploading object to {patch_bucket_name}")
-
-    mclient.fput_object(
-        patch_bucket_name,
-        "patches.zip",
-        "patches.zip",
-    )
 
 
 if __name__ == "__main__":
@@ -231,16 +256,16 @@ if __name__ == "__main__":
         "-p",
         "--project",
         nargs="+",
-        type=int,
         required=False,
+        type=int,
         help="Labelstudio project ids separated by a space",
     )
     parser.add_argument(
         "-e",
         "--event",
         nargs="+",
-        type=str,
         required=False,
+        type=str,
         help="Event names separated by a space",
     )
     parser.add_argument(
@@ -255,12 +280,19 @@ if __name__ == "__main__":
         default=False,
         help="Set flag to export unvalidated patches, default is to only export validated LabelStudio projects",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Set flag to enable debug mode",
+    )
 
     args = parser.parse_args()
-    events = args.event  # None or List[str]
-    projects = args.project  # None or List[int]
-    overwrite = args.overwrite  # bool, default is False
-    validated_only = not args.unvalidated  # bool, default is True
+    events = args.event
+    projects = args.project
+    overwrite = args.overwrite
+    validated_only = not args.unvalidated
+    debug = args.debug
 
     # get the buckets with top and bottom images,
     # use LabelStudio project IDs as a filter if they were provided
@@ -296,4 +328,5 @@ if __name__ == "__main__":
             ls_project_id=ls_project_id,
             db_field=db_field,
             overwrite=overwrite,
+            debug=debug,
         )

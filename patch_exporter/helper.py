@@ -1,121 +1,112 @@
-from typing import NamedTuple, Tuple, List
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
 import numpy as np
 
 
-class Point2D(NamedTuple):
+@dataclass
+class Point2D:
     x: float
     y: float
 
+    def __getitem__(self, index):
+        assert index in (0, 1), "Index must be 0 or 1"
+        return self.x if index == 0 else self.y
 
-class Rectangle(NamedTuple):
+    def as_cv2_point(self):
+        return int(self.x), int(self.y)
+
+
+@dataclass
+class BoundingBox:
     top_left: Point2D
     bottom_right: Point2D
 
-    def intersection_over_union(self, xtl: float, ytl: float, xbr: float, ybr: float):
-        # compute x and y coordinates of the intersection rectangle
-        intersection_topleft = Point2D(
-            max(self.top_left[0], xtl), max(self.top_left[1], ytl))
-        intersection_bottomright = Point2D(
-            min(self.bottom_right[0], xbr), min(self.bottom_right[1], ybr))
-        intersection = Rectangle(intersection_topleft,
-                                 intersection_bottomright)
+    @classmethod
+    def from_coords(cls, top_left_x, top_left_y, bottom_right_x, bottom_right_y):
+        return cls(
+            Point2D(top_left_x, top_left_y), Point2D(bottom_right_x, bottom_right_y)
+        )
 
-        # compute the intersection, self and other area
-        intersection_area = max(0, intersection.bottom_right[0] - intersection.top_left[0] + 1) * \
-                            max(0, intersection.bottom_right[1] - intersection.top_left[1] + 1)
+    @property
+    def width(self):
+        return self.bottom_right.x - self.top_left.x
 
-        self_area = (self.bottom_right[0] - self.top_left[0] + 1) * \
-                    (self.bottom_right[1] - self.top_left[1] + 1)
-        other_area = (xbr - xtl + 1) * (ybr - ytl + 1)
+    @property
+    def height(self):
+        return self.bottom_right.y - self.top_left.y
 
-        # return the intersecton over union
-        return intersection_area / float(self_area + other_area - intersection_area)
-    
-    def chatgpt_iou(self, box1, box2):
-        """
-        Compute the Intersection over Union (IoU) of two bounding boxes.
-        
-        Args:
-        - box1: A list of 4 elements [x_min, y_min, x_max, y_max].
-        - box2: A list of 4 elements [x_min, y_min, x_max, y_max].
-        
-        Returns:
-        - IoU as a float.
-        """
-        x1_min, y1_min, x1_max, y1_max = box1
-        x2_min, y2_min, x2_max, y2_max = box2
+    @property
+    def area(self):
+        return self.width * self.height
 
-        # Calculate the intersection box
-        inter_x_min = max(x1_min, x2_min)
-        inter_y_min = max(y1_min, y2_min)
-        inter_x_max = min(x1_max, x2_max)
-        inter_y_max = min(y1_max, y2_max)
-
-        # If there's no intersection, IoU is 0
-        if inter_x_max < inter_x_min or inter_y_max < inter_y_min:
-            return 0.0
-
-        # Calculate the area of the intersection
-        inter_area = (inter_x_max - inter_x_min) * (inter_y_max - inter_y_min)
-
-        # Calculate the area of each box
-        box1_area = (x1_max - x1_min) * (y1_max - y1_min)
-        box2_area = (x2_max - x2_min) * (y2_max - y2_min)
-
-        # Calculate the union area
-        union_area = box1_area + box2_area - inter_area
-
-        # IoU is intersection over union
-        iou = inter_area / union_area
-
-        return iou
-    
-    def containment_iou(self, xtl: float, ytl: float, xbr: float, ybr: float):
-        # self is groundtruth
-        x1_min, y1_min = self.top_left
-        x1_max, y1_max = self.bottom_right
-
-        if (x1_min >= xtl and y1_min >= ytl and x1_max <= xbr and y1_max <= ybr):
-        # If the ground truth is fully contained within the prediction, return 1
-            return 1.0
-        
-        return self.chatgpt_iou((xtl, ytl, xbr, ybr), (x1_min, y1_min, x1_max, y1_max))
-
-    def get_radius(self):
-        width = round((self.bottom_right[0] - self.top_left[0]) / 2)
-        height = round((self.bottom_right[1] - self.top_left[1]) / 2)
+    @property
+    def radius(self):
+        width = round(self.width / 2)
+        height = round(self.height / 2)
 
         # FIXME if the patch is on the image border it should be max
         return min(width, height)
 
-    def get_center(self):
+    @property
+    def center(self):
         """
-            this will calculate the center of the rectangle in the coordinate frame the coordinates are in
+        this will calculate the center of the rectangle in the coordinate frame the coordinates are in
         """
         # FIXME if the patch is on the image border it imagine that its a square based on the max
-        width = self.bottom_right[0] - self.top_left[0]
-        height = self.bottom_right[1] - self.top_left[1]
 
-        x = round(self.top_left[0] + width / 2)
-        y = round(self.top_left[1] + height / 2)
+        x = round(self.top_left.x + self.width / 2)
+        y = round(self.top_left.y + self.height / 2)
+
         return x, y
 
+    def intersection(self, other: "BoundingBox") -> Optional["BoundingBox"]:
+        """
+        Calculates the intersection of this bounding box with another one.
 
-class Frame(NamedTuple):
+        Returns:
+            BoundingBox or None: A new BoundingBox representing the intersection,
+            or None if there is no intersection.
+        """
+        intersect_top_left_x = max(self.top_left.x, other.top_left.x)
+        intersect_top_left_y = max(self.top_left.y, other.top_left.y)
+        intersect_bottom_right_x = min(self.bottom_right.x, other.bottom_right.x)
+        intersect_bottom_right_y = min(self.bottom_right.y, other.bottom_right.y)
+
+        # Check if the bounding boxes overlap
+        if (
+            intersect_top_left_x < intersect_bottom_right_x
+            and intersect_top_left_y < intersect_bottom_right_y
+        ):
+            # If they do overlap, return a new BoundingBox object representing the intersection
+            return BoundingBox.from_coords(
+                intersect_top_left_x,
+                intersect_top_left_y,
+                intersect_bottom_right_x,
+                intersect_bottom_right_y,
+            )
+        else:
+            # If they don't overlap, return None
+            return None
+
+
+@dataclass
+class Frame:
     file: str
     bottom: bool
-    gt_balls: List[Rectangle]
+    gt_balls: List[BoundingBox]
     cam_matrix_translation: Tuple[float, float, float]
-    cam_matrix_rotation: np.array
+    cam_matrix_rotation: np.ndarray
 
 
 def load_image_as_yuv422(image_filename):
     """
-        this functions loads an image from a file to the correct format for the naoth library
+    this functions loads an image from a file to the correct format for the naoth library
     """
     # don't import cv globally, because the dummy simulator shared library might need to load a non-system library
     # and we need to make sure loading the dummy simulator shared library happens first
     import cv2
+
     cv_img = cv2.imread(image_filename)
 
     # convert image for bottom to yuv422
