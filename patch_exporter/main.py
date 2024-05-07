@@ -53,6 +53,7 @@ def get_buckets_with_top_images(
     SELECT log_path, bucket_top, ls_project_top
     FROM robot_logs
     WHERE bucket_top IS NOT NULL
+    AND ls_project_top IS NOT NULL
     """
 
     if event_names:
@@ -82,6 +83,7 @@ def get_buckets_with_bottom_images(
     SELECT log_path, bucket_bottom, ls_project_bottom
     FROM robot_logs
     WHERE bucket_bottom IS NOT NULL
+    AND ls_project_bottom IS NOT NULL
     """
 
     if event_names:
