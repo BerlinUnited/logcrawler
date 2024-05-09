@@ -65,9 +65,21 @@ def import_labelstudio(data, camera):
     existing_projects = dict(existing_projects)
     
     for logpath, bucketname in sorted(data):
+        # FIXME rewrite the logic to not use the project name
         print(f"handling data from {logpath}")
+        # generate description
+        log_name = str(Path(logpath).name)
+        game_name = str(Path(logpath).parent.parent.name)
+        event_name = str(Path(logpath).parent.parent.parent.name)
+        project_description = f"""
+        event: {event_name} <br />
+        game: {game_name} <br />
+        log: {log_name}
+        """
+
         if bucketname in existing_projects.keys():
             project_id = existing_projects[bucketname].id
+            project = ls.get_project(project_id)
             print(f"\tproject {project_id} already exists")
             if camera == "top":
                 insert_statement = f"""
@@ -77,23 +89,17 @@ def import_labelstudio(data, camera):
                 insert_statement = f"""
                 UPDATE robot_logs SET ls_project_bottom = '{project_id}' WHERE log_path = '{logpath}';
                 """
+
+            project.set_params(**{"description": project_description})
             cur.execute(insert_statement)
             conn.commit()
             continue
         else:
-            log_name = str(Path(logpath).name)
-            game_name = str(Path(logpath).parent.parent.name)
-            event_name = str(Path(logpath).parent.parent.parent.name)
-            description = f"""
-            event: {event_name} < /br>
-            game: {game_name} < /br>
-            log: {log_name}
-            """
             print(f"\tcreating project {bucketname}")
             project = ls.start_project(
                 title=bucketname,
                 label_config=label_config_bb,
-                description=description,
+                description=project_description,
                 color=color
             )
             import_storage = project.connect_s3_import_storage(
