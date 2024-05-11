@@ -316,7 +316,7 @@ if __name__ == "__main__":
         for logpath, bucketname, ls_project_id in data_bottom
     ]
 
-    data_combined = data_top + data_bottom
+    data_combined = sorted(data_top + data_bottom, reverse=True)
 
     # for each bucket, loop over all annotated images in LabelStudio and create patches
     # with the naoth cpp code using the annotations as ball ground truth

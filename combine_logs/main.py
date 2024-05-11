@@ -126,7 +126,7 @@ if __name__ == "__main__":
                 print("\tdeleting the combined log")
                 combined_log_path.unlink()
 
-    for log in sorted(log_list):
+    for log in sorted(log_list, reverse=True):
         print(log)
         actual_log_folder = root_path / Path(log)
         if Path(actual_log_folder).is_file():

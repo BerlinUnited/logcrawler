@@ -64,7 +64,7 @@ def import_labelstudio(data, camera):
     existing_projects = [(a.title, a) for a in ls.list_projects()]
     existing_projects = dict(existing_projects)
     
-    for logpath, bucketname in sorted(data):
+    for logpath, bucketname in sorted(data, reverse=True):
         # FIXME rewrite the logic to not use the project name
         print(f"handling data from {logpath}")
         # generate description
