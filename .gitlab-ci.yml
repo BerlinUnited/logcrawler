@@ -3,15 +3,15 @@ services:
   - docker:dind
 
 variables:
-    # https://about.gitlab.com/blog/2019/07/31/docker-in-docker-with-docker-19-dot-03/
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_IMAGE: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
+  # https://about.gitlab.com/blog/2019/07/31/docker-in-docker-with-docker-19-dot-03/
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_IMAGE: scm.cms.hu-berlin.de:4567/berlinunited/projects/log-crawler
 
 build_image:
-
-#  tags:
-#    - goal
+  only:
+    refs:
+      - main
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN scm.cms.hu-berlin.de:4567
     - docker build -f Dockerfile -t $DOCKER_IMAGE:latest .
