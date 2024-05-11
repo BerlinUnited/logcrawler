@@ -107,32 +107,26 @@ def create_image_log_dict(image_log, first_image_is_top):
 
 
 def combine_all_logs():
-    sensor_log = "sensor.log"
     game_log = "game.log"
     image_log = "images.log"
     combined_log_path = "combined.log"
 
-    get_dataset_from_server("https://logs.naoth.de/2023-07-04_RC23/2023-07-07_10-45-NaoDevils-BerlinUnited-Half1/4_14_Nao0040_230707-0900/game.log", game_log)
-    get_dataset_from_server("https://logs.naoth.de/2023-07-04_RC23/2023-07-07_10-45-NaoDevils-BerlinUnited-Half1/4_14_Nao0040_230707-0900/images.log", image_log)
-    get_dataset_from_server("https://logs.naoth.de/2023-07-04_RC23/2023-07-07_10-45-NaoDevils-BerlinUnited-Half1/4_14_Nao0040_230707-0900/sensor.log", sensor_log)
-
+    get_dataset_from_server("https://logs.naoth.de/2024-lab_tests/2024-05-10_17-00-00_Berlin%20United_vs_BerlinUnited_half1/game_logs/1_26_Nao0028_240510-1520/game.log", game_log)
+    get_dataset_from_server("https://logs.naoth.de/2024-lab_tests/2024-05-10_17-00-00_Berlin%20United_vs_BerlinUnited_half1/game_logs/1_26_Nao0028_240510-1520/images.log", image_log)
     is_first_image_top = False
     image_log_index = create_image_log_dict(str(image_log), first_image_is_top=is_first_image_top)
-    with open(str(combined_log_path), "wb") as output, open(str(image_log), "rb") as image_log, LogReader(str(game_log)) as gamelog_reader, LogReader(str(sensor_log)) as sensorlog_reader:
+    with open(str(combined_log_path), "wb") as output, open(str(image_log), "rb") as image_log, LogReader(str(game_log)) as gamelog_reader:
             for frame in gamelog_reader.read():
                 print(frame.number)
                 # only write frames which have corresponding images
-                if sensorlog_reader.index_of(frame.number):
-                    print("\tyeah")
-                else:
-                    pass
-                    #print("------------")
                 if frame.number in image_log_index:
                     
                     # may contain 'ImageTop' and 'Image'
                     for image_name, (offset, size) in image_log_index[
                         frame.number
                     ].items():
+                        print(image_name)
+                        print()
                         # load image data
                         image_log.seek(offset)
                         image_data = image_log.read(size)
@@ -165,5 +159,5 @@ def sensor_log():
 
 if __name__ == "__main__":
     # Sensor logs have very different frame numbers so we cant easily combine them
-    sensor_log()
-    #combine_all_logs()
+    #sensor_log()
+    combine_all_logs()
