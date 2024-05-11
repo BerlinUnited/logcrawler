@@ -21,6 +21,7 @@ event_list = [
     "2023-12-03-RoHOW",
     "2023-10-18-semesterproject-intro-R0101",
     "2024-04-17_GO24",
+    "2024-lab_tests",
 ]
 
 experiment_list = [
