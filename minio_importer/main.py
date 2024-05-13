@@ -21,7 +21,7 @@ params = {
     "port": postgres_port,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 
 conn = psycopg2.connect(**params)
@@ -33,11 +33,13 @@ mclient = Minio(
     secret_key=environ.get("MINIO_PASS"),
 )
 
+
 def generate_unique_name():
     while True:
         name = "".join(random.choices(string.ascii_lowercase, k=22))
         if not mclient.bucket_exists(name):
             return name
+
 
 def get_bottom_data():
     select_statement = f"""
@@ -49,6 +51,7 @@ def get_bottom_data():
 
     return logs
 
+
 def get_top_data():
     select_statement = f"""
     SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true 
@@ -59,6 +62,7 @@ def get_top_data():
 
     return logs
 
+
 def find_extracted_image_paths(log_folder: str):
     root_path = Path(environ.get("LOG_ROOT"))
     log_path_w_prefix = root_path / Path(log_folder)
@@ -66,9 +70,7 @@ def find_extracted_image_paths(log_folder: str):
         print("\tdetected experiment log")
         actual_log_folder = root_path / Path(log_folder).parent
         extracted_folder = (
-            Path(actual_log_folder)
-            / Path("extracted")
-            / Path(log_path_w_prefix).stem
+            Path(actual_log_folder) / Path("extracted") / Path(log_path_w_prefix).stem
         )
         data_folder_top = extracted_folder / Path("log_top")
         data_folder_bottom = extracted_folder / Path("log_bottom")
@@ -94,21 +96,25 @@ if __name__ == "__main__":
     """
     root_path = Path(environ.get("LOG_ROOT"))
     bottom_data = get_bottom_data()
-    for log_path, bucket_name in sorted(bottom_data):
+    for log_path, bucket_name in sorted(bottom_data, reverse=True):
         print(log_path)
 
         if not bucket_name:
             bucket_name = generate_unique_name()
             print(f"\tcreated new bucket {bucket_name}")
 
-            mclient.make_bucket(bucket_name)    
+            mclient.make_bucket(bucket_name)
             tags = Tags.new_bucket_tags()
-            tags["data path"] = str(log_path) # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
+            tags["data path"] = str(
+                log_path
+            )  # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
             mclient.set_bucket_tags(bucket_name, tags)
 
         # FIXME: make sure we dont have any stale buckets that are not used
         data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
-        minio_files = [mobject.object_name for mobject in mclient.list_objects(bucket_name)]
+        minio_files = [
+            mobject.object_name for mobject in mclient.list_objects(bucket_name)
+        ]
         local_files = Path(data_folder_bottom).glob("*")
         for file in tqdm(local_files):
             if file.name in minio_files:
@@ -131,29 +137,33 @@ if __name__ == "__main__":
 
     #########################################
     top_data = get_top_data()
-    for log_path, bucket_name in sorted(top_data):
+    for log_path, bucket_name in sorted(top_data, reverse=True):
         print(log_path)
 
         if not bucket_name:
             bucket_name = generate_unique_name()
             print(f"\tcreated new bucket {bucket_name}")
 
-            mclient.make_bucket(bucket_name)    
+            mclient.make_bucket(bucket_name)
             tags = Tags.new_bucket_tags()
-            tags["data path"] = str(log_path) # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
+            tags["data path"] = str(
+                log_path
+            )  # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
             mclient.set_bucket_tags(bucket_name, tags)
 
         # FIXME: make sure we dont have any stale buckets that are not used
         print(f"\tuploading to bucket {bucket_name}")
         data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
-        minio_files = [mobject.object_name for mobject in mclient.list_objects(bucket_name)]
+        minio_files = [
+            mobject.object_name for mobject in mclient.list_objects(bucket_name)
+        ]
         local_files = Path(data_folder_top).glob("*")
         for file in tqdm(local_files):
             if file.name in minio_files:
-                #print(file.name)
+                # print(file.name)
                 pass
             else:
-                #print(f"\t\tuploading {file.name}", end="\r", flush=True)
+                # print(f"\t\tuploading {file.name}", end="\r", flush=True)
                 source_file = file
                 destination_file = Path(file).name
                 mclient.fput_object(

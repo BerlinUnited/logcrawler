@@ -10,13 +10,15 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
+
 def cleanup():
     cur.execute("DROP TABLE robot_logs")
+
 
 def create_log_table(db_name: str):
     # log_path is the unique identifier of the row
@@ -52,20 +54,22 @@ def create_log_table(db_name: str):
     cur.execute(sql_query)
     conn.commit()
 
+
 def get_robot_version(head_number):
     head_number = int(head_number)
-    
+
     if head_number > 90:
         return "v5"
     elif head_number < 30:
         return "v6"
     else:
-        return "unknown" 
+        return "unknown"
+
 
 def insert_log_data():
-    root_path = environ.get('LOG_ROOT')
+    root_path = environ.get("LOG_ROOT")
     all_events = [f for f in Path(root_path).iterdir() if f.is_dir()]
-    for event in sorted(all_events):
+    for event in sorted(all_events, reverse=True):
         if event.name in event_list:
             print(event)
             for game in [f for f in event.iterdir() if f.is_dir()]:
@@ -81,7 +85,7 @@ def insert_log_data():
                 halftime = game_parsed[5]
 
                 gamelog_path = Path(game) / "game_logs"
-                
+
                 for logfolder in [f for f in gamelog_path.iterdir() if f.is_dir()]:
                     print(f"\t\t{logfolder}")
                     logfolder_parsed = str(logfolder.name).split("_")
@@ -91,7 +95,9 @@ def insert_log_data():
 
                     version = get_robot_version(head_number)
                     # its really important that logfolder does not have a leading slash
-                    logfolder_w_prefix = str(logfolder).removeprefix(str(root_path)).removeprefix("/")
+                    logfolder_w_prefix = (
+                        str(logfolder).removeprefix(str(root_path)).removeprefix("/")
+                    )
                     insert_statement1 = f"""
                     INSERT INTO robot_logs (log_path, event_name, half, playernumber, headnumber, bodynumber, team1, team2, time) 
                     VALUES ('{logfolder_w_prefix}', '{event.name}', '{halftime}', '{playernumber}', '{head_number}', '{body_number}', '{team1}', '{team2}', to_timestamp('{timestamp}', 'yyyy-mm-dd_hh24-mi-ss'))
@@ -127,13 +133,13 @@ def insert_experiment_data(db_name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--cleanup", action="store_true")
-    args = parser.parse_args() 
-    
+    args = parser.parse_args()
+
     if args.cleanup is True:
         # This is just for debug purposes
         cleanup()
 
     create_log_table("robot_logs")
     insert_log_data()
-    # create_log_table("experiment_logs")  # could be used to test stuff in a separate table 
+    # create_log_table("experiment_logs")  # could be used to test stuff in a separate table
     insert_experiment_data("robot_logs")

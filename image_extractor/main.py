@@ -19,7 +19,7 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
@@ -166,9 +166,7 @@ def calculate_output_path(log_folder: str):
         log = log_path_w_prefix
 
         extracted_folder = (
-            Path(actual_log_folder)
-            / Path("extracted")
-            / Path(log_path_w_prefix).stem
+            Path(actual_log_folder) / Path("extracted") / Path(log_path_w_prefix).stem
         )
         output_folder_top = extracted_folder / Path("log_top")
         output_folder_bottom = extracted_folder / Path("log_bottom")
@@ -194,21 +192,22 @@ def calculate_output_path(log_folder: str):
 
         output_folder_top = extracted_folder / Path("log_top")
         output_folder_bottom = extracted_folder / Path("log_bottom")
-    
+
     return log, output_folder_top, output_folder_bottom
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", action="store_true")
     args = parser.parse_args()
 
-    root_path = Path(environ.get("LOG_ROOT"))  
+    root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
 
     if args.delete is True:
         delete_everything(log_list)
 
-    for log_folder in sorted(log_list):
+    for log_folder in sorted(log_list, reverse=True):
         print(log_folder)
         log, out_top, out_bottom = calculate_output_path(log_folder)
         if log is None:

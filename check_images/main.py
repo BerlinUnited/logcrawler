@@ -12,7 +12,7 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
@@ -32,16 +32,18 @@ if __name__ == "__main__":
     root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
 
-    for log_folder in sorted(log_list):
+    for log_folder in sorted(log_list, reverse=True):
         print(log_folder)
         log_path_w_prefix = root_path / Path(log_folder)
         if Path(log_path_w_prefix).is_file():
             actual_log_folder = root_path / Path(log_folder).parent
-            representation_file = actual_log_folder / str(Path(log_folder).name + '.representation.json')
+            representation_file = actual_log_folder / str(
+                Path(log_folder).name + ".representation.json"
+            )
         else:
             actual_log_folder = root_path / Path(log_folder)
             representation_file = actual_log_folder / "representation.json"
-            
+
         if representation_file.exists():
             with open(str(representation_file), "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -62,4 +64,3 @@ if __name__ == "__main__":
                 """
                 cur.execute(insert_statement)
                 conn.commit()
-
