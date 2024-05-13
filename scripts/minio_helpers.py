@@ -2,7 +2,8 @@ from minio import Minio
 from os import environ
 import psycopg2
 
-mclient = Minio("minio.berlinunited-cloud.de",
+mclient = Minio(
+    "minio.berlinunited-cloud.de",
     access_key="naoth",
     secret_key=environ.get("MINIO_PASS"),
 )
@@ -12,10 +13,11 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
+
 
 def remove_all_buckets():
     """
@@ -55,27 +57,29 @@ def count_images():
 def upload_to_test_buckets():
     mclient.make_bucket("stellatest")
     mclient.fput_object(
-            "stellatest",
-            "minio_helpers.py",
-            "minio_helpers.py",
+        "stellatest",
+        "minio_helpers.py",
+        "minio_helpers.py",
     )
+
 
 def delete_bucket_contents(bucket_name):
     objects_to_delete = mclient.list_objects(bucket_name, recursive=True)
     for obj in objects_to_delete:
         print(f"deleting file: {obj.object_name}")
         mclient.remove_object(bucket_name, obj.object_name)
-    
+
+
 def delete_patch_contents():
-    #bucket_top_patches
-    #bucket_bottom_patches
+    # bucket_top_patches
+    # bucket_bottom_patches
     select_statement = f"""
     SELECT bucket_top_patches FROM robot_logs WHERE bucket_top_patches IS NOT NULL 
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     buckets = [x[0] for x in rtn_val]
-    
+
     for bucket in buckets:
         delete_bucket_contents(bucket)
 
@@ -85,15 +89,15 @@ def delete_patch_contents():
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     buckets = [x[0] for x in rtn_val]
-    
+
     for bucket in buckets:
         delete_bucket_contents(bucket)
 
 
 if __name__ == "__main__":
-    #count_images()
-    #upload_to_test_buckets()
-    #delete_bucket_contents("stellatest")
+    # count_images()
+    # upload_to_test_buckets()
+    # delete_bucket_contents("stellatest")
     remove_single_bucket("gybemaxcoeoekknhirhzze")
-    #delete_patch_contents()
+    # delete_patch_contents()
     pass

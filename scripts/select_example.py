@@ -1,10 +1,12 @@
 """
     Some examples showing you how to work with the postgres data
 """
+
 import random
 import string
 import psycopg2
 from datetime import datetime
+
 params = {
     "host": "pg.berlinunited-cloud.de",
     "port": 4000,
@@ -35,14 +37,16 @@ def datetime_test_setup():
     cur.execute(sql_query)
     conn.commit()
 
+
 def datetime_test(log_time):
-    cool_string = ''.join(random.choices(string.ascii_lowercase, k=22))
+    cool_string = "".join(random.choices(string.ascii_lowercase, k=22))
 
     insert_statement = f"""
     INSERT INTO dummy_table (string, time) VALUES ('{cool_string}', to_timestamp('{log_time}', 'yyyy-mm-dd_hh24-mi-ss'));
     """
     cur.execute(insert_statement)
     conn.commit()
+
 
 def query_test():
     select_statement = f"""
@@ -54,7 +58,7 @@ def query_test():
 
 
 if __name__ == "__main__":
-    #datetime_test_setup()
-    #datetime_test("2019-11-21_16-20-00")
-    #datetime_test("2019-11-21_9-20-00")
+    # datetime_test_setup()
+    # datetime_test("2019-11-21_16-20-00")
+    # datetime_test("2019-11-21_9-20-00")
     query_test()

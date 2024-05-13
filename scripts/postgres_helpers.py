@@ -1,6 +1,7 @@
 """
     Some examples showing you how to work with the postgres data
 """
+
 import random
 import string
 import psycopg2
@@ -12,7 +13,7 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS'),
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
@@ -37,8 +38,9 @@ def datetime_test_setup():
     cur.execute(sql_query)
     conn.commit()
 
+
 def datetime_test(log_time):
-    cool_string = ''.join(random.choices(string.ascii_lowercase, k=22))
+    cool_string = "".join(random.choices(string.ascii_lowercase, k=22))
 
     insert_statement = f"""
     INSERT INTO dummy_table (string, time) VALUES ('{cool_string}', to_timestamp('{log_time}', 'yyyy-mm-dd_hh24-mi-ss'));
@@ -63,6 +65,7 @@ def add_column(column_name, type="VARCHAR"):
     cur.execute(sql_statement)
     conn.commit()
 
+
 def delete_column(column_name):
     sql_statement = f"""
     ALTER TABLE robot_logs DROP COLUMN {column_name};
@@ -79,6 +82,7 @@ def set_broken_images(bucket_id):
     # ixqkzkgunsabiftgweefvp (partially)
     pass
 
+
 def set_validated_flag_top(ls_id):
     sql_statement = f"""
     UPDATE robot_logs SET top_validated = true WHERE ls_project_top = '{ls_id}';    
@@ -86,12 +90,14 @@ def set_validated_flag_top(ls_id):
     cur.execute(sql_statement)
     conn.commit()
 
+
 def set_validated_flag_bottom(ls_id):
     sql_statement = f"""
     UPDATE robot_logs SET bottom_validated = true WHERE ls_project_bottom = '{ls_id}';    
     """
     cur.execute(sql_statement)
     conn.commit()
+
 
 if __name__ == "__main__":
     pass

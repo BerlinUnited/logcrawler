@@ -2,6 +2,7 @@
     Representation Exporter
     FIXME: this fails in some logs -> add error handling and reporting about broken logs
 """
+
 from pathlib import Path
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
@@ -15,10 +16,11 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
+
 
 def get_logs():
     select_statement = f"""
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--delete", action="store_true")
     args = parser.parse_args()
 
-    root_path = Path(environ.get('LOG_ROOT'))
+    root_path = Path(environ.get("LOG_ROOT"))
     log_list = get_logs()
     # FIXME naming and order ist just very hard to understand
     for log_folder in sorted(log_list, reverse=True):
@@ -44,10 +46,12 @@ if __name__ == "__main__":
         if Path(experiment_log).is_file():
             # handle the case that its an experiment and therefor the path to the file and not the folder
             actual_log_folder = root_path / Path(log_folder).parent
-            output_file = actual_log_folder / str(Path(log_folder).name + '.representation.json')
+            output_file = actual_log_folder / str(
+                Path(log_folder).name + ".representation.json"
+            )
         else:
             actual_log_folder = root_path / Path(log_folder)
-            output_file = actual_log_folder / 'representation.json'
+            output_file = actual_log_folder / "representation.json"
 
         if args.delete is True:
             # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
@@ -57,7 +61,10 @@ if __name__ == "__main__":
         # continue if json file already exists
         if not output_file.is_file():
             # handle experiment case
-            if Path(experiment_log).is_file() and stat(str(actual_log_folder)).st_size > 0:
+            if (
+                Path(experiment_log).is_file()
+                and stat(str(actual_log_folder)).st_size > 0
+            ):
                 logged_representation = set()
                 my_parser = Parser()
                 combinedlog = LogReader(experiment_log, my_parser)
@@ -78,8 +85,8 @@ if __name__ == "__main__":
                 # only write the file if the list is not empty
                 if len(list(logged_representation)) > 0:
                     output_dict = {"representations": list(logged_representation)}
-                    
-                    with open(str(output_file), 'w', encoding='utf-8') as f:
+
+                    with open(str(output_file), "w", encoding="utf-8") as f:
                         json.dump(output_dict, f, ensure_ascii=False, indent=4)
                 # write to db
                 insert_statement = f"""
@@ -98,8 +105,11 @@ if __name__ == "__main__":
                 sensor_log_path = actual_log_folder / "sensor.log"
                 # TODO: I've seen cognition logs somewhere
                 logged_representation = set()
-                
-                if Path(combined_log_path).is_file() and stat(str(combined_log_path)).st_size > 0:
+
+                if (
+                    Path(combined_log_path).is_file()
+                    and stat(str(combined_log_path)).st_size > 0
+                ):
                     my_parser = Parser()
                     combinedlog = LogReader(combined_log_path, my_parser)
                     try:
@@ -117,7 +127,10 @@ if __name__ == "__main__":
                         continue
                 # case we don't have a combined log (assume here that this is fine and there is nothing to combine)
                 else:
-                    if Path(gamelog_path).is_file() and stat(str(gamelog_path)).st_size > 0:
+                    if (
+                        Path(gamelog_path).is_file()
+                        and stat(str(gamelog_path)).st_size > 0
+                    ):
                         my_parser2 = Parser()
                         game_log = LogReader(gamelog_path, my_parser2)
                         try:
@@ -133,8 +146,11 @@ if __name__ == "__main__":
                             cur.execute(insert_statement)
                             conn.commit()
                             continue
-                    # sensor log    
-                    if Path(sensor_log_path).is_file() and stat(str(sensor_log_path)).st_size > 0:
+                    # sensor log
+                    if (
+                        Path(sensor_log_path).is_file()
+                        and stat(str(sensor_log_path)).st_size > 0
+                    ):
                         my_parser3 = Parser()
                         sensor_log = LogReader(sensor_log_path, my_parser3)
                         try:
@@ -150,12 +166,12 @@ if __name__ == "__main__":
                             cur.execute(insert_statement)
                             conn.commit()
                             continue
-                    
+
                 # only write the file if the list is not empty
                 if len(list(logged_representation)) > 0:
                     output_dict = {"representations": list(logged_representation)}
-                    
-                    with open(str(output_file), 'w', encoding='utf-8') as f:
+
+                    with open(str(output_file), "w", encoding="utf-8") as f:
                         json.dump(output_dict, f, ensure_ascii=False, indent=4)
 
         # write to db

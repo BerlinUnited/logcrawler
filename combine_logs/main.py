@@ -20,13 +20,14 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
 # this is for making it easier to test something in another table
-db_name = "robot_logs" # experiment_logs or robot_logs
+db_name = "robot_logs"  # experiment_logs or robot_logs
+
 
 def create_image_log_dict(image_log, first_image_is_top):
     """
@@ -89,6 +90,7 @@ def get_logs():
     logs = [x[0] for x in rtn_val]
     return logs
 
+
 def calculate_first_image(logpath):
     """
     calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--delete", action="store_true")
     args = parser.parse_args()
 
-    root_path = Path(environ.get('LOG_ROOT'))
+    root_path = Path(environ.get("LOG_ROOT"))
     # FIXME now log list can contain folders and actual logs
     log_list = get_logs()
 
@@ -117,9 +119,11 @@ if __name__ == "__main__":
             print(log)
             actual_log_folder = root_path / Path(log)
             if Path(actual_log_folder).is_file():
-                print("\tpath is a experiment log - there wont be a combined file here - nothing to delete")
+                print(
+                    "\tpath is a experiment log - there wont be a combined file here - nothing to delete"
+                )
                 continue
-            
+
             combined_log_path = actual_log_folder / "combined.log"
             # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
             if combined_log_path.is_file():
@@ -130,12 +134,14 @@ if __name__ == "__main__":
         print(log)
         actual_log_folder = root_path / Path(log)
         if Path(actual_log_folder).is_file():
-            print("\tpath is a experiment log - no automatic combining here. If needed combine the log manually and add to the event list")
+            print(
+                "\tpath is a experiment log - no automatic combining here. If needed combine the log manually and add to the event list"
+            )
             continue
         combined_log_path = actual_log_folder / "combined.log"
         gamelog_path = actual_log_folder / "game.log"
         img_log_path = actual_log_folder / "images.log"
-        
+
         if not (
             Path(gamelog_path).is_file()
             and stat(str(gamelog_path)).st_size > 0
@@ -150,10 +156,11 @@ if __name__ == "__main__":
             conn.commit()
             continue
 
-
         if not combined_log_path.is_file():
             is_first_image_top = calculate_first_image(log)
-            image_log_index = create_image_log_dict(str(img_log_path), first_image_is_top=is_first_image_top)
+            image_log_index = create_image_log_dict(
+                str(img_log_path), first_image_is_top=is_first_image_top
+            )
             try:
                 with open(str(combined_log_path), "wb") as output, open(
                     str(img_log_path), "rb"
