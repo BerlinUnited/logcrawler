@@ -1,6 +1,7 @@
 """
     Labelstudio importer
 """
+
 from pathlib import Path
 from label_studio_sdk import Client
 import psycopg2
@@ -13,7 +14,7 @@ params = {
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
-    "password": environ.get('DB_PASS')
+    "password": environ.get("DB_PASS"),
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
@@ -55,15 +56,16 @@ def get_logs_with_bottom_images():
     logs = [x for x in rtn_val]
     return logs
 
+
 def import_labelstudio(data, camera):
     if camera == "top":
-        color = "#D55C9D" # pink
+        color = "#D55C9D"  # pink
     else:
-        color = "#51AAFD" # blue
-    
+        color = "#51AAFD"  # blue
+
     existing_projects = [(a.title, a) for a in ls.list_projects()]
     existing_projects = dict(existing_projects)
-    
+
     for logpath, bucketname in sorted(data, reverse=True):
         # FIXME rewrite the logic to not use the project name
         print(f"handling data from {logpath}")
@@ -100,7 +102,7 @@ def import_labelstudio(data, camera):
                 title=bucketname,
                 label_config=label_config_bb,
                 description=project_description,
-                color=color
+                color=color,
             )
             import_storage = project.connect_s3_import_storage(
                 bucket=bucketname,
@@ -125,10 +127,15 @@ def import_labelstudio(data, camera):
             # this function waits till storage is synchronized
             # TODO check closer what this does, docs imply the stream data from minio, but logs say something about copying
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
-            url = f'https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync'
+            url = f"https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync"
             while True:
                 try:
-                    x = requests.post(url, headers={"Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"})
+                    x = requests.post(
+                        url,
+                        headers={
+                            "Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"
+                        },
+                    )
                     print(f"\tsync status: {x.json()['status']}")
                     if x.json()["status"] == "completed":
                         break
@@ -140,8 +147,7 @@ def import_labelstudio(data, camera):
 
 
 if __name__ == "__main__":
-    """
-    """
+    """ """
     data_top = get_logs_with_top_images()
     data_bottom = get_logs_with_bottom_images()
 
