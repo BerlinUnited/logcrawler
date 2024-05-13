@@ -107,16 +107,15 @@ if __name__ == "__main__":
             mclient.set_bucket_tags(bucket_name, tags)
 
         # FIXME: make sure we dont have any stale buckets that are not used
-        print(f"\tuploading to bucket {bucket_name}")
         data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
         minio_files = [mobject.object_name for mobject in mclient.list_objects(bucket_name)]
         local_files = Path(data_folder_bottom).glob("*")
         for file in tqdm(local_files):
             if file.name in minio_files:
-                #print(file.name)
+                print(f"\tfile already exists in bucket {bucket_name}, skipping upload")
                 pass
             else:
-                #print(f"\t\tuploading {file.name}", end="\r", flush=True)
+                print(f"\tuploading to bucket {bucket_name}")
                 source_file = file
                 destination_file = Path(file).name
                 mclient.fput_object(
