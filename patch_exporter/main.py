@@ -34,7 +34,7 @@ mclient = Minio(
     secret_key=environ.get("MINIO_PASS"),
 )
 
-LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
+LABEL_STUDIO_URL = "https://ls.berlin-united.com/"
 API_KEY = "6cb437fb6daf7deb1694670a6f00120112535687"
 
 ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)

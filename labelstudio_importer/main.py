@@ -24,7 +24,7 @@ cur = conn.cursor()
 if "KUBERNETES_SERVICE_HOST" in environ:
     LABEL_STUDIO_URL = "http://labelstudio-ls-app.labelstudio.svc.cluster.local"
 else:
-    LABEL_STUDIO_URL = "https://ls.berlinunited-cloud.de/"
+    LABEL_STUDIO_URL = "https://ls.berlin-united.com/"
 
 API_KEY = "6cb437fb6daf7deb1694670a6f00120112535687"
 ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
@@ -149,7 +149,7 @@ def import_labelstudio(data, camera):
             # this function waits till storage is synchronized
             # TODO check closer what this does, docs imply the stream data from minio, but logs say something about copying
             # if data is just copied to a PVC then we dont need minio buckets for the images we can copy those from repl directly
-            url = f"https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync"
+            url = f"https://ls.berlin-united.com/api/storages/s3/{storage_id}/sync"
             while True:
                 try:
                     x = requests.post(

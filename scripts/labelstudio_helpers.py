@@ -75,7 +75,7 @@ def sync_storage(project_id):
     a = my_project.get_import_storages()
     storage_id = a[0]["id"]
 
-    url = f"https://ls.berlinunited-cloud.de/api/storages/s3/{storage_id}/sync"
+    url = f"https://ls.berlin-united.com/api/storages/s3/{storage_id}/sync"
 
     while True:
         try:
