@@ -30,7 +30,7 @@ conn = psycopg2.connect(**params)
 cursor = conn.cursor()
 
 mclient = Minio(
-    "minio.berlinunited-cloud.de",
+    "minio.berlin-united.com",
     access_key="naoth",
     secret_key=environ.get("MINIO_PASS"),
 )

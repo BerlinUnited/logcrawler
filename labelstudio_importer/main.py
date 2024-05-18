@@ -131,7 +131,7 @@ def import_labelstudio(data, camera):
                 title=bucketname,
                 aws_access_key_id="naoth",
                 aws_secret_access_key="HAkPYLnAvydQA",
-                s3_endpoint="https://minio.berlinunited-cloud.de",
+                s3_endpoint="https://minio.berlin-united.com",
             )
             if camera == "top":
                 insert_statement = f"""
