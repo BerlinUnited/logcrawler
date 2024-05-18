@@ -139,6 +139,16 @@ def get_logs():
     return logs
 
 
+def get_unchecked_logs():
+    select_statement = f"""
+    SELECT log_path FROM robot_logs WHERE extract_status IS NULL
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    logs = [x[0] for x in rtn_val]
+    return logs
+
+
 def delete_everything(log_list):
     # FIXME: cant handle experiment logs yet
     for log_folder in log_list:
@@ -199,10 +209,17 @@ def calculate_output_path(log_folder: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", action="store_true")
+    parser.add_argument(
+        "--all",
+        help="Check all logs, by default only unchecked logs are checked",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
+    should_check_all = args.all
 
     root_path = Path(environ.get("LOG_ROOT"))
-    log_list = get_logs()
+    log_list = get_logs() if should_check_all else get_unchecked_logs()
 
     if args.delete is True:
         delete_everything(log_list)

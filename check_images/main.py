@@ -6,6 +6,7 @@ from pathlib import Path
 import psycopg2
 from os import environ
 import json
+import argparse
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -28,9 +29,30 @@ def get_logs():
     return logs
 
 
+def get_unchecked_logs():
+    select_statement = f"""
+    SELECT log_path FROM robot_logs WHERE images_exist IS NULL
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    logs = [x[0] for x in rtn_val]
+    return logs
+
+
 if __name__ == "__main__":
+    # add argument parser to select which logs to check
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--all",
+        help="Check all logs, by default only unchecked logs are checked",
+        action="store_true",
+        default=False,
+    )
+    args = parser.parse_args()
+    should_check_all = args.all
+
     root_path = Path(environ.get("LOG_ROOT"))
-    log_list = get_logs()
+    log_list = get_logs() if should_check_all else get_unchecked_logs()
 
     for log_folder in sorted(log_list, reverse=True):
         print(log_folder)
