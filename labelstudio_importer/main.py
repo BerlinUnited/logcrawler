@@ -51,7 +51,7 @@ def get_logs_with_top_images():
 
 def get_new_logs_with_top_images():
     select_statement = f"""
-    SELECT log_path, bucket_top FROM robot_logs WHERE bucket_top IS NULL AND ls_project_top IS NULL
+    SELECT log_path, bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL AND ls_project_top IS NULL
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
@@ -71,7 +71,7 @@ def get_logs_with_bottom_images():
 
 def get_new_logs_with_bottom_images():
     select_statement = f"""
-    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NULL AND ls_project_bottom IS NULL
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL AND ls_project_bottom IS NULL
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
