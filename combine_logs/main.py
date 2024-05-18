@@ -91,6 +91,16 @@ def get_logs():
     return logs
 
 
+def get_uncombined_logs():
+    select_statement = f"""
+    SELECT log_path FROM {db_name} WHERE combined_status IS NULL
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    logs = [x[0] for x in rtn_val]
+    return logs
+
+
 def calculate_first_image(logpath):
     """
     calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
@@ -106,11 +116,18 @@ def calculate_first_image(logpath):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delete", action="store_true")
+    parser.add_argument(
+        "--all",
+        help="Check all logs, by default only unchecked logs are checked",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
+    should_check_all = args.all
 
     root_path = Path(environ.get("LOG_ROOT"))
     # FIXME now log list can contain folders and actual logs
-    log_list = get_logs()
+    log_list = get_logs() if should_check_all else get_uncombined_logs()
 
     if args.delete is True:
         # we delete all combined logs in an extra loop,

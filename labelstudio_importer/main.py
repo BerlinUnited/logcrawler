@@ -2,12 +2,14 @@
     Labelstudio importer
 """
 
-from pathlib import Path
-from label_studio_sdk import Client
-import psycopg2
+import argparse
 from os import environ
-import requests
+from pathlib import Path
 from time import sleep
+
+import psycopg2
+import requests
+from label_studio_sdk import Client
 
 params = {
     "host": "pg.berlinunited-cloud.de",
@@ -39,11 +41,21 @@ label_config_bb = """
 
 def get_logs_with_top_images():
     select_statement = f"""
-    SELECT log_path,bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL 
+    SELECT log_path, bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL 
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
+    return logs
+
+
+def get_new_logs_with_top_images():
+    select_statement = f"""
+    SELECT log_path, bucket_top FROM robot_logs WHERE bucket_top IS NOT NULL AND ls_project_top IS NULL
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    logs = [x[0] for x in rtn_val]
     return logs
 
 
@@ -54,6 +66,16 @@ def get_logs_with_bottom_images():
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
     logs = [x for x in rtn_val]
+    return logs
+
+
+def get_new_logs_with_bottom_images():
+    select_statement = f"""
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE bucket_bottom IS NOT NULL AND ls_project_bottom IS NULL
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    logs = [x[0] for x in rtn_val]
     return logs
 
 
@@ -147,9 +169,27 @@ def import_labelstudio(data, camera):
 
 
 if __name__ == "__main__":
-    """ """
-    data_top = get_logs_with_top_images()
-    data_bottom = get_logs_with_bottom_images()
+    # add argument parser to select which logs to check
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--all",
+        help="Check all logs, by default only unchecked logs are checked",
+        action="store_true",
+        default=False,
+    )
+    args = parser.parse_args()
+    should_check_all = args.all
+
+    data_top = (
+        get_logs_with_top_images()
+        if should_check_all
+        else get_new_logs_with_top_images()
+    )
+    data_bottom = (
+        get_logs_with_bottom_images()
+        if should_check_all
+        else get_new_logs_with_bottom_images()
+    )
 
     import_labelstudio(data_top, "top")
     import_labelstudio(data_bottom, "bottom")
