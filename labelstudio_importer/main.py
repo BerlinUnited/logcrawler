@@ -55,7 +55,7 @@ def get_new_logs_with_top_images():
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
-    logs = [x[0] for x in rtn_val]
+    logs = [x for x in rtn_val]
     return logs
 
 
@@ -75,7 +75,7 @@ def get_new_logs_with_bottom_images():
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
-    logs = [x[0] for x in rtn_val]
+    logs = [x for x in rtn_val]
     return logs
 
 
