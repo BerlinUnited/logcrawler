@@ -94,13 +94,24 @@ def sync_storage(project_id):
         except requests.exceptions.ReadTimeout:
             sleep(1)
 
+def update_all_storage_endpoint():
+    existing_projects = ls.list_projects()
+    for project in existing_projects:
+        print(project.id)
+        my_project = ls.get_project(project.id)
+        a = my_project.get_import_storages()
+        storage_id = a[0]["id"]
+
+        url = f"https://ls.berlin-united.com/api/storages/s3/{storage_id}"
+
+        x = requests.patch(
+                    url,
+                    headers={
+                        "Authorization": "Token 6cb437fb6daf7deb1694670a6f00120112535687"
+                    },
+                    data={"s3_endpoint": "https://minio.berlin-united.com"}
+                )
+        print(f"\t{x.json()}")
 
 if __name__ == "__main__":
     pass
-    # annotation_backup()
-    # my_project = ls.get_project(184)
-    # my_project.export_snapshot_download(1)
-    # my_project.export_snapshot_list()
-    # import_annotation()
-    # update_label_config()
-    sync_storage(359)
