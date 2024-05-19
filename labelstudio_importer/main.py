@@ -12,7 +12,7 @@ import requests
 from label_studio_sdk import Client
 
 params = {
-    "host": "pg.berlinunited-cloud.de",
+    "host": "pg.berlin-united.com",
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",

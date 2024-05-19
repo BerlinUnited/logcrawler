@@ -8,7 +8,7 @@ import psycopg2
 from datetime import datetime
 
 params = {
-    "host": "pg.berlinunited-cloud.de",
+    "host": "pg.berlin-united.com",
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",

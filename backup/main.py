@@ -14,7 +14,7 @@ ls = Client(url=environ.get("LS_URL"), api_key=environ.get("LS_KEY"))
 ls.check_connection()
 
 params = {
-    "host": "pg.berlinunited-cloud.de",
+    "host": "pg.berlin-united.com",
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
@@ -64,7 +64,7 @@ def backup_database():
 
     environ["PGPASSWORD"] = "fsdjhwzuertuqg"
     r = subprocess.run(
-        "pg_dump -h pg.berlinunited-cloud.de -p 4000 -U naoth -d logs -Fp".split(),
+        "pg_dump -h pg.berlin-united.com -p 4000 -U naoth -d logs -Fp".split(),
         capture_output=True,
     )
     # print(r.stdout)

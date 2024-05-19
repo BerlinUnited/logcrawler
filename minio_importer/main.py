@@ -15,7 +15,7 @@ if "KUBERNETES_SERVICE_HOST" in environ:
     postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
     postgres_port = 5432
 else:
-    postgres_host = "pg.berlinunited-cloud.de"
+    postgres_host = "pg.berlin-united.com"
     postgres_port = 4000
 
 params = {

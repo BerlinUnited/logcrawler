@@ -9,7 +9,7 @@ from datetime import datetime
 from os import environ
 
 params = {
-    "host": "pg.berlinunited-cloud.de",
+    "host": "pg.berlin-united.com",
     "port": 4000,
     "dbname": "logs",
     "user": "naoth",
