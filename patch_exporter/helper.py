@@ -95,6 +95,8 @@ class Frame:
     file: str
     bottom: bool
     gt_balls: List[BoundingBox]
+    gt_robots: List[BoundingBox]
+    gt_penalties: List[BoundingBox]
     cam_matrix_translation: Tuple[float, float, float]
     cam_matrix_rotation: np.ndarray
 

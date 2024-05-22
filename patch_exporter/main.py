@@ -134,8 +134,12 @@ def create_patch_bucket(logpath: str, bucketname, db_field: str) -> Tuple[str, b
     return patch_bucket_name, exists
 
 
-def gt_ball_bounding_boxes_from_labelstudio_task(task: Dict) -> List[BoundingBox]:
+def gt_ball_bounding_boxes_from_labelstudio_task(
+    task: Dict,
+) -> Tuple[List[BoundingBox], List[BoundingBox], List[BoundingBox]]:
     ball_list = list()
+    robot_list = list()
+    penalty_mark_list = list()
 
     for annotation in task["annotations"]:
         for result in annotation["result"]:
@@ -150,7 +154,7 @@ def gt_ball_bounding_boxes_from_labelstudio_task(task: Dict) -> List[BoundingBox
             img_height = result["original_height"]
             actual_label = result["value"]["rectanglelabels"][0]
 
-            if actual_label == "ball":
+            if actual_label in ("ball", "nao", "penalty_mark"):
                 x_px = x / 100 * img_width
                 y_px = y / 100 * img_height
                 width_px = width / 100 * img_width
@@ -160,9 +164,14 @@ def gt_ball_bounding_boxes_from_labelstudio_task(task: Dict) -> List[BoundingBox
                 bottom_right = Point2D(x_px + width_px, y_px + height_px)
                 bounding_box = BoundingBox(top_left, bottom_right)
 
-                ball_list.append(bounding_box)
+                if actual_label == "ball":
+                    ball_list.append(bounding_box)
+                elif actual_label == "nao":
+                    robot_list.append(bounding_box)
+                elif actual_label == "penalty_mark":
+                    penalty_mark_list.append(bounding_box)
 
-    return ball_list
+    return ball_list, robot_list, penalty_mark_list
 
 
 def upload_patches_zip_to_bucket(
@@ -191,7 +200,6 @@ def create_patches_from_annotations(
     # TODO put data in same bucket (maybe)
     # TODO get meta information from png header
     # TODO get all the bboxes in the correct format in a list
-    # TODO handle penalty marks
 
     ls_project = ls.get_project(id=ls_project_id)
     labeled_tasks = ls_project.get_labeled_tasks()
@@ -200,7 +208,7 @@ def create_patches_from_annotations(
         print("\tNo labeled tasks found for this project, skipping...")
         return
 
-    # Create the bucket for the patches
+    #Create the bucket for the patches
     patch_bucket_name, patch_bucket_exists = create_patch_bucket(
         logpath, bucketname, db_field
     )
@@ -223,12 +231,17 @@ def create_patches_from_annotations(
         mclient.fget_object(bucketname, image_file_name, str(output_file))
 
         # get the bounding boxes from the task
-        ball_list = gt_ball_bounding_boxes_from_labelstudio_task(task)
+        ball_list, robot_list, penalty_list = (
+            gt_ball_bounding_boxes_from_labelstudio_task(task)
+        )
 
         # export patches with naoth cpp code
         with cppyy.ll.signals_as_exception():  # this could go into the other file
             frame = evaluator.convert_image_to_frame(
-                str(output_file), gt_balls=ball_list
+                str(output_file),
+                gt_balls=ball_list,
+                gt_robots=robot_list,
+                gt_penalties=penalty_list,
             )
             evaluator.set_current_frame(frame)
             evaluator.sim.executeFrame()
@@ -317,6 +330,7 @@ if __name__ == "__main__":
     ]
 
     data_combined = sorted(data_top + data_bottom, reverse=True)
+    print(f"Found {len(data_combined)} buckets to process")
 
     # for each bucket, loop over all annotated images in LabelStudio and create patches
     # with the naoth cpp code using the annotations as ball ground truth
