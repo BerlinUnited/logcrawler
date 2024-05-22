@@ -54,6 +54,10 @@ def backup_annotations():
 
 
 def backup_database():
+    """
+    restore goes like this:
+    log into logcrawler pod go to folder containing the latest backup.sql and run psql -h pg.berlin-united.com -p 4000 -U naoth -W -d logs < backup.sql
+    """
     backup_folder = Path(environ.get("BACKUPS_ROOT")) / "postgres_backups"
     now = datetime.now()
     date_time = now.strftime("%Y-%m-%d")
