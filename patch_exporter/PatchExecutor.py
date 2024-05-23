@@ -340,12 +340,12 @@ class PatchExecutor:
         ball_folder = output_patch_folder / "ball"
         robot_folder = output_patch_folder / "robot"
         penalty_folder = output_patch_folder / "penalty"
-        non_ball_folder = output_patch_folder / "other"
+        other_folder = output_patch_folder / "other"
 
         Path(ball_folder).mkdir(exist_ok=True, parents=True)
         Path(robot_folder).mkdir(exist_ok=True, parents=True)
         Path(penalty_folder).mkdir(exist_ok=True, parents=True)
-        Path(non_ball_folder).mkdir(exist_ok=True, parents=True)
+        Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(detected_balls.patchesYUVClassified):
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
@@ -381,14 +381,12 @@ class PatchExecutor:
                 "robot_center_y": robot_y,
             }
 
-            # TODO: Check if this is really what we want
-            # Now we would write a patch that contains a ball and a penalty mark
-            # both to the ball and penalty folder. Using the meta information
-            # in the PNG, we can set both classes in a multiclass setting.
-            # However, we can not nicely handle the case where a patch contains a full
-            # ball that is in front of a robot, as in this scenario the robot would be
-            # completely behind the ball and thus not visible in the patch.
-
+            # Here we perform a hierarchical decision on the patch class.
+            # precedence: ball > penalty > robot > non-ball
+            # That means a patch can only belong to one class, for multiclass 
+            # applications one needs to parse the meta information of all png files
+            
+            # if the patch contains a ball, write it to the ball folder
             if gt_ball_intersect_ratio > min_gt_intersect_ratio:
                 if debug:
                     cv2.circle(
@@ -409,9 +407,9 @@ class PatchExecutor:
                     meta_info,
                 )
 
-            # TODO: check if we can exclude cases where the penalty mark is
-            # mostly covered by a ball
-            if gt_penalty_intersect_ratio > min_gt_intersect_ratio:
+            # if the patch contains a penalty mark and no ball,
+            # write it to the penalty folder
+            elif gt_penalty_intersect_ratio > min_gt_intersect_ratio:
                 self.write_patch_to_file(
                     crop_img,
                     frame,
@@ -422,9 +420,9 @@ class PatchExecutor:
                     meta_info,
                 )
 
-            # TODO: check if we can exclude cases where the robot is
-            # mostly covered by a ball
-            if gt_robot_intersect_ratio > min_gt_intersect_ratio:
+            # if the patch contains a robot and no ball or penalty mark,
+            # write it to the robot folder
+            elif gt_robot_intersect_ratio > min_gt_intersect_ratio:
                 self.write_patch_to_file(
                     crop_img,
                     frame,
@@ -435,11 +433,8 @@ class PatchExecutor:
                     meta_info,
                 )
 
-            if (
-                gt_ball_intersect_ratio <= min_gt_intersect_ratio
-                and gt_penalty_intersect_ratio <= min_gt_intersect_ratio
-                and gt_robot_intersect_ratio <= min_gt_intersect_ratio
-            ):
+            # if the patch contains none of the above, write it to the other folder
+            else:
                 self.write_patch_to_file(
-                    crop_img, frame, bucketname, non_ball_folder, idx, 0.0, meta_info
+                    crop_img, frame, bucketname, other_folder, idx, 0.0, meta_info
                 )
