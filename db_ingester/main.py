@@ -4,10 +4,17 @@ from os import environ
 import argparse
 from event_list import event_list, experiment_list
 
-# connect to database
+# make this auto detect if its running inside the cluster or not
+if "KUBERNETES_SERVICE_HOST" in environ:
+    postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
+    postgres_port = 5432
+else:
+    postgres_host = "pg.berlin-united.com"
+    postgres_port = 4000
+
 params = {
-    "host": "pg.berlin-united.com",
-    "port": 4000,
+    "host": postgres_host,
+    "port": postgres_port,
     "dbname": "logs",
     "user": "naoth",
     "password": environ.get("DB_PASS"),
