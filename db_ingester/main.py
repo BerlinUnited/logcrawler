@@ -4,10 +4,17 @@ from os import environ
 import argparse
 from event_list import event_list, experiment_list
 
-# connect to database
+# make this auto detect if its running inside the cluster or not
+if "KUBERNETES_SERVICE_HOST" in environ:
+    postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
+    postgres_port = 5432
+else:
+    postgres_host = "pg.berlin-united.com"
+    postgres_port = 4000
+
 params = {
-    "host": "pg.berlin-united.com",
-    "port": 4000,
+    "host": postgres_host,
+    "port": postgres_port,
     "dbname": "logs",
     "user": "naoth",
     "password": environ.get("DB_PASS"),
@@ -24,6 +31,7 @@ def create_log_table(db_name: str):
     # log_path is the unique identifier of the row
     sql_query = f"""
     CREATE TABLE IF NOT EXISTS {db_name} (
+        log_id SERIAL PRIMARY KEY,
         log_path VARCHAR, 
         event_name VARCHAR,
         half VARCHAR,
