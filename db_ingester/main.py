@@ -24,6 +24,7 @@ def create_log_table(db_name: str):
     # log_path is the unique identifier of the row
     sql_query = f"""
     CREATE TABLE IF NOT EXISTS {db_name} (
+        log_id SERIAL PRIMARY KEY,
         log_path VARCHAR, 
         event_name VARCHAR,
         half VARCHAR,
