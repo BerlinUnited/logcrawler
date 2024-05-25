@@ -70,7 +70,7 @@ if __name__ == "__main__":
         print(log_folder)
         experiment_log = root_path / Path(log_folder)
         if Path(experiment_log).is_file():
-            # handle the case that its an experiment and therefor the path to the file and not the folder
+            # handle the case that its an experiment and therefore the path to the file and not the folder
             actual_log_folder = root_path / Path(log_folder).parent
             output_file = actual_log_folder / str(
                 Path(log_folder).name + ".representation.json"
