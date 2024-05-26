@@ -5,7 +5,7 @@
 import ctypes
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import cppyy
 import cppyy.ll
@@ -142,7 +142,7 @@ class PatchExecutor:
         # the copyImageDataYUV422 function is defined there
         image.copyImageDataYUV422(p_data, data.size)
 
-    def set_current_frame(self, frame:Frame):
+    def set_current_frame(self, frame: Frame):
 
         # get access to relevant representations
         image_bottom = self.ball_detector.getRequire().at("Image")
@@ -206,8 +206,18 @@ class PatchExecutor:
 
         return x, y, radius, gt_ball_intersect_ratio
 
-    def get_best_overlap(self, patch, gt_objects:List[BoundingBox]):
+    def get_best_overlap(
+        self,
+        patch,
+        gt_objects: List[BoundingBox],
+        intersect_denominator: str = "gt",
+    ):
         # find the ground object with the highest intersection ratio
+
+        if intersect_denominator not in ("gt", "patch"):
+            raise ValueError(
+                f"intersect_denominator must be 'gt' or 'patch', but is {intersect_denominator}"
+            )
 
         x, y, intersect_ratio = 0.0, 0.0, 0.0
 
@@ -221,9 +231,17 @@ class PatchExecutor:
             if intersection is None:
                 continue
 
-            # we are interested in the percentage of the ground truth balls area
-            # which is contained inside the current patch
-            new_intersect_ratio = intersection.area / gt_box.area
+            # when intersect_denominator is 'gt', we are interested in the percentage
+            # of the ground truth area which is contained inside the intersection
+            #
+            # when intersect_denominator is 'patch', we are interested in the percentage
+            # of the patch area which is contained inside the intersection. This is
+            # useful for robot bboxes which are often significantly larger than the patch
+            denominator = (
+                gt_box.area if intersect_denominator == "gt" else patch_box.area
+            )
+
+            new_intersect_ratio = intersection.area / denominator
 
             if new_intersect_ratio > intersect_ratio:
                 intersect_ratio = new_intersect_ratio
@@ -281,17 +299,20 @@ class PatchExecutor:
         frame: Frame,
         bucketname: str,
         output_folder: Path,
-        idx:int,
-        intersect:float,
-        meta_info:Dict,
+        idx: int,
+        intersect: Union[float, str],
+        meta_info: Dict,
     ):
         import cv2
+
+        if isinstance(intersect, float):
+            intersect = f"{intersect:.4f}"
 
         patch_file_name = Path(output_folder) / (
             bucketname
             + "_"
             + Path(frame.file).stem
-            + f"_{idx}_intersect_{intersect:.4f}.png"
+            + f"_{idx}_intersect_{intersect}.png"
         )
 
         # write patch to file
@@ -355,16 +376,19 @@ class PatchExecutor:
             # compute overlaps with ground truth bounding boxes for
             # ball, robot and penalty mark
 
+            # get percentage of ball area that is contained in intersection
             ball_x, ball_y, ball_radius, gt_ball_intersect_ratio = (
                 self.get_best_ball_overlap(patch, frame.gt_balls)
             )
 
+            # get percentage of penalty mark area that is contained in intersection
             penalty_x, penalty_y, gt_penalty_intersect_ratio = self.get_best_overlap(
-                patch, frame.gt_penalties
+                patch, frame.gt_penalties, intersect_denominator="gt"
             )
 
+            # get percentage of PATCH are that is contained in intersection
             robot_x, robot_y, gt_robot_intersect_ratio = self.get_best_overlap(
-                patch, frame.gt_robots
+                patch, frame.gt_robots, intersect_denominator="patch"
             )
 
             meta_info = {
@@ -383,9 +407,9 @@ class PatchExecutor:
 
             # Here we perform a hierarchical decision on the patch class.
             # precedence: ball > penalty > robot > non-ball
-            # That means a patch can only belong to one class, for multiclass 
+            # That means a patch can only belong to one class, for multiclass
             # applications one needs to parse the meta information of all png files
-            
+
             # if the patch contains a ball, write it to the ball folder
             if gt_ball_intersect_ratio > min_gt_intersect_ratio:
                 if debug:
@@ -435,6 +459,12 @@ class PatchExecutor:
 
             # if the patch contains none of the above, write it to the other folder
             else:
+                # we write out all intersection values for debugging purposes
+                intersect = (
+                    f"ball_inter_{gt_ball_intersect_ratio:.4f}_"
+                    f"penalty_inter_{gt_penalty_intersect_ratio:.4f}_"
+                    f"robot_inter_{gt_robot_intersect_ratio:.4f}"
+                )
                 self.write_patch_to_file(
-                    crop_img, frame, bucketname, other_folder, idx, 0.0, meta_info
+                    crop_img, frame, bucketname, other_folder, idx, intersect, meta_info
                 )
