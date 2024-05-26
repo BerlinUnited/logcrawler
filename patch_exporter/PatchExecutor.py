@@ -5,6 +5,7 @@
 import ctypes
 import os
 from pathlib import Path
+from typing import Dict, List, Union
 
 import cppyy
 import cppyy.ll
@@ -62,8 +63,16 @@ class PatchExecutor:
         # restore original working directory
         os.chdir(orig_working_dir)
 
-    def convert_image_to_frame(self, image_path, gt_balls=None):
+    def convert_image_to_frame(
+        self,
+        image_path,
+        gt_balls=None,
+        gt_robots=None,
+        gt_penalties=None,
+    ):
         gt_balls = gt_balls or []
+        gt_robots = gt_robots or []
+        gt_penalties = gt_penalties or []
 
         # HACK - we need to figure out a good way to handle groundtruth also not just for balls
         img = PIL.Image.open(image_path)
@@ -97,7 +106,13 @@ class PatchExecutor:
         )
 
         return Frame(
-            image_path, bottom, gt_balls, cam_matrix_translation, cam_matrix_rotation
+            file=image_path,
+            bottom=bottom,
+            cam_matrix_translation=cam_matrix_translation,
+            cam_matrix_rotation=cam_matrix_rotation,
+            gt_balls=gt_balls,
+            gt_robots=gt_robots,
+            gt_penalties=gt_penalties,
         )
 
     @staticmethod
@@ -127,7 +142,7 @@ class PatchExecutor:
         # the copyImageDataYUV422 function is defined there
         image.copyImageDataYUV422(p_data, data.size)
 
-    def set_current_frame(self, frame):
+    def set_current_frame(self, frame: Frame):
 
         # get access to relevant representations
         image_bottom = self.ball_detector.getRequire().at("Image")
@@ -158,6 +173,84 @@ class PatchExecutor:
 
             self.set_camera_matrix_representation(frame, cam_matrix_top)
             cam_matrix_bottom.valid = False
+
+    def get_best_ball_overlap(self, patch, gt_balls: List[BoundingBox]):
+        # find the ground truth ball with the highest intersection ratio
+        # with the current patch, ie. the ball that is most contained in the patch.
+        # This also returns the center and radius of the ball in the patch coordinate system
+
+        x, y, radius, gt_ball_intersect_ratio = 0.0, 0.0, 0.0, 0.0
+
+        patch_box = BoundingBox.from_coords(
+            patch.min.x, patch.min.y, patch.max.x, patch.max.y
+        )
+
+        for gt_ball in gt_balls:
+
+            intersection = gt_ball.intersection(patch_box)
+
+            if intersection is None:
+                continue
+
+            # we are interested in the percentage of the ground truth balls area
+            # which is contained inside the current patch
+            new_gt_ball_intersect_ratio = intersection.area / gt_ball.area
+
+            if new_gt_ball_intersect_ratio > gt_ball_intersect_ratio:
+                gt_ball_intersect_ratio = new_gt_ball_intersect_ratio
+
+                # those values are relativ to the origin (top left) of the patch
+                x = gt_ball.center[0] - patch_box.top_left.x
+                y = gt_ball.center[1] - patch_box.top_left.y
+                radius = gt_ball.radius
+
+        return x, y, radius, gt_ball_intersect_ratio
+
+    def get_best_overlap(
+        self,
+        patch,
+        gt_objects: List[BoundingBox],
+        intersect_denominator: str = "gt",
+    ):
+        # find the ground object with the highest intersection ratio
+
+        if intersect_denominator not in ("gt", "patch"):
+            raise ValueError(
+                f"intersect_denominator must be 'gt' or 'patch', but is {intersect_denominator}"
+            )
+
+        x, y, intersect_ratio = 0.0, 0.0, 0.0
+
+        patch_box = BoundingBox.from_coords(
+            patch.min.x, patch.min.y, patch.max.x, patch.max.y
+        )
+
+        for gt_box in gt_objects:
+            intersection = gt_box.intersection(patch_box)
+
+            if intersection is None:
+                continue
+
+            # when intersect_denominator is 'gt', we are interested in the percentage
+            # of the ground truth area which is contained inside the intersection
+            #
+            # when intersect_denominator is 'patch', we are interested in the percentage
+            # of the patch area which is contained inside the intersection. This is
+            # useful for robot bboxes which are often significantly larger than the patch
+            denominator = (
+                gt_box.area if intersect_denominator == "gt" else patch_box.area
+            )
+
+            new_intersect_ratio = intersection.area / denominator
+
+            if new_intersect_ratio > intersect_ratio:
+                intersect_ratio = new_intersect_ratio
+
+                # those values are relativ to the origin (top left) of the patch
+                x = gt_box.center[0] - patch_box.top_left.x
+                y = gt_box.center[1] - patch_box.top_left.y
+
+        return x, y, intersect_ratio
 
     def export_debug_images(self, frame: Frame):
         """
@@ -200,13 +293,54 @@ class PatchExecutor:
         output_file = Path(frame.file).parent / (Path(frame.file).stem + "_debug.png")
         cv2.imwrite(str(output_file), img)
 
+    def write_patch_to_file(
+        self,
+        patch: np.ndarray,
+        frame: Frame,
+        bucketname: str,
+        output_folder: Path,
+        idx: int,
+        intersect: Union[float, str],
+        meta_info: Dict,
+    ):
+        import cv2
+
+        if isinstance(intersect, float):
+            intersect = f"{intersect:.4f}"
+
+        patch_file_name = Path(output_folder) / (
+            bucketname
+            + "_"
+            + Path(frame.file).stem
+            + f"_{idx}_intersect_{intersect}.png"
+        )
+
+        # write patch to file
+        try:
+            # opencv does not support writing png meta data,
+            # so we have to use PIL for that
+            cv2.imwrite(str(patch_file_name), patch)
+        except Exception as e:
+            print(f"\nError writing file with cv2: {e}")
+            print(f"file: {frame.file}")
+            print(f"size: {patch.size}")
+        else:
+            # image was written successfully, now add the meta data with PIL
+            meta = PngImagePlugin.PngInfo()
+
+            for key, value in meta_info.items():
+                meta.add_text(key, str(value))
+
+            with PIL.Image.open(str(patch_file_name)) as im_pil:
+                im_pil.save(str(patch_file_name), pnginfo=meta)
+
     def export_patches(
         self,
         frame: Frame,
         output_patch_folder: Path,
-        bucketname,
-        min_gt_intersect_ration=0.2,
-        debug=False,
+        bucketname: str,
+        min_gt_intersect_ratio: float = 0.2,
+        debug: bool = False,
     ):
         """
         This function exports patches as images for future training.
@@ -223,82 +357,114 @@ class PatchExecutor:
             cam_id = 0
 
         img = cv2.imread(frame.file)
+
         ball_folder = output_patch_folder / "ball"
-        non_ball_folder = output_patch_folder / "other"
+        robot_folder = output_patch_folder / "robot"
+        penalty_folder = output_patch_folder / "penalty"
+        other_folder = output_patch_folder / "other"
+
         Path(ball_folder).mkdir(exist_ok=True, parents=True)
-        Path(non_ball_folder).mkdir(exist_ok=True, parents=True)
+        Path(robot_folder).mkdir(exist_ok=True, parents=True)
+        Path(penalty_folder).mkdir(exist_ok=True, parents=True)
+        Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(detected_balls.patchesYUVClassified):
-            x, y, radius, gt_ball_intersect_ratio = 0.0, 0.0, 0.0, 0.0
-            patch_box = BoundingBox.from_coords(
-                patch.min.x, patch.min.y, patch.max.x, patch.max.y
-            )
-
-            # find the ground truth ball with the highest intersection ratio
-            # with the current patch, ie. the ball that is most contained in the patch
-            for gt_ball in frame.gt_balls:
-
-                intersection = gt_ball.intersection(patch_box)
-
-                if intersection is None:
-                    continue
-
-                # we are interested in the percentage of the ground truth balls area
-                # which is contained inside the current patch
-                new_gt_ball_intersect_ratio = intersection.area / gt_ball.area
-
-                if new_gt_ball_intersect_ratio > gt_ball_intersect_ratio:
-                    gt_ball_intersect_ratio = new_gt_ball_intersect_ratio
-
-                    # those values are relativ to the origin (top left) of the patch
-                    x = gt_ball.center[0] - patch_box.top_left.x
-                    y = gt_ball.center[1] - patch_box.top_left.y
-                    radius = gt_ball.radius
-
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             # crop full image to calculated patch
             crop_img = img[patch.min.y : patch.max.y, patch.min.x : patch.max.x]
 
-            if debug:
-                cv2.circle(
-                    crop_img,
-                    center=(int(x), int(y)),
-                    radius=int(radius),
-                    color=(255, 0, 0),
-                    thickness=2,
-                )
+            # compute overlaps with ground truth bounding boxes for
+            # ball, robot and penalty mark
 
-            # prepare output file path
-            if gt_ball_intersect_ratio > min_gt_intersect_ration:
-                output_folder = ball_folder
-            else:
-                output_folder = non_ball_folder
-
-            patch_file_name = Path(output_folder) / (
-                bucketname
-                + "_"
-                + Path(frame.file).stem
-                + f"_{idx}_intersect_{gt_ball_intersect_ratio:.4f}.png"
+            # get percentage of ball area that is contained in intersection
+            ball_x, ball_y, ball_radius, gt_ball_intersect_ratio = (
+                self.get_best_ball_overlap(patch, frame.gt_balls)
             )
 
-            # write patch to file
-            try:
-                # opencv does not support writing png meta data,
-                # so we have to use PIL for that
-                cv2.imwrite(str(patch_file_name), crop_img)
-            except Exception as e:
-                print(f"\nError writing file with cv2: {e}")
-                print(f"file: {frame.file}")
-                print(f"size: {crop_img.size}")
+            # get percentage of penalty mark area that is contained in intersection
+            penalty_x, penalty_y, gt_penalty_intersect_ratio = self.get_best_overlap(
+                patch, frame.gt_penalties, intersect_denominator="gt"
+            )
+
+            # get percentage of PATCH are that is contained in intersection
+            robot_x, robot_y, gt_robot_intersect_ratio = self.get_best_overlap(
+                patch, frame.gt_robots, intersect_denominator="patch"
+            )
+
+            meta_info = {
+                "CameraID": cam_id,
+                "ball_intersect": gt_ball_intersect_ratio,
+                "penalty_intersect": gt_penalty_intersect_ratio,
+                "robot_intersect": gt_robot_intersect_ratio,
+                "ball_center_x": ball_x,
+                "ball_center_y": ball_y,
+                "ball_radius": ball_radius,
+                "penalty_center_x": penalty_x,
+                "penalty_center_y": penalty_y,
+                "robot_center_x": robot_x,
+                "robot_center_y": robot_y,
+            }
+
+            # Here we perform a hierarchical decision on the patch class.
+            # precedence: ball > penalty > robot > non-ball
+            # That means a patch can only belong to one class, for multiclass
+            # applications one needs to parse the meta information of all png files
+
+            # if the patch contains a ball, write it to the ball folder
+            if gt_ball_intersect_ratio > min_gt_intersect_ratio:
+                if debug:
+                    cv2.circle(
+                        crop_img,
+                        center=(int(ball_x), int(ball_y)),
+                        radius=int(ball_radius),
+                        color=(255, 0, 0),
+                        thickness=2,
+                    )
+
+                self.write_patch_to_file(
+                    crop_img,
+                    frame,
+                    bucketname,
+                    ball_folder,
+                    idx,
+                    gt_ball_intersect_ratio,
+                    meta_info,
+                )
+
+            # if the patch contains a penalty mark and no ball,
+            # write it to the penalty folder
+            elif gt_penalty_intersect_ratio > min_gt_intersect_ratio:
+                self.write_patch_to_file(
+                    crop_img,
+                    frame,
+                    bucketname,
+                    penalty_folder,
+                    idx,
+                    gt_penalty_intersect_ratio,
+                    meta_info,
+                )
+
+            # if the patch contains a robot and no ball or penalty mark,
+            # write it to the robot folder
+            elif gt_robot_intersect_ratio > min_gt_intersect_ratio:
+                self.write_patch_to_file(
+                    crop_img,
+                    frame,
+                    bucketname,
+                    robot_folder,
+                    idx,
+                    gt_robot_intersect_ratio,
+                    meta_info,
+                )
+
+            # if the patch contains none of the above, write it to the other folder
             else:
-                # image was written successfully, now add the meta data with PIL
-                meta = PngImagePlugin.PngInfo()
-
-                meta.add_text("CameraID", str(cam_id))
-                meta.add_text("ball_intersect", str(gt_ball_intersect_ratio))
-                meta.add_text("center_x", str(x))
-                meta.add_text("center_y", str(y))
-                meta.add_text("radius", str(radius))
-
-                with PIL.Image.open(str(patch_file_name)) as im_pil:
-                    im_pil.save(str(patch_file_name), pnginfo=meta)
+                # we write out all intersection values for debugging purposes
+                intersect = (
+                    f"ball_inter_{gt_ball_intersect_ratio:.4f}_"
+                    f"penalty_inter_{gt_penalty_intersect_ratio:.4f}_"
+                    f"robot_inter_{gt_robot_intersect_ratio:.4f}"
+                )
+                self.write_patch_to_file(
+                    crop_img, frame, bucketname, other_folder, idx, intersect, meta_info
+                )

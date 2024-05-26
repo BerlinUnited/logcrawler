@@ -11,9 +11,11 @@ class TestBoundingBoxIntersection(unittest.TestCase):
         box1 = BoundingBox.from_coords(1, 1, 5, 5)
         box2 = BoundingBox.from_coords(3, 3, 7, 7)
         intersection_box = box1.intersection(box2)
+        intersection_box2 = box2.intersection(box1)
 
         self.assertIsNotNone(intersection_box)
         self.assertEqual(intersection_box, BoundingBox.from_coords(3, 3, 5, 5))
+        self.assertEqual(intersection_box.area, intersection_box2.area)
         self.assertEqual(intersection_box.area, 4)
 
     def test_no_overlap(self):
@@ -33,9 +35,11 @@ class TestBoundingBoxIntersection(unittest.TestCase):
         box1 = BoundingBox.from_coords(1, 1, 10, 10)
         box2 = BoundingBox.from_coords(3, 3, 6, 6)
         intersection_box = box1.intersection(box2)
+        intersection_box2 = box2.intersection(box1)
 
         self.assertIsNotNone(intersection_box)
         self.assertEqual(intersection_box, BoundingBox.from_coords(3, 3, 6, 6))
+        self.assertEqual(intersection_box.area, intersection_box2.area)
         self.assertEqual(intersection_box.area, 9)
 
     def test_identical_boxes(self):
