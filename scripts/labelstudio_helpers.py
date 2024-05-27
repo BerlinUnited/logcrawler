@@ -53,7 +53,6 @@ def import_annotation():
 
 
 def update_label_config():
-    my_project = ls.get_project(351)
     new_label_config_bb = """
     <View>
     <Image name="image" value="$image"/>
@@ -63,11 +62,17 @@ def update_label_config():
         <Label value="penalty_mark" background="#e109da"/>
         <Label value="referee" background="#000000"/>
     </RectangleLabels>
-    <Number name="blurry" toName="image" />
+    <Relations>
+        <Relation value="in front of" />
+    </Relations>
     </View>
     """
-    my_json = {"title": "blub", "label_config": new_label_config_bb}
-    my_project.set_params(**my_json)
+    existing_projects = ls.list_projects()
+    for project in existing_projects:
+        print(project.id)
+        my_project = ls.get_project(project.id)
+        my_json = {"label_config": new_label_config_bb}
+        my_project.set_params(**my_json)
 
 
 def sync_storage(project_id):
@@ -113,5 +118,11 @@ def update_all_storage_endpoint():
                 )
         print(f"\t{x.json()}")
 
+
+def get_single_annotation():
+    my_project = ls.get_project(140)
+    print(my_project.get_annotation(12512))
+
 if __name__ == "__main__":
     pass
+    update_label_config()

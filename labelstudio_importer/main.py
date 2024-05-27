@@ -40,9 +40,16 @@ ls.check_connection()
 
 label_config_bb = """
     <View>
-        <Image name="image" value="$image" rotateControl="true"/>
-        <RectangleLabels name="label" toName="image">
-        <Label value="ball" background="#9eaeff"/><Label value="nao" background="#D4380D"/><Label value="penalty_mark" background="#e109da"/></RectangleLabels>
+    <Image name="image" value="$image"/>
+    <RectangleLabels name="label" toName="image">
+        <Label value="ball" background="#9eaeff"/>
+        <Label value="nao" background="#D4380D"/>
+        <Label value="penalty_mark" background="#e109da"/>
+        <Label value="referee" background="#000000"/>
+    </RectangleLabels>
+    <Relations>
+        <Relation value="in front of" />
+    </Relations>
     </View>
     """
 
