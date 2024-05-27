@@ -2,7 +2,7 @@
 Mark a project as labeled by applying a color gradient in label studio 
 and updating the database to reflect the validation status.
 """
-
+import argparse
 from os import environ
 
 import psycopg2
@@ -127,4 +127,16 @@ def mark_project_not_done(project_id, mark_validated_db=True):
 
 
 if __name__ == "__main__":
-    mark_project_done(623)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-p",
+        "--project",
+        nargs="+",
+        required=True,
+        type=int,
+        help="Labelstudio project ids separated by a space",
+    )
+    args = parser.parse_args()
+    projects = args.project
+    for prj in projects:
+        mark_project_done(prj)
