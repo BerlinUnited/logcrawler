@@ -68,7 +68,7 @@ def get_all_labeled_tasks(ls: Client):
 def get_project_url_from_task(task: dict):
     project_id = task["project"]
     task_id = task["id"]
-    return f"{LABEL_STUDIO_URL}/projects/{project_id}/data?task={task_id}"
+    return f"{LABEL_STUDIO_URL}projects/{project_id}/data?task={task_id}"
 
 if __name__ == "__main__":
     ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
