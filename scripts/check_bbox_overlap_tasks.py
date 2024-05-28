@@ -92,6 +92,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error while checking task {task['id']}: {e}")
     
+    tasks_with_overlap = sorted(list(set(tasks_with_overlap)))
     with open("task_urls_to_check.txt", "w") as f:
         for task_url in tasks_with_overlap:
             f.write(f"{task_url}\n")
