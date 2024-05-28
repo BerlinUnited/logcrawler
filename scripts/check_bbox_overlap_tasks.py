@@ -65,6 +65,11 @@ def get_all_labeled_tasks(ls: Client):
     labeled_tasks = [task for project in projects for task in project.get_labeled_tasks()]
     return labeled_tasks
 
+def get_project_url_from_task(task: dict):
+    project_id = task["project"]
+    task_id = task["id"]
+    return f"{LABEL_STUDIO_URL}/projects/{project_id}/data?task={task_id}"
+
 if __name__ == "__main__":
     ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
     ls.check_connection()
@@ -74,15 +79,19 @@ if __name__ == "__main__":
 
     for task in labled_tasks:
         print(f"Checking task {task['id']}...")
-        annotations = get_annotations_from_task(task)
-        overlapping_boxes = get_overlapping_boxes(annotations) 
+        try:
+            annotations = get_annotations_from_task(task)
+            overlapping_boxes = get_overlapping_boxes(annotations) 
 
-        # we are only interested in overlapping boxes with different labels
-        # e.g. ball and nao, or penalty_mark and ball
-        for overlap in overlapping_boxes:
-            if overlap.a1.label != overlap.a2.label:
-                tasks_with_overlap.append(task)
+            # we are only interested in overlapping boxes with different labels
+            # e.g. ball and nao, or penalty_mark and ball
+            for overlap in overlapping_boxes:
+                if overlap.a1.label != overlap.a2.label:
+                    task_url = get_project_url_from_task(task)
+                    tasks_with_overlap.append(task_url)
+        except Exception as e:
+            print(f"Error while checking task {task['id']}: {e}")
     
-    with open("tasks_to_check.txt", "w") as f:
-        for task in tasks_with_overlap:
-            f.write(f"{task['id']}\n")
+    with open("task_urls_to_check.txt", "w") as f:
+        for task_url in tasks_with_overlap:
+            f.write(f"{task_url}\n")
