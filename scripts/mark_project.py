@@ -136,7 +136,19 @@ if __name__ == "__main__":
         type=int,
         help="Labelstudio project ids separated by a space",
     )
+
+    parser.add_argument(
+        "-u",
+        "--undo",
+        action="store_true",
+        required=False,
+        help="If set it will mark the given projects as not done",
+    )
+
     args = parser.parse_args()
     projects = args.project
     for prj in projects:
-        mark_project_done(prj)
+        if args.undo:
+            mark_project_not_done(prj)
+        else:
+            mark_project_done(prj)
