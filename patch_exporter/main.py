@@ -151,6 +151,8 @@ def gt_ball_bounding_boxes_from_labelstudio_task(
 
     for annotation in task["annotations"]:
         for result in annotation["result"]:
+            if result["type"] != "rectanglelabels":
+                continue
             # x,y,width,height are all percentages within [0,100]
             x, y, width, height = (
                 result["value"]["x"],
