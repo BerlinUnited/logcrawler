@@ -12,8 +12,9 @@ import cppyy.ll
 import numpy as np
 import PIL.Image
 from cppyy_tools import get_naoth_dir, get_toolchain_dir, setup_shared_lib
-from helper import BoundingBox, Frame, load_image_as_yuv422
+from helper import BoundingBox, Frame, load_image_as_yuv422, load_image_as_yuv422_y_only_better
 from PIL import PngImagePlugin
+import tensorflow as tf
 
 
 class PatchExecutor:
@@ -180,10 +181,12 @@ class PatchExecutor:
         # This also returns the center and radius of the ball in the patch coordinate system
 
         x, y, radius, gt_ball_intersect_ratio = 0.0, 0.0, 0.0, 0.0
-
-        patch_box = BoundingBox.from_coords(
-            patch.min.x, patch.min.y, patch.max.x, patch.max.y
-        )
+        if isinstance(patch, BoundingBox):
+            patch_box = patch
+        else:
+            patch_box = BoundingBox.from_coords(
+                patch.min.x, patch.min.y, patch.max.x, patch.max.y
+            )
 
         for gt_ball in gt_balls:
 
@@ -221,9 +224,12 @@ class PatchExecutor:
 
         x, y, intersect_ratio = 0.0, 0.0, 0.0
 
-        patch_box = BoundingBox.from_coords(
-            patch.min.x, patch.min.y, patch.max.x, patch.max.y
-        )
+        if isinstance(patch, BoundingBox):
+            patch_box = patch
+        else:
+            patch_box = BoundingBox.from_coords(
+                patch.min.x, patch.min.y, patch.max.x, patch.max.y
+            )
 
         for gt_box in gt_objects:
             intersection = gt_box.intersection(patch_box)
@@ -334,6 +340,7 @@ class PatchExecutor:
             with PIL.Image.open(str(patch_file_name)) as im_pil:
                 im_pil.save(str(patch_file_name), pnginfo=meta)
 
+
     def export_patches(
         self,
         frame: Frame,
@@ -372,6 +379,161 @@ class PatchExecutor:
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             # crop full image to calculated patch
             crop_img = img[patch.min.y : patch.max.y, patch.min.x : patch.max.x]
+
+            # compute overlaps with ground truth bounding boxes for
+            # ball, robot and penalty mark
+
+            # get percentage of ball area that is contained in intersection
+            ball_x, ball_y, ball_radius, gt_ball_intersect_ratio = (
+                self.get_best_ball_overlap(patch, frame.gt_balls)
+            )
+
+            # get percentage of penalty mark area that is contained in intersection
+            penalty_x, penalty_y, gt_penalty_intersect_ratio = self.get_best_overlap(
+                patch, frame.gt_penalties, intersect_denominator="gt"
+            )
+
+            # get percentage of PATCH are that is contained in intersection
+            robot_x, robot_y, gt_robot_intersect_ratio = self.get_best_overlap(
+                patch, frame.gt_robots, intersect_denominator="patch"
+            )
+
+            meta_info = {
+                "CameraID": cam_id,
+                "ball_intersect": gt_ball_intersect_ratio,
+                "penalty_intersect": gt_penalty_intersect_ratio,
+                "robot_intersect": gt_robot_intersect_ratio,
+                "ball_center_x": ball_x,
+                "ball_center_y": ball_y,
+                "ball_radius": ball_radius,
+                "penalty_center_x": penalty_x,
+                "penalty_center_y": penalty_y,
+                "robot_center_x": robot_x,
+                "robot_center_y": robot_y,
+            }
+
+            # Here we perform a hierarchical decision on the patch class.
+            # precedence: ball > penalty > robot > non-ball
+            # That means a patch can only belong to one class, for multiclass
+            # applications one needs to parse the meta information of all png files
+
+            # if the patch contains a ball, write it to the ball folder
+            if gt_ball_intersect_ratio > min_gt_intersect_ratio:
+                if debug:
+                    cv2.circle(
+                        crop_img,
+                        center=(int(ball_x), int(ball_y)),
+                        radius=int(ball_radius),
+                        color=(255, 0, 0),
+                        thickness=2,
+                    )
+
+                self.write_patch_to_file(
+                    crop_img,
+                    frame,
+                    bucketname,
+                    ball_folder,
+                    idx,
+                    gt_ball_intersect_ratio,
+                    meta_info,
+                )
+
+            # if the patch contains a penalty mark and no ball,
+            # write it to the penalty folder
+            elif gt_penalty_intersect_ratio > min_gt_intersect_ratio:
+                self.write_patch_to_file(
+                    crop_img,
+                    frame,
+                    bucketname,
+                    penalty_folder,
+                    idx,
+                    gt_penalty_intersect_ratio,
+                    meta_info,
+                )
+
+            # if the patch contains a robot and no ball or penalty mark,
+            # write it to the robot folder
+            elif gt_robot_intersect_ratio > min_gt_intersect_ratio:
+                self.write_patch_to_file(
+                    crop_img,
+                    frame,
+                    bucketname,
+                    robot_folder,
+                    idx,
+                    gt_robot_intersect_ratio,
+                    meta_info,
+                )
+
+            # if the patch contains none of the above, write it to the other folder
+            else:
+                # we write out all intersection values for debugging purposes
+                intersect = (
+                    f"ball_inter_{gt_ball_intersect_ratio:.4f}_"
+                    f"penalty_inter_{gt_penalty_intersect_ratio:.4f}_"
+                    f"robot_inter_{gt_robot_intersect_ratio:.4f}"
+                )
+                self.write_patch_to_file(
+                    crop_img, frame, bucketname, other_folder, idx, intersect, meta_info
+                )
+
+
+    def export_patches_segmentation(
+        self,
+        frame: Frame,
+        output_patch_folder: Path,
+        bucketname: str,
+        min_gt_intersect_ratio: float = 0.2,
+        debug: bool = False,
+        model=None
+    ):
+        """
+        This function exports patches as images for future training.
+        All relvant meta information is saved inside the png header
+        """
+        import cv2
+
+        # get the ball candidates from the module
+        patch_list_segmentation = list()
+        if frame.bottom:
+            cam_id = 1
+            input_image = load_image_as_yuv422_y_only_better(frame.file)
+            image_input = np.expand_dims(input_image, axis=0)
+            result = model.predict(image_input, verbose = 0)
+            result = result[0]
+            ball_result = result[:,:,0]
+            factor = 32
+            upscaled_array = np.repeat(np.repeat(ball_result, factor, axis=0), factor, axis=1)
+            threshold_value = 0.5
+            binary_mask = np.uint8(upscaled_array > threshold_value) * 255
+            if sum == 0:
+                return
+            # Find contours
+            contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for idx, contour in enumerate(contours):
+                x, y, w, h = cv2.boundingRect(contour)
+                patch_box = BoundingBox.from_coords(
+                    x, y, x+w, y+h
+                )
+                patch_list_segmentation.append(patch_box)
+        else:
+            return
+
+        img = cv2.imread(frame.file)
+
+        ball_folder = output_patch_folder / "ball"
+        robot_folder = output_patch_folder / "robot"
+        penalty_folder = output_patch_folder / "penalty"
+        other_folder = output_patch_folder / "other"
+
+        Path(ball_folder).mkdir(exist_ok=True, parents=True)
+        Path(robot_folder).mkdir(exist_ok=True, parents=True)
+        Path(penalty_folder).mkdir(exist_ok=True, parents=True)
+        Path(other_folder).mkdir(exist_ok=True, parents=True)
+
+        for idx, patch in enumerate(patch_list_segmentation):
+            # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
+            # crop full image to calculated patch
+            crop_img = img[patch.top_left.y : patch.bottom_right.y, patch.top_left.x : patch.bottom_right.x]
 
             # compute overlaps with ground truth bounding boxes for
             # ball, robot and penalty mark

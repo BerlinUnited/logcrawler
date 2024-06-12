@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import cppyy
 import psycopg2
-from helper import BoundingBox, Point2D
+from helper import BoundingBox, Point2D, load_model_from_server
 from label_studio_sdk import Client
 from minio import Minio
 from minio.commonconfig import Tags
@@ -49,6 +49,7 @@ ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
 
 evaluator = PatchExecutor()
+keras_model = load_model_from_server("2024-06-11-semantic_segmentation-bottom-lyrical-sloth-580.keras")
 
 
 def get_buckets_with_top_images(
@@ -185,17 +186,19 @@ def gt_ball_bounding_boxes_from_labelstudio_task(
 
 
 def upload_patches_zip_to_bucket(
-    patch_bucket_name: str, output_patch_folder: Union[str, Path]
+    patch_bucket_name: str, 
+    output_patch_folder: Union[str, Path],
+    zipfile_name: str
 ):
-    shutil.make_archive("patches", "zip", str(output_patch_folder))
+    shutil.make_archive(zipfile_name, "zip", str(output_patch_folder))
 
     # upload patches.zip to the patch bucket
-    print(f"uploading object to {patch_bucket_name}")
+    print(f"uploading object {zipfile_name} to {patch_bucket_name}")
 
     mclient.fput_object(
         patch_bucket_name,
-        "patches.zip",
-        "patches.zip",
+        f"{zipfile_name}.zip",
+        f"{zipfile_name}.zip",
     )
 
 
@@ -230,12 +233,16 @@ def create_patches_from_annotations(
 
     if output_folder:
         output_patch_folder = Path(output_folder) / "patches"
+        output_patch_folder_seg = Path(output_folder) / "patches_segmentation"
         output_patch_folder.mkdir(exist_ok=True, parents=True)
+        output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
     else:
         tmp_download_folder = tempfile.TemporaryDirectory()
         output_folder = tmp_download_folder.name
         output_patch_folder = Path(tmp_download_folder.name) / "patches"
+        output_patch_folder_seg = Path(tmp_download_folder.name) / "patches_segmentation"
         output_patch_folder.mkdir(exist_ok=True, parents=True)
+        output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
 
     print(f"\t Created temporary directory {output_folder}")
 
@@ -268,12 +275,20 @@ def create_patches_from_annotations(
                 bucketname,
                 debug=debug,
             )
+            evaluator.export_patches_segmentation(
+                frame,
+                output_patch_folder_seg,
+                bucketname,
+                debug=debug,
+                model=keras_model,
+            )
 
             if debug:
                 evaluator.export_debug_images(frame)
 
     # upload the patches to the bucket
-    upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder)
+    upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder, "patches")
+    upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder_seg, "patches_seg")
 
     # cleanup
     if not output_folder:
@@ -323,7 +338,7 @@ if __name__ == "__main__":
         required=False,
         help="Output folder for the downloaded images and generated patches. If not set a folder in /tmp will be used",
     )
-
+    
     args = parser.parse_args()
     events = args.event
     projects = args.project
