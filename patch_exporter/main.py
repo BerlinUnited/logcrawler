@@ -206,6 +206,7 @@ def create_patches_from_annotations(
     db_field: str,
     overwrite: bool = False,
     debug: bool = False,
+    output_folder: str = None,
 ):
     # TODO put data in same bucket (maybe)
     # TODO get meta information from png header
@@ -227,15 +228,20 @@ def create_patches_from_annotations(
         print("\tBucket already exists and overwrite is not set, skipping...")
         return
 
-    tmp_download_folder = tempfile.TemporaryDirectory()
-    output_patch_folder = Path(tmp_download_folder.name) / "patches"
-    output_patch_folder.mkdir(exist_ok=True, parents=True)
+    if output_folder:
+        output_patch_folder = Path(output_folder) / "patches"
+        output_patch_folder.mkdir(exist_ok=True, parents=True)
+    else:
+        tmp_download_folder = tempfile.TemporaryDirectory()
+        output_folder = tmp_download_folder.name
+        output_patch_folder = Path(tmp_download_folder.name) / "patches"
+        output_patch_folder.mkdir(exist_ok=True, parents=True)
 
-    print(f"\t Created temporary directory {tmp_download_folder}")
+    print(f"\t Created temporary directory {output_folder}")
 
     for task in tqdm(labeled_tasks):
         image_file_name = task["storage_filename"]
-        output_file = Path(tmp_download_folder.name) / image_file_name
+        output_file = Path(output_folder) / image_file_name
 
         # download the image from minio
         mclient.fget_object(bucketname, image_file_name, str(output_file))
@@ -270,7 +276,8 @@ def create_patches_from_annotations(
     upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder)
 
     # cleanup
-    tmp_download_folder.cleanup()
+    if not output_folder:
+        tmp_download_folder.cleanup()
 
 
 if __name__ == "__main__":
@@ -311,6 +318,11 @@ if __name__ == "__main__":
         default=False,
         help="Set flag to enable debug mode",
     )
+    parser.add_argument(
+        "--output",
+        required=False,
+        help="Output folder for the downloaded images and generated patches. If not set a folder in /tmp will be used",
+    )
 
     args = parser.parse_args()
     events = args.event
@@ -318,6 +330,7 @@ if __name__ == "__main__":
     overwrite = args.overwrite
     validated_only = not args.unvalidated
     debug = args.debug
+    output_folder = args.output 
 
     # get the buckets with top and bottom images,
     # use LabelStudio project IDs as a filter if they were provided
@@ -355,4 +368,5 @@ if __name__ == "__main__":
             db_field=db_field,
             overwrite=overwrite,
             debug=debug,
+            output_folder=output_folder
         )
