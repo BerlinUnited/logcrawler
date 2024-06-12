@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
-
+from PIL import Image as PIL_Image
 import numpy as np
+import tensorflow as tf
+from urllib.request import urlretrieve
+from urllib.error import HTTPError, URLError
+from pathlib import Path
 
 
 @dataclass
@@ -121,3 +125,42 @@ def load_image_as_yuv422(image_filename):
         yuv422[i * 2 + 2] = cv_img[i * 3 + 3]
         yuv422[i * 2 + 3] = (cv_img[i * 3 + 2] + cv_img[i * 3 + 5]) / 2.0
     return yuv422
+
+def load_image_as_yuv422_y_only_better(image_filename):
+    im = PIL_Image.open(image_filename)
+    ycbcr = im.convert('YCbCr')
+    reversed_yuv888 = np.ndarray(480 * 640 * 3, 'u1', ycbcr.tobytes())
+    full_image_y = reversed_yuv888[0::3]
+    full_image_y = full_image_y.reshape(480,640,1)
+    half_image_y = full_image_y[::2, ::2]
+    half_image_y = half_image_y / 255.0
+    return half_image_y
+
+def get_file_from_server(origin, target):
+    # FIXME move to naoth python package
+    def dl_progress(count, block_size, total_size):
+        print('\r', 'Progress: {0:.2%}'.format(min((count * block_size) / total_size, 1.0)), sep='', end='', flush=True)
+
+    if not Path(target).exists():
+        target_folder = Path(target).parent
+        target_folder.mkdir(parents=True, exist_ok=True)
+    else:
+        return
+
+    error_msg = 'URL fetch failure on {} : {} -- {}'
+    try:
+        try:
+            urlretrieve(origin, target, dl_progress)
+            print('\nFinished')
+        except HTTPError as e:
+            raise Exception(error_msg.format(origin, e.code, e.reason))
+        except URLError as e:
+            raise Exception(error_msg.format(origin, e.errno, e.reason))
+    except (Exception, KeyboardInterrupt):
+        if Path(target).exists():
+            Path(target).unlink()
+        raise
+
+def load_model_from_server(model_name):
+    get_file_from_server(f"https://models.naoth.de/{model_name}", model_name)
+    return tf.keras.models.load_model(model_name)
