@@ -19,6 +19,7 @@ class Point2D:
 
 @dataclass
 class BoundingBox:
+    # FIXME this should go into our naoth python package
     top_left: Point2D
     bottom_right: Point2D
 
