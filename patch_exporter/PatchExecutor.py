@@ -410,6 +410,10 @@ class PatchExecutor:
                 "penalty_center_y": penalty_y,
                 "robot_center_x": robot_x,
                 "robot_center_y": robot_y,
+                "p_min_x": patch.min.x,
+                "p_min_y": patch.min.y,
+                "p_max_x": patch.max.y,
+                "p_max_y": patch.max.x
             }
 
             # Here we perform a hierarchical decision on the patch class.
