@@ -210,6 +210,7 @@ def create_patches_from_annotations(
     overwrite: bool = False,
     debug: bool = False,
     output_folder: str = None,
+    segmentation: bool = False
 ):
     # TODO put data in same bucket (maybe)
     # TODO get meta information from png header
@@ -233,16 +234,20 @@ def create_patches_from_annotations(
 
     if output_folder:
         output_patch_folder = Path(output_folder) / "patches"
-        output_patch_folder_seg = Path(output_folder) / "patches_segmentation"
         output_patch_folder.mkdir(exist_ok=True, parents=True)
-        output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
+        
+        if segmentation:
+            output_patch_folder_seg = Path(output_folder) / "patches_segmentation"
+            output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
     else:
         tmp_download_folder = tempfile.TemporaryDirectory()
         output_folder = tmp_download_folder.name
         output_patch_folder = Path(tmp_download_folder.name) / "patches"
-        output_patch_folder_seg = Path(tmp_download_folder.name) / "patches_segmentation"
         output_patch_folder.mkdir(exist_ok=True, parents=True)
-        output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
+        
+        if segmentation:
+            output_patch_folder_seg = Path(tmp_download_folder.name) / "patches_segmentation"
+            output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
 
     print(f"\t Created temporary directory {output_folder}")
 
@@ -275,20 +280,22 @@ def create_patches_from_annotations(
                 bucketname,
                 debug=debug,
             )
-            evaluator.export_patches_segmentation(
-                frame,
-                output_patch_folder_seg,
-                bucketname,
-                debug=debug,
-                model=keras_model,
-            )
+            if segmentation:
+                evaluator.export_patches_segmentation(
+                    frame,
+                    output_patch_folder_seg,
+                    bucketname,
+                    debug=debug,
+                    model=keras_model,
+                )
 
             if debug:
                 evaluator.export_debug_images(frame)
 
     # upload the patches to the bucket
     upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder, "patches")
-    upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder_seg, "patches_seg")
+    if segmentation:
+        upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder_seg, "patches_seg")
 
     # cleanup
     if not output_folder:
@@ -338,6 +345,12 @@ if __name__ == "__main__":
         required=False,
         help="Output folder for the downloaded images and generated patches. If not set a folder in /tmp will be used",
     )
+    parser.add_argument(
+        "--segmentation",
+        action="store_true",
+        default=False,
+        help="Set flag to enable segmentation patches",
+    )
     
     args = parser.parse_args()
     events = args.event
@@ -383,5 +396,6 @@ if __name__ == "__main__":
             db_field=db_field,
             overwrite=overwrite,
             debug=debug,
-            output_folder=output_folder
+            output_folder=output_folder,
+            segmentation=args.segmentation
         )
