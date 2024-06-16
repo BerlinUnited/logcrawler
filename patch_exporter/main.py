@@ -247,7 +247,7 @@ def create_patches_from_annotations(
         output_patch_folder.mkdir(exist_ok=True, parents=True)
         
         if segmentation:
-            output_patch_folder_seg = Path(tmp_download_folder.name) / "patches_segmentation"
+            output_patch_folder_seg = Path(tmp_download_folder.name) / f"patches_segmentation_border{extra_border}"
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
 
     print(f"\t Created temporary directory {output_folder}")
@@ -275,12 +275,6 @@ def create_patches_from_annotations(
             evaluator.set_current_frame(frame)
             evaluator.sim.executeFrame()
 
-            evaluator.export_patches(
-                frame,
-                output_patch_folder,
-                bucketname,
-                debug=debug,
-            )
             if segmentation:
                 evaluator.export_patches_segmentation(
                     frame,
@@ -290,14 +284,23 @@ def create_patches_from_annotations(
                     model=keras_model,
                     extra_border= extra_border
                 )
+            else:
+                evaluator.export_patches(
+                    frame,
+                    output_patch_folder,
+                    bucketname,
+                    debug=debug,
+                )
 
             if debug:
+                # TODO: what about upload?
                 evaluator.export_debug_images(frame)
 
     # upload the patches to the bucket
-    upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder, "patches")
     if segmentation:
-        upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder_seg, "patches_seg")
+        upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder_seg, output_patch_folder_seg.name)
+    else:
+        upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder, "patches")
 
     # cleanup
     if not output_folder:
@@ -398,6 +401,9 @@ if __name__ == "__main__":
     for logpath, bucketname, ls_project_id, db_field in data_combined:
         print(f"Creating {db_field} patches for ", end="")
         print(f"Log: {logpath}, Bucket: {bucketname}, LS Project: {ls_project_id}")
+
+        if args.segmentation and db_field=="bucket_top_patches":
+            continue
 
         create_patches_from_annotations(
             logpath=logpath,
