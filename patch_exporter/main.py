@@ -210,7 +210,8 @@ def create_patches_from_annotations(
     overwrite: bool = False,
     debug: bool = False,
     output_folder: str = None,
-    segmentation: bool = False
+    segmentation: bool = False,
+    extra_border: int = 0
 ):
     # TODO put data in same bucket (maybe)
     # TODO get meta information from png header
@@ -237,7 +238,7 @@ def create_patches_from_annotations(
         output_patch_folder.mkdir(exist_ok=True, parents=True)
         
         if segmentation:
-            output_patch_folder_seg = Path(output_folder) / "patches_segmentation"
+            output_patch_folder_seg = Path(output_folder) / f"patches_segmentation_border{extra_border}"
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
     else:
         tmp_download_folder = tempfile.TemporaryDirectory()
@@ -287,6 +288,7 @@ def create_patches_from_annotations(
                     bucketname,
                     debug=debug,
                     model=keras_model,
+                    extra_border= extra_border
                 )
 
             if debug:
@@ -351,6 +353,13 @@ if __name__ == "__main__":
         default=False,
         help="Set flag to enable segmentation patches",
     )
+    parser.add_argument(
+        "-b",
+        "--border",
+        type=int,
+        required=False,
+        help="Border around patches in pixels. The border will be applied around all sides",
+    )
     
     args = parser.parse_args()
     events = args.event
@@ -358,7 +367,7 @@ if __name__ == "__main__":
     overwrite = args.overwrite
     validated_only = not args.unvalidated
     debug = args.debug
-    output_folder = args.output 
+    output_folder = args.output
 
     # get the buckets with top and bottom images,
     # use LabelStudio project IDs as a filter if they were provided
@@ -375,11 +384,12 @@ if __name__ == "__main__":
         (logpath, bucketname, ls_project_id, "bucket_top_patches")
         for logpath, bucketname, ls_project_id in data_top
     ]
+
     data_bottom = [
         (logpath, bucketname, ls_project_id, "bucket_bottom_patches")
         for logpath, bucketname, ls_project_id in data_bottom
     ]
-
+    
     data_combined = sorted(data_top + data_bottom, reverse=True)
     print(f"Found {len(data_combined)} buckets to process")
 
@@ -397,5 +407,6 @@ if __name__ == "__main__":
             overwrite=overwrite,
             debug=debug,
             output_folder=output_folder,
-            segmentation=args.segmentation
+            segmentation=args.segmentation,
+            extra_border=args.border
         )

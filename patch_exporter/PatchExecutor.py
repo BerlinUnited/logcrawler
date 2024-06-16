@@ -488,7 +488,8 @@ class PatchExecutor:
         bucketname: str,
         min_gt_intersect_ratio: float = 0.2,
         debug: bool = False,
-        model=None
+        model=None,
+        extra_border = 0
     ):
         """
         This function exports patches as images for future training.
@@ -535,9 +536,15 @@ class PatchExecutor:
         Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(patch_list_segmentation):
+            # calculate extra space around the found patch if possible
+            top_left_y = patch.top_left.y - extra_border if patch.top_left.y - extra_border > 0 else patch.top_left.y
+            bottom_right_y = patch.bottom_right.y - extra_border if patch.bottom_right.y + extra_border > img.shape[0] else patch.bottom_right.y
+            top_left_x = patch.top_left.x - extra_border if patch.top_left.x - extra_border > 0 else patch.top_left.x
+            bottom_right_x = patch.bottom_right.x - extra_border if patch.bottom_right.x + extra_border > img.shape[1] else patch.bottom_right.x
+
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             # crop full image to calculated patch
-            crop_img = img[patch.top_left.y : patch.bottom_right.y, patch.top_left.x : patch.bottom_right.x]
+            crop_img = img[top_left_y : bottom_right_y, top_left_x : bottom_right_x]
 
             # compute overlaps with ground truth bounding boxes for
             # ball, robot and penalty mark
