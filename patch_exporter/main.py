@@ -58,7 +58,7 @@ def get_buckets_with_top_images(
     validated_only: bool = True,
 ) -> Tuple[str, str, str]:
 
-    select_statement = f"""        
+    select_statement = f"""
     SELECT log_path, bucket_top, ls_project_top
     FROM robot_logs
     WHERE bucket_top IS NOT NULL
@@ -88,7 +88,7 @@ def get_buckets_with_bottom_images(
     validated_only: bool = True,
 ) -> Tuple[str, str, str]:
 
-    select_statement = f"""        
+    select_statement = f"""
     SELECT log_path, bucket_bottom, ls_project_bottom
     FROM robot_logs
     WHERE bucket_bottom IS NOT NULL
@@ -213,10 +213,6 @@ def create_patches_from_annotations(
     segmentation: bool = False,
     extra_border: int = 0
 ):
-    # TODO put data in same bucket (maybe)
-    # TODO get meta information from png header
-    # TODO get all the bboxes in the correct format in a list
-
     ls_project = ls.get_project(id=ls_project_id)
     labeled_tasks = ls_project.get_labeled_tasks()
 
@@ -229,11 +225,6 @@ def create_patches_from_annotations(
         logpath, bucketname, db_field
     )
 
-    if patch_bucket_exists and not overwrite:
-        #FIXME check if file exists and not bucket since we want to write many different versions of patches to the bucket
-        print("\tBucket already exists and overwrite is not set, skipping...")
-        return
-
     if output_folder:
         if segmentation:
             output_patch_folder_seg = Path(output_folder) / f"patches_segmentation_border{extra_border}"
@@ -245,7 +236,7 @@ def create_patches_from_annotations(
             zipfile_name = output_patch_folder.name
     else:
         tmp_download_folder = tempfile.TemporaryDirectory()
-        
+
         if segmentation:
             output_patch_folder_seg = Path(tmp_download_folder.name) / f"patches_segmentation_border{extra_border}"
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
@@ -256,9 +247,10 @@ def create_patches_from_annotations(
             output_patch_folder.mkdir(exist_ok=True, parents=True)
             zipfile_name = output_patch_folder.name
 
-    
-
-    print(f"\t Created temporary directory {output_folder}")
+    minio_files = [mobject.object_name for mobject in mclient.list_objects(patch_bucket_name)]
+    if zipfile_name + ".zip" in minio_files and not overwrite:
+        print(f"\t{zipfile_name} already exists in {patch_bucket_name} and overwrite is not set, skipping...")
+        return
 
     for task in tqdm(labeled_tasks):
         image_file_name = task["storage_filename"]
@@ -308,13 +300,13 @@ def create_patches_from_annotations(
     # upload the patches to the bucket
     if segmentation:
         upload_patches_zip_to_bucket(
-            patch_bucket_name=patch_bucket_name, 
+            patch_bucket_name=patch_bucket_name,
             output_patch_folder=output_patch_folder_seg, 
             zipfile_name=zipfile_name)
     else:
         upload_patches_zip_to_bucket(
-            patch_bucket_name=patch_bucket_name, 
-            output_patch_folder=output_patch_folder, 
+            patch_bucket_name=patch_bucket_name,
+            output_patch_folder=output_patch_folder,
             zipfile_name=zipfile_name)
 
     # cleanup
@@ -378,7 +370,7 @@ if __name__ == "__main__":
         required=False,
         help="Border around patches in pixels. The border will be applied around all sides",
     )
-    
+
     args = parser.parse_args()
     events = args.event
     projects = args.project
@@ -408,7 +400,7 @@ if __name__ == "__main__":
         (logpath, bucketname, ls_project_id, "bucket_bottom_patches")
         for logpath, bucketname, ls_project_id in data_bottom
     ]
-    
+
     data_combined = sorted(data_top + data_bottom, reverse=True)
     print(f"Found {len(data_combined)} buckets to process")
 
