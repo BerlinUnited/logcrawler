@@ -230,25 +230,33 @@ def create_patches_from_annotations(
     )
 
     if patch_bucket_exists and not overwrite:
+        #FIXME check if file exists and not bucket since we want to write many different versions of patches to the bucket
         print("\tBucket already exists and overwrite is not set, skipping...")
         return
 
     if output_folder:
-        output_patch_folder = Path(output_folder) / "patches"
-        output_patch_folder.mkdir(exist_ok=True, parents=True)
-        
         if segmentation:
             output_patch_folder_seg = Path(output_folder) / f"patches_segmentation_border{extra_border}"
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
+            zipfile_name = output_patch_folder_seg.name
+        else:
+            output_patch_folder = Path(output_folder) / f"patches_border{extra_border}"
+            output_patch_folder.mkdir(exist_ok=True, parents=True)
+            zipfile_name = output_patch_folder.name
     else:
         tmp_download_folder = tempfile.TemporaryDirectory()
-        output_folder = tmp_download_folder.name
-        output_patch_folder = Path(tmp_download_folder.name) / "patches"
-        output_patch_folder.mkdir(exist_ok=True, parents=True)
         
         if segmentation:
             output_patch_folder_seg = Path(tmp_download_folder.name) / f"patches_segmentation_border{extra_border}"
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
+            zipfile_name = output_patch_folder_seg.name
+        else:
+            output_folder = tmp_download_folder.name
+            output_patch_folder = Path(tmp_download_folder.name) / f"patches_border{extra_border}"
+            output_patch_folder.mkdir(exist_ok=True, parents=True)
+            zipfile_name = output_patch_folder.name
+
+    
 
     print(f"\t Created temporary directory {output_folder}")
 
@@ -282,7 +290,7 @@ def create_patches_from_annotations(
                     bucketname,
                     debug=debug,
                     model=keras_model,
-                    extra_border= extra_border
+                    extra_border=extra_border
                 )
             else:
                 evaluator.export_patches(
@@ -290,6 +298,7 @@ def create_patches_from_annotations(
                     output_patch_folder,
                     bucketname,
                     debug=debug,
+                    extra_border=extra_border
                 )
 
             if debug:
@@ -298,9 +307,15 @@ def create_patches_from_annotations(
 
     # upload the patches to the bucket
     if segmentation:
-        upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder_seg, output_patch_folder_seg.name)
+        upload_patches_zip_to_bucket(
+            patch_bucket_name=patch_bucket_name, 
+            output_patch_folder=output_patch_folder_seg, 
+            zipfile_name=zipfile_name)
     else:
-        upload_patches_zip_to_bucket(patch_bucket_name, output_patch_folder, "patches")
+        upload_patches_zip_to_bucket(
+            patch_bucket_name=patch_bucket_name, 
+            output_patch_folder=output_patch_folder, 
+            zipfile_name=zipfile_name)
 
     # cleanup
     if not output_folder:
@@ -383,6 +398,7 @@ if __name__ == "__main__":
 
     # TODO: Move all top/bottom logic into one function
     # add the db_field info to the data
+    # TODO can we exclude top patches here for semantic segmentation?
     data_top = [
         (logpath, bucketname, ls_project_id, "bucket_top_patches")
         for logpath, bucketname, ls_project_id in data_top
@@ -399,11 +415,10 @@ if __name__ == "__main__":
     # for each bucket, loop over all annotated images in LabelStudio and create patches
     # with the naoth cpp code using the annotations as ball ground truth
     for logpath, bucketname, ls_project_id, db_field in data_combined:
-        print(f"Creating {db_field} patches for ", end="")
-        print(f"Log: {logpath}, Bucket: {bucketname}, LS Project: {ls_project_id}")
-
         if args.segmentation and db_field=="bucket_top_patches":
             continue
+        print(f"Creating {db_field} patches for ", end="")
+        print(f"Log: {logpath}, Bucket: {bucketname}, LS Project: {ls_project_id}")
 
         create_patches_from_annotations(
             logpath=logpath,

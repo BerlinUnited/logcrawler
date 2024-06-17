@@ -348,6 +348,7 @@ class PatchExecutor:
         bucketname: str,
         min_gt_intersect_ratio: float = 0.2,
         debug: bool = False,
+        extra_border = 0,
     ):
         """
         This function exports patches as images for future training.
@@ -376,9 +377,15 @@ class PatchExecutor:
         Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(detected_balls.patchesYUVClassified):
+            #FIXME the border has no effect on the overlap calculation
+            # calculate extra space around the found patch if possible
+            top_left_y = patch.min.y - extra_border if patch.min.y - extra_border > 0 else patch.min.y
+            bottom_right_y = patch.max.y - extra_border if patch.max.y + extra_border > img.shape[0] else patch.max.y
+            top_left_x = patch.min.x - extra_border if patch.min.x - extra_border > 0 else patch.min.x
+            bottom_right_x = patch.max.x - extra_border if patch.max.x + extra_border > img.shape[1] else patch.max.x
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             # crop full image to calculated patch
-            crop_img = img[patch.min.y : patch.max.y, patch.min.x : patch.max.x]
+            crop_img = img[top_left_y : bottom_right_y, top_left_x : bottom_right_x]
 
             # compute overlaps with ground truth bounding boxes for
             # ball, robot and penalty mark
@@ -410,10 +417,10 @@ class PatchExecutor:
                 "penalty_center_y": penalty_y,
                 "robot_center_x": robot_x,
                 "robot_center_y": robot_y,
-                "p_min_x": patch.min.x,
-                "p_min_y": patch.min.y,
-                "p_max_x": patch.max.y,
-                "p_max_y": patch.max.x
+                "p_min_x": top_left_x,
+                "p_min_y": top_left_y,
+                "p_max_x": bottom_right_x,
+                "p_max_y": bottom_right_y
             }
 
             # Here we perform a hierarchical decision on the patch class.
@@ -536,6 +543,7 @@ class PatchExecutor:
         Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(patch_list_segmentation):
+            #FIXME the border has no effect on the overlap calculation
             # calculate extra space around the found patch if possible
             top_left_y = patch.top_left.y - extra_border if patch.top_left.y - extra_border > 0 else patch.top_left.y
             bottom_right_y = patch.bottom_right.y - extra_border if patch.bottom_right.y + extra_border > img.shape[0] else patch.bottom_right.y
@@ -576,10 +584,10 @@ class PatchExecutor:
                 "penalty_center_y": penalty_y,
                 "robot_center_x": robot_x,
                 "robot_center_y": robot_y,
-                "p_min_x": patch.top_left.x,
-                "p_min_y": patch.top_left.y,
-                "p_max_x": patch.bottom_right.x,
-                "p_max_y": patch.bottom_right.y
+                "p_min_x": top_left_x,
+                "p_min_y": top_left_y,
+                "p_max_x": bottom_right_x,
+                "p_max_y": bottom_right_y
             }
 
             # Here we perform a hierarchical decision on the patch class.
