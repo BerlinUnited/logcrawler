@@ -12,7 +12,8 @@ import cppyy.ll
 import numpy as np
 import PIL.Image
 from cppyy_tools import get_naoth_dir, get_toolchain_dir, setup_shared_lib
-from helper import BoundingBox, Frame, load_image_as_yuv422, load_image_as_yuv422_y_only_better
+from naoth.log import BoundingBox
+from helper import Frame, load_image_as_yuv422, load_image_as_yuv422_y_only_better
 from PIL import PngImagePlugin
 import tensorflow as tf
 
@@ -348,7 +349,7 @@ class PatchExecutor:
         bucketname: str,
         min_gt_intersect_ratio: float = 0.2,
         debug: bool = False,
-        extra_border = 0,
+        extra_border: int = 0,
     ):
         """
         This function exports patches as images for future training.

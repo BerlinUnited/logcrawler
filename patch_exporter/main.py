@@ -11,7 +11,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import cppyy
 import psycopg2
-from helper import BoundingBox, Point2D, load_model_from_server
+from naoth.log import BoundingBox, Point2D
+from helper import load_model_from_server
 from label_studio_sdk import Client
 from minio import Minio
 from minio.commonconfig import Tags
@@ -32,6 +33,7 @@ params = {
     "dbname": "logs",
     "user": "naoth",
     "password": environ.get("DB_PASS"),
+    "connect_timeout":10
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
@@ -367,6 +369,7 @@ if __name__ == "__main__":
         "-b",
         "--border",
         type=int,
+        default=0,
         required=False,
         help="Border around patches in pixels. The border will be applied around all sides",
     )
