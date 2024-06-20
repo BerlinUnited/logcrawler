@@ -123,6 +123,9 @@ def get_single_annotation():
     my_project = ls.get_project(140)
     print(my_project.get_annotation(12512))
 
+def validate_project_verification():
+    pass
+
 if __name__ == "__main__":
     pass
     update_label_config()
