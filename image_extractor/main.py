@@ -129,7 +129,7 @@ def image_from_proto(message):
 
     # convert the image to rgb and save it
     img = PIL_Image.frombytes(
-        "YCbCr", (message.width, message.height), yuv888.tostring()
+        "YCbCr", (message.width, message.height), yuv888.tobytes()
     )
     return img
 
