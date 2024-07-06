@@ -4,6 +4,7 @@
 
 from pathlib import Path
 import numpy as np
+import io
 from PIL import PngImagePlugin
 from PIL import Image as PIL_Image
 from naoth.log import Reader as LogReader
@@ -33,7 +34,7 @@ conn = psycopg2.connect(**params)
 cur = conn.cursor()
 
 
-def export_images(logfile, img, output_folder_top, output_folder_bottom):
+def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
     """
     creates two folders:
         <logfile name>_top
@@ -42,7 +43,7 @@ def export_images(logfile, img, output_folder_top, output_folder_bottom):
     and saves the images inside those folders
     """
 
-    for i, img_b, img_t, cm_b, cm_t in img:
+    for i, img_b, img_b_jpg, img_t, img_t_jpg, cm_b, cm_t in img:
         frame_number = format(
             i, "07d"
         )  # make frame number a fixed length string so that the images are in the correct order
@@ -51,11 +52,24 @@ def export_images(logfile, img, output_folder_top, output_folder_bottom):
             save_image_to_png(
                 frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile
             )
+        # TODO add meta data indicating this was a jpeg image
+        if img_b_jpg:
+            img_b_jpg = img_b_jpg.convert("RGB")
+            save_image_to_png(
+                frame_number, img_b_jpg, cm_b, out_bottom_jpg, cam_id=1, name=logfile
+            )
 
         if img_t:
             img_t = img_t.convert("RGB")
             save_image_to_png(
                 frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile
+            )
+
+        # TODO add meta data indicating this was a jpeg image
+        if img_t_jpg:
+            img_t_jpg = img_t_jpg.convert("RGB")
+            save_image_to_png(
+                frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=logfile
             )
 
         print("\tsaving images from frame ", i, end="\r", flush=True)
@@ -66,6 +80,11 @@ def get_images(frame):
         image_top = image_from_proto(frame["ImageTop"])
     except KeyError:
         image_top = None
+    
+    try:
+        image_top_jpeg = image_from_proto_jpeg(frame["ImageJPEGTop"])
+    except KeyError:
+        image_top_jpeg = None
 
     try:
         cm_top = frame["CameraMatrixTop"]
@@ -78,11 +97,16 @@ def get_images(frame):
         image_bottom = None
 
     try:
+        image_bottom_jpeg = image_from_proto_jpeg(frame["ImageJPEG"])
+    except KeyError:
+        image_bottom_jpeg = None
+
+    try:
         cm_bottom = frame["CameraMatrix"]
     except KeyError:
         cm_bottom = None
 
-    return [frame.number, image_bottom, image_top, cm_bottom, cm_top]
+    return [frame.number, image_bottom, image_bottom_jpeg, image_top, image_top_jpeg, cm_bottom, cm_top]
 
 
 def image_from_proto(message):
@@ -107,6 +131,43 @@ def image_from_proto(message):
     img = PIL_Image.frombytes(
         "YCbCr", (message.width, message.height), yuv888.tostring()
     )
+    return img
+
+
+def image_from_proto_jpeg(message):
+    
+    # hack: 
+    if message.format == message.JPEG:
+        # unpack JPG
+        img = PIL_Image.open(io.BytesIO(message.data))
+    
+        # HACK: for some reason the decoded image is inverted ...
+        yuv422 = 255 - np.array(img, dtype=np.uint8)
+        
+        # flatten the image to get the same data formal like a usual yuv422
+        yuv422 = yuv422.reshape(message.height * message.width * 2)
+    else:
+        # read each channel of yuv422 separately
+        yuv422 = np.frombuffer(message.data, dtype=np.uint8)
+    
+    y = yuv422[0::2]
+    u = yuv422[1::4]
+    v = yuv422[3::4]
+
+    # convert from yuv422 to yuv888
+    yuv888 = np.zeros(message.height * message.width * 3, dtype=np.uint8)
+
+    yuv888[0::3] = y
+    yuv888[1::6] = u
+    yuv888[2::6] = v
+    yuv888[4::6] = u
+    yuv888[5::6] = v
+
+    yuv888 = yuv888.reshape((message.height, message.width, 3))
+    
+    # convert the image to rgb
+    img = PIL_Image.frombytes('YCbCr', (message.width, message.height), yuv888.tobytes())
+    
     return img
 
 
@@ -210,8 +271,10 @@ def calculate_output_path(log_folder: str):
 
         output_folder_top = extracted_folder / Path("log_top")
         output_folder_bottom = extracted_folder / Path("log_bottom")
+        output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
+        output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
-    return log, output_folder_top, output_folder_bottom
+    return log, output_folder_top, output_folder_bottom, output_folder_top_jpg, output_folder_bottom_jpg
 
 
 if __name__ == "__main__":
@@ -234,21 +297,24 @@ if __name__ == "__main__":
 
     for log_folder in sorted(log_list, reverse=True):
         print(log_folder)
-        log, out_top, out_bottom = calculate_output_path(log_folder)
+        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder)
         if log is None:
             continue
 
         # dont do anything if extraced stuff already exists
-        if out_top.exists() and out_bottom.exists():
+        # FIXME: this is kinda dumb, jpg only occasionally exists but it can exist along side oder images. This makes this check not work as intended
+        if out_top.exists() and out_bottom.exists() and out_top_jpg.exists() and out_bottom_jpg.exists():
             pass
         else:
             out_top.mkdir(exist_ok=True, parents=True)
             out_bottom.mkdir(exist_ok=True, parents=True)
+            out_top_jpg.mkdir(exist_ok=True, parents=True)
+            out_bottom_jpg.mkdir(exist_ok=True, parents=True)
 
             my_parser = Parser()
             with LogReader(log, my_parser) as reader:
                 images = map(get_images, reader.read())
-                export_images(log, images, out_top, out_bottom)
+                export_images(log, images, out_top, out_bottom, out_top_jpg, out_bottom_jpg)
 
         # write to db
         insert_statement = f"""
