@@ -87,6 +87,14 @@ if __name__ == "__main__":
                 """
                 cur.execute(insert_statement)
                 conn.commit()
+            elif "ImageJPEG" in representations or "ImageJPEGTop" in representations:
+                print("\tfound jpeg images")
+                # write to db
+                insert_statement = f"""
+                UPDATE robot_logs SET jpeg_images_exist = true WHERE log_path = '{log_folder}';
+                """
+                cur.execute(insert_statement)
+                conn.commit()
             else:
                 # write to db
                 insert_statement = f"""

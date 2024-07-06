@@ -45,6 +45,7 @@ def create_log_table(db_name: str):
         broken BOOLEAN DEFAULT FALSE,
         representation_exists BOOLEAN,
         images_exist BOOLEAN,
+        jpeg_images_exist BOOLEAN,
         combined_status BOOLEAN,
         extract_status BOOLEAN,
         bucket_top VARCHAR,

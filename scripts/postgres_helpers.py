@@ -101,3 +101,4 @@ def set_validated_flag_bottom(ls_id):
 
 if __name__ == "__main__":
     pass
+    # add_column("jpeg_images_exist", type="BOOLEAN")
