@@ -249,6 +249,8 @@ def calculate_output_path(log_folder: str):
         )
         output_folder_top = extracted_folder / Path("log_top")
         output_folder_bottom = extracted_folder / Path("log_bottom")
+        output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
+        output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
         print(f"\toutput folder will be {extracted_folder}")
     else:
