@@ -98,6 +98,8 @@ def find_extracted_image_paths(log_folder: str):
         )
         data_folder_top = extracted_folder / Path("log_top")
         data_folder_bottom = extracted_folder / Path("log_bottom")
+        data_folder_top_jpg = extracted_folder / Path("log_top_jpg")
+        data_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
     else:
         print("\tdetected normal game log")
         actual_log_folder = root_path / Path(log_folder)
@@ -110,8 +112,10 @@ def find_extracted_image_paths(log_folder: str):
 
         data_folder_top = extracted_folder / Path("log_top")
         data_folder_bottom = extracted_folder / Path("log_bottom")
+        data_folder_top_jpg = extracted_folder / Path("log_top_jpg")
+        data_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
-    return data_folder_top, data_folder_bottom
+    return data_folder_top, data_folder_bottom, data_folder_top_jpg, data_folder_bottom_jpg
 
 
 if __name__ == "__main__":
@@ -142,13 +146,14 @@ if __name__ == "__main__":
             mclient.set_bucket_tags(bucket_name, tags)
 
         # FIXME: make sure we dont have any stale buckets that are not used
-        data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
-        minio_files = [
+        data_folder_top, data_folder_bottom, data_folder_top_jpg, data_folder_bottom_jpg = find_extracted_image_paths(log_path)
+        minio_files_normal = [
             mobject.object_name for mobject in mclient.list_objects(bucket_name)
         ]
+        # check normal bottom images
         local_files = Path(data_folder_bottom).glob("*")
         for file in tqdm(local_files):
-            if file.name in minio_files:
+            if file.name in minio_files_normal:
                 print(f"\tfile already exists in bucket {bucket_name}, skipping upload")
                 pass
             else:
@@ -160,6 +165,26 @@ if __name__ == "__main__":
                     destination_file,
                     source_file,
                 )
+
+        # check jpg bottom images
+        minio_files_jpg = [
+            mobject.object_name for mobject in mclient.list_objects(bucket_name, prefix="jpg/")
+        ]
+        local_files = Path(data_folder_bottom_jpg).glob("*")
+        for file in tqdm(local_files):
+            if file.name in minio_files_jpg:
+                print(f"\tfile already exists in bucket {bucket_name}, skipping upload")
+                pass
+            else:
+                print(f"\tuploading to bucket {bucket_name}")
+                source_file = file
+                destination_file = "jpg/" + Path(file).name
+                mclient.fput_object(
+                    bucket_name,
+                    destination_file,
+                    source_file,
+                )
+        # TODO
         insert_statement = f"""
         UPDATE robot_logs SET bucket_bottom = '{bucket_name}' WHERE log_path = '{log_path}';
         """
@@ -184,7 +209,8 @@ if __name__ == "__main__":
 
         # FIXME: make sure we dont have any stale buckets that are not used
         print(f"\tuploading to bucket {bucket_name}")
-        data_folder_top, data_folder_bottom = find_extracted_image_paths(log_path)
+        data_folder_top, data_folder_bottom, data_folder_top_jpg, data_folder_bottom_jpg = find_extracted_image_paths(log_path)
+        # check normal top images
         minio_files = [
             mobject.object_name for mobject in mclient.list_objects(bucket_name)
         ]
@@ -197,6 +223,25 @@ if __name__ == "__main__":
                 # print(f"\t\tuploading {file.name}", end="\r", flush=True)
                 source_file = file
                 destination_file = Path(file).name
+                mclient.fput_object(
+                    bucket_name,
+                    destination_file,
+                    source_file,
+                )
+        
+        # check jpg top images
+        minio_files_jpg = [
+            mobject.object_name for mobject in mclient.list_objects(bucket_name, prefix="jpg/")
+        ]
+        local_files = Path(data_folder_top_jpg).glob("*")
+        for file in tqdm(local_files):
+            if file.name in minio_files_jpg:
+                print(f"\tfile already exists in bucket {bucket_name}, skipping upload")
+                pass
+            else:
+                print(f"\tuploading to bucket {bucket_name}")
+                source_file = file
+                destination_file = "jpg/" + Path(file).name
                 mclient.fput_object(
                     bucket_name,
                     destination_file,
