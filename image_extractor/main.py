@@ -200,7 +200,7 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
 
 def get_logs():
     select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE images_exist = true
+    SELECT log_path FROM robot_logs WHERE images_exist = true OR WHERE jpeg_images_exist = true
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
@@ -261,7 +261,7 @@ def calculate_output_path(log_folder: str):
         if combined_log.is_file():
             log = combined_log
         elif game_log.is_file():
-            log = log = combined_log
+            log = game_log
         else:
             log = None
 
@@ -314,9 +314,17 @@ if __name__ == "__main__":
             out_bottom_jpg.mkdir(exist_ok=True, parents=True)
 
             my_parser = Parser()
+            my_parser.register("ImageJPEG"   , "Image")
+            my_parser.register("ImageJPEGTop", "Image")
             with LogReader(log, my_parser) as reader:
                 images = map(get_images, reader.read())
                 export_images(log, images, out_top, out_bottom, out_top_jpg, out_bottom_jpg)
+
+            # HACK delete jpeg folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
+            if not any(out_top_jpg.iterdir()):
+                out_top_jpg.rmdir()
+            if not any(out_bottom_jpg.iterdir()):
+                out_bottom_jpg.rmdir()
 
         # write to db
         insert_statement = f"""
