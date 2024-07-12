@@ -60,7 +60,7 @@ def get_new_bottom_data():
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
-    logs = [x[0] for x in rtn_val]
+    logs = [x for x in rtn_val]
 
     return logs
 
@@ -82,7 +82,7 @@ def get_new_top_data():
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
-    logs = [x[0] for x in rtn_val]
+    logs = [x for x in rtn_val]
 
     return logs
 
