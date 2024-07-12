@@ -56,7 +56,7 @@ def get_bottom_data():
 
 def get_new_bottom_data():
     select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE extract_status = true AND bucket_bottom IS NULL
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE extract_status = true AND bucket_bottom IS NULL
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
@@ -78,7 +78,7 @@ def get_top_data():
 
 def get_new_top_data():
     select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE extract_status = true AND bucket_top IS NULL
+    SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true AND bucket_top IS NULL
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
