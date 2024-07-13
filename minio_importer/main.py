@@ -30,9 +30,11 @@ conn = psycopg2.connect(**params)
 cursor = conn.cursor()
 
 mclient = Minio(
+    #"minio.minio.svc.cluster.local:9000",
     "minio.berlin-united.com",
     access_key="naoth",
     secret_key=environ.get("MINIO_PASS"),
+    #secure=False
 )
 
 
@@ -45,7 +47,7 @@ def generate_unique_name():
 
 def get_bottom_data():
     select_statement = f"""
-    SELECT log_path, bucket_bottom FROM robot_logs WHERE extract_status = true 
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE extract_status = true AND jpeg_images_exist IS NULL
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
@@ -56,7 +58,7 @@ def get_bottom_data():
 
 def get_new_bottom_data():
     select_statement = f"""
-    SELECT log_path, bucket_bottom FROM robot_logs WHERE extract_status = true AND bucket_bottom IS NULL
+    SELECT log_path, bucket_bottom FROM robot_logs WHERE extract_status = true AND bucket_bottom IS NULL AND jpeg_images_exist IS NULL
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
@@ -67,7 +69,7 @@ def get_new_bottom_data():
 
 def get_top_data():
     select_statement = f"""
-    SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true 
+    SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true AND jpeg_images_exist IS NULL
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
@@ -78,7 +80,7 @@ def get_top_data():
 
 def get_new_top_data():
     select_statement = f"""
-    SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true AND bucket_top IS NULL
+    SELECT log_path, bucket_top FROM robot_logs WHERE extract_status = true AND bucket_top IS NULL AND jpeg_images_exist IS NULL
     """
     cursor.execute(select_statement)
     rtn_val = cursor.fetchall()
@@ -133,7 +135,6 @@ if __name__ == "__main__":
     bottom_data = get_bottom_data() if should_check_all else get_new_bottom_data()
     for log_path, bucket_name in sorted(bottom_data, reverse=True):
         print(log_path)
-
         if not bucket_name:
             bucket_name = generate_unique_name()
             print(f"\tcreated new bucket {bucket_name}")
@@ -144,6 +145,12 @@ if __name__ == "__main__":
                 log_path
             )  # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
             mclient.set_bucket_tags(bucket_name, tags)
+            # set the bucket in the database
+            insert_statement = f"""
+            UPDATE robot_logs SET bucket_bottom = '{bucket_name}' WHERE log_path = '{log_path}';
+            """
+            cursor.execute(insert_statement)
+            conn.commit()
 
         # FIXME: make sure we dont have any stale buckets that are not used
         data_folder_top, data_folder_bottom, data_folder_top_jpg, data_folder_bottom_jpg = find_extracted_image_paths(log_path)
@@ -183,13 +190,7 @@ if __name__ == "__main__":
                     bucket_name,
                     destination_file,
                     source_file,
-                )
-        # TODO
-        insert_statement = f"""
-        UPDATE robot_logs SET bucket_bottom = '{bucket_name}' WHERE log_path = '{log_path}';
-        """
-        cursor.execute(insert_statement)
-        conn.commit()
+                )        
 
     #########################################
     top_data = get_top_data() if should_check_all else get_new_top_data()
@@ -206,6 +207,11 @@ if __name__ == "__main__":
                 log_path
             )  # set tag to annotate the bucket with the name of the source image folder # FIXME make sure it is set in a common format (wo prefix, log vs extracted folder)
             mclient.set_bucket_tags(bucket_name, tags)
+            insert_statement = f"""
+            UPDATE robot_logs SET bucket_top = '{bucket_name}' WHERE log_path = '{log_path}';
+            """
+            cursor.execute(insert_statement)
+            conn.commit()
 
         # FIXME: make sure we dont have any stale buckets that are not used
         print(f"\tuploading to bucket {bucket_name}")
@@ -247,8 +253,3 @@ if __name__ == "__main__":
                     destination_file,
                     source_file,
                 )
-        insert_statement = f"""
-        UPDATE robot_logs SET bucket_top = '{bucket_name}' WHERE log_path = '{log_path}';
-        """
-        cursor.execute(insert_statement)
-        conn.commit()
