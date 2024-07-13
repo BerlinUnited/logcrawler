@@ -38,6 +38,7 @@ def remove_single_bucket(bucket_name):
     print(f"deleting bucket {bucket_name}")
     objects_to_delete = mclient.list_objects(bucket_name, recursive=True)
     for obj in objects_to_delete:
+        print(f"\tdeleting {obj.object_name}")
         mclient.remove_object(bucket_name, obj.object_name)
 
     mclient.remove_bucket(bucket_name)
@@ -93,11 +94,32 @@ def delete_patch_contents():
     for bucket in buckets:
         delete_bucket_contents(bucket)
 
+def cleanup():
+    # Find all buckets that are not in postgres and delete them
+    select_statement = f"""
+    SELECT bucket_bottom, bucket_top, bucket_bottom_patches, bucket_top_patches FROM robot_logs
+    """
+    cur.execute(select_statement)
+    rtn_val = cur.fetchall()
+    data = [x for x in rtn_val]
+
+    pg_bucket_list = []
+    for tuple in data:
+        for item in tuple:
+            if item is not None:
+                pg_bucket_list.append(item)
+
+    #print(pg_bucket_list)
+    minio_buckets = mclient.list_buckets()
+    for bucket in minio_buckets:
+        if bucket.name not in pg_bucket_list and bucket.name != "mlflow":
+            remove_single_bucket(bucket.name)
+
 
 if __name__ == "__main__":
     # count_images()
     # upload_to_test_buckets()
     # delete_bucket_contents("stellatest")
-    remove_single_bucket("gybemaxcoeoekknhirhzze")
+    #remove_single_bucket("gybemaxcoeoekknhirhzze")
     # delete_patch_contents()
-    pass
+    cleanup()
