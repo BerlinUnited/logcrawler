@@ -24,6 +24,7 @@ event_list = [
     "2024-lab_tests",
     "2024-07-08_RC24_preparations",
     "2024-07-12_RC24_preparations",
+    "2024-07-15_RC24",
 ]
 
 experiment_list = [
