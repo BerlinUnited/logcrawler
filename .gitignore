@@ -3,3 +3,4 @@ venv/
 blurry_detection
 .env
 .vscode/
+scripts/mlflow_backup/
