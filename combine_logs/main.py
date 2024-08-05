@@ -116,11 +116,16 @@ def create_jpeg_image_log_dict(image_log):
     return images_by_frame
 
 
-def write_combined_log(log, combined_log_path, img_log_path, gamelog_path):
+def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image_jpeg_log_path=None):
     is_first_image_top = calculate_first_image(log)
     image_log_index = create_image_log_dict(
                 str(img_log_path), first_image_is_top=is_first_image_top
             )
+
+    # if there are jpeg images, load them
+    image_jpeg_log_index = create_jpeg_image_log_dict(str(image_jpeg_log_path)) if image_jpeg_log_path else {}
+
+
     try:
         with open(str(combined_log_path), "wb") as output, open(
             str(img_log_path), "rb"
@@ -146,16 +151,24 @@ def write_combined_log(log, combined_log_path, img_log_path, gamelog_path):
 
                         frame.add_field(image_name, msg)
 
-                    # write the modified frame to the new log
-                    output.write(bytes(frame))
+                # if there are jpeg images for this frame, add them to the frame
+                if frame.number in image_jpeg_log_index:
+                    images = image_log_index[frame.number]
+                    for image_repr_name, image_msg in images.items():
+                        frame.add_field(image_repr_name, image_msg)
 
-                    # HACK: Frames are indexed by the log reader. Remove the image of already processed frames to preserve memory.
+                # write the potentially modified frame to the new log
+                output.write(bytes(frame))
+
+                # HACK: Frames are indexed by the log reader. 
+                # Remove the image of already processed frames to preserve memory.
+                if frame.number in image_log_index:
                     for image_name in image_log_index[frame.number]:
                         frame.remove(image_name)
+                if frame.number in image_jpeg_log_index:
+                    for image_name in image_jpeg_log_index[frame.number]:
+                        frame.remove(image_name)               
 
-                else:
-                    # write unmodified frame from game.log to the new log
-                    output.write(bytes(frame))
     except Exception as e:
         print(f"failed to combine file: {e}")
         # TODO set a status in the db so that no one tries to parse this again
@@ -286,14 +299,14 @@ if __name__ == "__main__":
             conn.commit()
             continue
 
-        if has_image_log and has_image_jpeg_log:
-            print("Found both image.log and image_jped.log, using the jpeg log!")
 
         if not combined_log_path.is_file():
-            if has_image_jpeg_log:
-                write_combined_log_jpeg(combined_log_path, img_jpeg_log_path, gamelog_path)
-            elif has_image_log:
+            if has_image_log and has_image_jpeg_log:
+                write_combined_log(log, combined_log_path, img_log_path, gamelog_path, img_jpeg_log_path)
+            elif has_image_log and not has_image_jpeg_log:
                 write_combined_log(log, combined_log_path, img_log_path, gamelog_path)
+            elif has_image_jpeg_log and not has_image_log:
+                write_combined_log_jpeg(combined_log_path, img_jpeg_log_path, gamelog_path)
             else:
                 raise ValueError("We shouldn't have gotten this far, either image.log or image_jpeg.log should exist")
 
