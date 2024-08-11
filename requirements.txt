@@ -1,5 +1,5 @@
 psycopg2-binary
-naoth==0.4.3
+naoth==0.5.1
 numpy
 minio
 opencv-python
