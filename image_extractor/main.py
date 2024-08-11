@@ -193,7 +193,6 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
         meta.add_text("r_13", str(cm.pose.rotation[2].x))
         meta.add_text("r_23", str(cm.pose.rotation[2].y))
         meta.add_text("r_33", str(cm.pose.rotation[2].z))
-
     filename = target_dir / (str(j) + ".png")
     img.save(filename, pnginfo=meta)
 
@@ -210,7 +209,7 @@ def get_logs():
 
 def get_unchecked_logs():
     select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE extract_status IS NULL
+    SELECT log_path FROM robot_logs WHERE extract_status IS NOT TRUE
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
