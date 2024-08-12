@@ -219,7 +219,7 @@ def get_logs():
 
 def get_uncombined_logs():
     select_statement = f"""
-    SELECT log_path FROM {db_name} WHERE combined_status IS NULL
+    SELECT log_path FROM {db_name} WHERE combined_status IS NOT TRUE
     """
     cur.execute(select_statement)
     rtn_val = cur.fetchall()
@@ -308,7 +308,9 @@ if __name__ == "__main__":
             elif has_image_jpeg_log and not has_image_log:
                 write_combined_log_jpeg(combined_log_path, img_jpeg_log_path, gamelog_path)
             else:
-                raise ValueError("We shouldn't have gotten this far, either image.log or image_jpeg.log should exist")
+                # not an error: /vol/repl261-vol4/naoth/logs/2024-04-17_GO24/2024-04-19_21-00-00_Berlin United_vs_Nao Devils_half1-test/game_logs/7_16_Nao0017_240419-1937
+                #raise ValueError("We shouldn't have gotten this far, either image.log or image_jpeg.log should exist")
+                print("WARNING: nothing to combine found here")
 
 
         # insert in db if the file exists - so combining was successful
