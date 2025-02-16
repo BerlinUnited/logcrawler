@@ -1,14 +1,20 @@
-# Berlin United LogCrawler
-Collection of scripts for parsing our logs and adding the data to our postgres database. This is primarily intended to be used with our Visual Analytics Tool https://github.com/efcy/visual_analytics.
+# Logcrawler
+Scripts for inserting log data into the database. These scripts generally only need to be run once. 
 
+The logcrawler scripts use the [VAAPI pip package](https://pypi.org/project/vaapi/) to communicate with the backend.
 
-## Container
-The Dockerfile contains all the python packages that are needed to run all the code related to logs. The image is build by the CI and pushed to our gitlab container registry. This image will be used for all code running inside k8s.
-
-You can start the container locally as well and run the scripts in there:
+You will need these environment variables in order to run the scripts:
+```bash
+VAT_LOG_ROOT=<"path to folder containing all the events">
+VAT_API_URL=<"http://127.0.0.1:8000/ or https://vat.berlin-united.com/">
+VAT_API_TOKEN=<token you can get from the website>
 ```
-docker build -t logcrawler:latest .
-docker run -it logcrawler:latest /bin/bash
 
-docker run -it -v ${PWD}:/test logcrawler:latest /bin/bash
-```
+## Access the log folder
+If you have a large disk you can download the log folders in the correct structure to your disk and use the logs locally. This is recommended if you want to add a whole event to the database.
+
+TODO: write scripts that downloads all necessary files
+
+Alternatively you can use sshfs. This is much slower then using local files.
+
+TODO add sshfs tutorial here

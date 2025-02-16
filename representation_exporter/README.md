@@ -1,1 +1,0 @@
-This should write representation.json files in the log folder and also add the has image flag to the database

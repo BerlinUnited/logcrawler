@@ -6,36 +6,13 @@
     were we only have an image log and no game.log
 """
 
-import argparse
-import os
-from os import environ, stat
 from pathlib import Path
-
-import psycopg2
 from naoth.log import Reader as LogReader
-from naoth.log import Parser
 from naoth.pb.Framework_Representations_pb2 import Image
-
-# make this auto detect if its running inside the cluster or not
-if "KUBERNETES_SERVICE_HOST" in environ:
-    postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
-    postgres_port = 5432
-else:
-    postgres_host = "pg.berlin-united.com"
-    postgres_port = 4000
-
-params = {
-    "host": postgres_host,
-    "port": postgres_port,
-    "dbname": "logs",
-    "user": "naoth",
-    "password": environ.get("DB_PASS"),
-}
-conn = psycopg2.connect(**params)
-cur = conn.cursor()
-
-# this is for making it easier to test something in another table
-db_name = "robot_logs"  # experiment_logs or robot_logs
+from naoth.log import Parser
+from os import environ, stat
+import os
+from vaapi.client import Vaapi
 
 
 def create_image_log_dict(image_log, first_image_is_top):
@@ -114,7 +91,6 @@ def create_jpeg_image_log_dict(image_log):
         images_by_frame[frame.number] = images
 
     return images_by_frame
-
 
 def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image_jpeg_log_path=None):
     is_first_image_top = calculate_first_image(log)
@@ -207,30 +183,12 @@ def write_combined_log_jpeg(combined_log_path, img_log_path, gamelog_path):
             combined_log_path.unlink()
 
 
-def get_logs():
-    select_statement = f"""
-    SELECT log_path FROM {db_name}
-    """
-    cur.execute(select_statement)
-    rtn_val = cur.fetchall()
-    logs = [x[0] for x in rtn_val]
-    return logs
-
-
-def get_uncombined_logs():
-    select_statement = f"""
-    SELECT log_path FROM {db_name} WHERE combined_status IS NOT TRUE
-    """
-    cur.execute(select_statement)
-    rtn_val = cur.fetchall()
-    logs = [x[0] for x in rtn_val]
-    return logs
-
-
 def calculate_first_image(logpath):
     """
     calculate the age of the log file. For everything prior 2023 the first image in the log is top after that its bottom
     """
+    # TODO fix me, prefix is annoying here
+    logpath = str(logpath)
     event = logpath.split("_")[0]
     year = int(event.split("-")[0])
     if year < 2023:
@@ -240,51 +198,35 @@ def calculate_first_image(logpath):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--delete", action="store_true")
-    parser.add_argument(
-        "--all",
-        help="Check all logs, by default only unchecked logs are checked",
-        action="store_true",
-        default=False,
+    # TODO make it possible to run it locally without having to use a database. Useful for seeing the images in the log to figure out a good name.
+    log_root_path = os.environ.get("VAT_LOG_ROOT")
+
+    client = Vaapi(
+        base_url=os.environ.get("VAT_API_URL"),
+        api_key=os.environ.get("VAT_API_TOKEN"),
     )
-    args = parser.parse_args()
-    should_check_all = args.all
+    existing_data = client.logs.list()
 
-    root_path = Path(environ.get("LOG_ROOT"))
-    # FIXME now log list can contain folders and actual logs
-    log_list = get_logs() if should_check_all else get_uncombined_logs()
+    def sort_key_fn(data):
+        return data.log_path
 
-    if args.delete is True:
-        # we delete all combined logs in an extra loop,
-        # this the combine loop later can be disrupted without needing to do all the work again in case of overwrite
-        for log in log_list:
-            print(log)
-            actual_log_folder = root_path / Path(log)
-            if Path(actual_log_folder).is_file():
-                print(
-                    "\tpath is a experiment log - there wont be a combined file here - nothing to delete"
-                )
-                continue
 
-            combined_log_path = actual_log_folder / "combined.log"
-            # remove file if we want to override - this way also wrongly created files are removed even when we don't want to recreate them
-            if combined_log_path.is_file():
-                print("\tdeleting the combined log")
-                combined_log_path.unlink()
+    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
+        log_id = data.id
+        log_folder_path = Path(data.log_path).parent # data.log_path is path to file
+        log_path = Path(log_root_path) / log_folder_path
+        print("log_path: ", log_path)
 
-    for log in sorted(log_list, reverse=True):
-        print(log)
-        actual_log_folder = root_path / Path(log)
-        if Path(actual_log_folder).is_file():
+        if Path(log_path).is_file():
             print(
                 "\tpath is a experiment log - no automatic combining here. If needed combine the log manually and add to the event list"
             )
             continue
-        combined_log_path = actual_log_folder / "combined.log"
-        gamelog_path = actual_log_folder / "game.log"
-        img_log_path = actual_log_folder / "images.log"
-        img_jpeg_log_path = actual_log_folder / "images_jpeg.log"
+
+        combined_log_path = log_path / "combined.log"
+        gamelog_path = log_path / "game.log"
+        img_log_path = log_path / "images.log"
+        img_jpeg_log_path = log_path / "images_jpeg.log"
 
         has_game_log = Path(gamelog_path).is_file() and stat(str(gamelog_path)).st_size > 0
         has_image_log = Path(img_log_path).is_file() and stat(str(img_log_path)).st_size > 0
@@ -292,32 +234,16 @@ if __name__ == "__main__":
 
         if not has_game_log and (has_image_log or has_image_jpeg_log):
             print("\tcan't combine anything here, missing game.log or image.log/image_jpeg.log")
-            insert_statement = f"""
-            UPDATE {db_name} SET combined_status = false WHERE log_path = '{log}';
-            """
-            cur.execute(insert_statement)
-            conn.commit()
             continue
-
 
         if not combined_log_path.is_file():
             if has_image_log and has_image_jpeg_log:
-                write_combined_log(log, combined_log_path, img_log_path, gamelog_path, img_jpeg_log_path)
+                write_combined_log(log_folder_path, combined_log_path, img_log_path, gamelog_path, img_jpeg_log_path)
             elif has_image_log and not has_image_jpeg_log:
-                write_combined_log(log, combined_log_path, img_log_path, gamelog_path)
+                write_combined_log(log_folder_path, combined_log_path, img_log_path, gamelog_path)
             elif has_image_jpeg_log and not has_image_log:
                 write_combined_log_jpeg(combined_log_path, img_jpeg_log_path, gamelog_path)
             else:
                 # not an error: /vol/repl261-vol4/naoth/logs/2024-04-17_GO24/2024-04-19_21-00-00_Berlin United_vs_Nao Devils_half1-test/game_logs/7_16_Nao0017_240419-1937
                 #raise ValueError("We shouldn't have gotten this far, either image.log or image_jpeg.log should exist")
                 print("WARNING: nothing to combine found here")
-
-
-        # insert in db if the file exists - so combining was successful
-        if combined_log_path.is_file():
-            print("\tset combined status to true")
-            insert_statement = f"""
-            UPDATE {db_name} SET combined_status = true WHERE log_path = '{log}';
-            """
-            cur.execute(insert_statement)
-            conn.commit()

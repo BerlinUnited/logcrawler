@@ -1,38 +1,33 @@
-"""
-    Image Extractor
-"""
-
+import queue
+import threading
+import os
+from linetimer import CodeTimer
+from naoth.log import Reader as LogReader
+from naoth.log import Parser
 from pathlib import Path
+import concurrent.futures
 import numpy as np
 import io
 from PIL import PngImagePlugin
 from PIL import Image as PIL_Image
-from naoth.log import Reader as LogReader
-from naoth.log import Parser
-from os import environ
-import psycopg2
-import shutil
-import argparse
+from vaapi.client import Vaapi
 
+def is_done(log_id):
+    # get the log status object for a given log_id
+    response = client.log_status.list(log_id=log_id)
 
-# make this auto detect if its running inside the cluster or not
-if "KUBERNETES_SERVICE_HOST" in environ:
-    postgres_host = "postgres-postgresql.postgres.svc.cluster.local"
-    postgres_port = 5432
-else:
-    postgres_host = "pg.berlin-united.com"
-    postgres_port = 4000
-
-params = {
-    "host": postgres_host,
-    "port": postgres_port,
-    "dbname": "logs",
-    "user": "naoth",
-    "password": environ.get("DB_PASS"),
-}
-conn = psycopg2.connect(**params)
-cur = conn.cursor()
-
+    if len(response) == 0:
+        print("\tno log_status found")
+        return False
+    
+    log_status = response[0]
+    # if all numbers are zero or null we return false
+    total_images = int(log_status.num_jpg_bottom or 0) + int(log_status.num_jpg_top or 0) + int(log_status.num_bottom or 0) + int(log_status.num_top or 0)
+    print(log_status)
+    if total_images == 0:
+        return False
+    else:
+        return True
 
 def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
     """
@@ -197,50 +192,28 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
     img.save(filename, pnginfo=meta)
 
 
-def get_logs():
-    select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE images_exist = true OR jpeg_images_exist = true
-    """
-    cur.execute(select_statement)
-    rtn_val = cur.fetchall()
-    logs = [x[0] for x in rtn_val]
-    return logs
 
-
-def get_unchecked_logs():
-    select_statement = f"""
-    SELECT log_path FROM robot_logs WHERE extract_status IS NOT TRUE
-    """
-    cur.execute(select_statement)
-    rtn_val = cur.fetchall()
-    logs = [x[0] for x in rtn_val]
-    return logs
-
-
-def delete_everything(log_list):
-    # FIXME: cant handle experiment logs yet
-    for log_folder in log_list:
-        actual_log_folder = root_path / Path(log_folder)
-        extracted_folder = (
-            Path(actual_log_folder).parent.parent
-            / Path("extracted")
-            / Path(actual_log_folder).name
-        )
-        output_folder_top = extracted_folder / Path("log_top")
-        output_folder_bottom = extracted_folder / Path("log_bottom")
-        print(f"deleting images for {log_folder}")
-        if output_folder_top.exists():
-            shutil.rmtree(output_folder_top)
-
-        if output_folder_bottom.exists():
-            shutil.rmtree(output_folder_bottom)
+def worker(data_queue, output_paths):
+    while True:
+        try:
+            batch = data_queue.get(block=False)
+            if batch is None:  # Sentinel value to exit
+                break
+            for image_data in batch:
+                image, top_path, bottom_path = image_data
+                export_images("test", [image], top_path, bottom_path, top_path, bottom_path)
+            data_queue.task_done()
+        except queue.Empty:
+            continue
 
 
 def calculate_output_path(log_folder: str):
-    log_path_w_prefix = root_path / Path(log_folder)
+    # FIXME have a better detection if its experiment log or not
+    """
+    log_path_w_prefix = log_root_path / Path(log_folder)
     if Path(log_path_w_prefix).is_file():
         print("\tdetected experiment log")
-        actual_log_folder = root_path / Path(log_folder).parent
+        actual_log_folder = log_root_path / Path(log_folder).parent
         log = log_path_w_prefix
 
         extracted_folder = (
@@ -252,54 +225,63 @@ def calculate_output_path(log_folder: str):
         output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
         print(f"\toutput folder will be {extracted_folder}")
+
     else:
-        print("\tdetected normal game log")
-        actual_log_folder = root_path / Path(log_folder)
-        combined_log = root_path / Path(actual_log_folder) / "combined.log"
-        game_log = root_path / Path(actual_log_folder) / "game.log"
-        if combined_log.is_file():
-            log = combined_log
-        elif game_log.is_file():
-            log = game_log
-        else:
-            log = None
+    """
+    print("\tdetected normal game log")
+    actual_log_folder = log_root_path / Path(log_folder)
+    combined_log = log_root_path / Path(actual_log_folder) / "combined.log"
+    game_log = log_root_path / Path(actual_log_folder) / "game.log"
+    if combined_log.is_file():
+        log = combined_log
+    elif game_log.is_file():
+        log = game_log
+    else:
+        log = None
 
-        extracted_folder = (
-            Path(actual_log_folder).parent.parent
-            / Path("extracted")
-            / Path(actual_log_folder).name
-        )
+    extracted_folder = (
+        Path(actual_log_folder).parent.parent
+        / Path("extracted")
+        / Path(actual_log_folder).name
+    )
 
-        output_folder_top = extracted_folder / Path("log_top")
-        output_folder_bottom = extracted_folder / Path("log_bottom")
-        output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
-        output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
+    output_folder_top = extracted_folder / Path("log_top")
+    output_folder_bottom = extracted_folder / Path("log_bottom")
+    output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
+    output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
     return log, output_folder_top, output_folder_bottom, output_folder_top_jpg, output_folder_bottom_jpg
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--delete", action="store_true")
-    parser.add_argument(
-        "--all",
-        help="Check all logs, by default only unchecked logs are checked",
-        action="store_true",
-        default=False,
+    # FIXME aborting this script can result in broken images being written
+    log_root_path = os.environ.get("VAT_LOG_ROOT") 
+
+    client = Vaapi(
+        base_url=os.environ.get("VAT_API_URL"),
+        api_key=os.environ.get("VAT_API_TOKEN"),
     )
-    args = parser.parse_args()
-    should_check_all = args.all
 
-    root_path = Path(environ.get("LOG_ROOT"))
-    log_list = get_logs() if should_check_all else get_unchecked_logs()
+    existing_data = client.logs.list()
 
-    if args.delete is True:
-        delete_everything(log_list)
+    def sort_key_fn(data):
+        return data.log_path
+    
+    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
+        log_folder_path = Path(log_root_path) / Path(data.log_path).parent
+        print(log_folder_path)
 
-    for log_folder in sorted(log_list, reverse=True):
-        print(log_folder)
-        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder)
+        log_id = data.id
+
+        if is_done(log_id):
+           print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
+           continue
+        
+        data_queue = queue.Queue()
+        
+        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder_path)
         if log is None:
+            print("\tcouldnt find a valid log file")
             continue
 
         out_top.mkdir(exist_ok=True, parents=True)
@@ -307,12 +289,43 @@ if __name__ == "__main__":
         out_top_jpg.mkdir(exist_ok=True, parents=True)
         out_bottom_jpg.mkdir(exist_ok=True, parents=True)
 
-        my_parser = Parser()
-        my_parser.register("ImageJPEG"   , "Image")
-        my_parser.register("ImageJPEGTop", "Image")
-        with LogReader(log, my_parser) as reader:
-            images = map(get_images, reader.read())
-            export_images(log, images, out_top, out_bottom, out_top_jpg, out_bottom_jpg)
+        output_paths = {
+            "top": out_top_jpg,
+            "bottom": out_bottom_jpg
+        }
+        num_threads = os.cpu_count() * 2
+        batch_size = 50  # Adjust based on your specific use case
+
+        with CodeTimer("Total"):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+                # Start worker threads
+                futures = [executor.submit(worker, data_queue, output_paths) for _ in range(num_threads)]
+
+                my_parser = Parser()
+                my_parser.register("ImageJPEG"   , "Image")
+                my_parser.register("ImageJPEGTop", "Image")
+
+                with CodeTimer("Reading and processing logs"):
+                    with LogReader(log, my_parser) as reader:
+                        batch = []
+                        for image in map(get_images, reader.read()):
+                            batch.append((image, output_paths["top"], output_paths["bottom"]))
+                            if len(batch) >= batch_size:
+                                data_queue.put(batch)
+                                batch = []
+                        if batch:  # Put any remaining items
+                            data_queue.put(batch)
+
+                with CodeTimer("Writing images"):
+                    # Wait for all tasks to be completed
+                    data_queue.join()
+
+                # Signal worker threads to exit
+                for _ in range(num_threads):
+                    data_queue.put(None)
+
+                # Wait for all threads to complete
+                concurrent.futures.wait(futures)
 
         # HACK delete image folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
         if not any(out_top_jpg.iterdir()):
@@ -323,10 +336,3 @@ if __name__ == "__main__":
             out_top.rmdir()
         if not any(out_bottom.iterdir()):
             out_bottom.rmdir()
-
-        # write to db
-        insert_statement = f"""
-        UPDATE robot_logs SET extract_status = true WHERE log_path = '{log_folder}';
-        """
-        cur.execute(insert_statement)
-        conn.commit()

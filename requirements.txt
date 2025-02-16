@@ -1,11 +1,6 @@
-psycopg2-binary
+vaapi>=0.4.7
 naoth==0.5.1
-numpy
-minio
+tqdm==4.66.5
+requests
 opencv-python
-git+https://github.com/HumanSignal/label-studio-sdk@0.0.34
-pillow
-protobuf==3.20.3
-cppyy==3.1.2
-tqdm
-tensorflow==2.15.1
+pillow==11.1.0
