@@ -1,6 +1,6 @@
-vaapi>=0.4.7
+vaapi>=0.5.0
 naoth==0.5.1
 tqdm==4.66.5
-requests
-opencv-python
+requests==2.32.3
+opencv-python==4.11.0.86
 pillow==11.1.0

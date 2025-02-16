@@ -14,7 +14,5 @@ VAT_API_TOKEN=<token you can get from the website>
 If you have a large disk you can download the log folders in the correct structure to your disk and use the logs locally. This is recommended if you want to add a whole event to the database.
 
 TODO: write scripts that downloads all necessary files
-
 Alternatively you can use sshfs. This is much slower then using local files.
-
 TODO add sshfs tutorial here
