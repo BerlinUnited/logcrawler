@@ -77,6 +77,7 @@ if __name__ == "__main__":
         log_path = Path(log_root_path) / data.log_path
         print("log_path: ", log_path)
 
+        # representations that we want to put in the database if they exist in the log
         representation_list = [
             "FrameInfo",
             "BallModel",
