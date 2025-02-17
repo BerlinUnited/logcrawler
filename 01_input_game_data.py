@@ -82,9 +82,8 @@ if __name__ == "__main__":
             for game in [f for f in event.iterdir() if f.is_dir()]:
                 if str(game.name) == "Experiments":
                     print("ignoring Experiments folder")
-                    handle_experiments(event_id, game)
+                    #handle_experiments(event_id, game)
                 else:
-                    continue
                     print(f"{game}")
                     response = handle_games(event_id, game)
                     game_id = response.id
@@ -104,14 +103,6 @@ if __name__ == "__main__":
                             # Extract the first and third lines
                             body_serial = lines[0].strip()  # Strip to remove any trailing newline characters
                             head_serial = lines[2].strip()
-                        try:
-                            representation_file = Path(logfolder) / "representation.json"
-                            with open(str(representation_file), 'r') as file:
-                                # Load the content of the file into a Python dictionary
-                                data = json.load(file)
-                        except:
-                            # TODO parse the data from the log
-                            data = {}
 
                         log_path = str(Path(logfolder) / "game.log").removeprefix(log_root_path).strip("/")
                         combined_log_path = str(Path(logfolder) / "combined.log").removeprefix(log_root_path).strip("/")
@@ -124,7 +115,6 @@ if __name__ == "__main__":
                                 head_number=int(head_number),
                                 body_serial=body_serial,
                                 head_serial=head_serial,
-                                representation_list=data,
                                 log_path=log_path,
                                 combined_log_path=combined_log_path,
                                 sensor_log_path=sensor_log_path,
