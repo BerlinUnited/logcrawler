@@ -8,15 +8,23 @@ import argparse
 from pathlib import Path
 #from PIL import Image 
 
-def is_server_alive(url, timeout=2):
+def get_alive_fileserver(timeout=2):
+    url = "https://logs.berlin-united.com/"
     try:
         response = requests.get(url, timeout=timeout)
         response.raise_for_status()  # Check for HTTP errors
         print(f"Server {url} is alive.")
-        return True
+        return url
     except requests.exceptions.RequestException as e:
-        print(f"Server {url} is not reachable: {e}")
-        return False
+        url = "https://logs.naoth.de/"
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()  # Check for HTTP errors
+            print(f"Server {url} is alive.")
+            return url
+        except requests.exceptions.RequestException as e:
+            print("No fileserver is reachable")
+            quit() 
 
 
 def variance_of_laplacian(image):
@@ -37,10 +45,12 @@ if __name__ == "__main__":
     
     data = client.logs.list()
 
+    # only check server availability if we are not working with local files
+    if not args.local:
+        base_url = get_alive_fileserver()
+
     def sort_key_fn(data):
         return data.log_path
-
-    online = is_server_alive("https://logs.berlin-united.com/")
 
     for data in sorted(data, key=sort_key_fn, reverse=True):
         print("log_path: ", data.id, data.log_path)
@@ -54,12 +64,8 @@ if __name__ == "__main__":
                 image_path = Path(log_root_path) / img.image_url
                 image_cv = cv2.imread(image_path, cv2.IMREAD_COLOR)
             else:
-                # try for timeout use the other one if one is not working
-                if online:
-                    url = "https://logs.berlin-united.com/" + img.image_url
-                else:
-                    url = "https://logs.naoth.de/" + img.image_url
-
+                # get url to image and download it
+                url = base_url + img.image_url
                 response = requests.get(url)
                 response.raise_for_status()  # Raise an error for bad status codes
 
@@ -107,4 +113,3 @@ if __name__ == "__main__":
                 print(e)
                 print(f"error inputing the data")
                 quit()
-
