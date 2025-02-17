@@ -3,14 +3,13 @@
 """
 from pathlib import Path
 from vaapi.client import Vaapi
-import json
 import os
 from datetime import datetime
 
 event_list = ["2024-07-15_RC24"]
 
 
-def handle_games(event_id, game):
+def handle_games(event_id: int, game: str):
     # for now we allow only on folder called Experiments to also exist inside the Event folder -> TODO have discussion about additional folders
 
     # parse additional information from game folder
@@ -38,7 +37,7 @@ def handle_games(event_id, game):
     return response
 
 
-def handle_experiments(event_id, experiment_folder):
+def handle_experiments(event_id: int, experiment_folder: str):
     # TODO make sure it only looks at logfiles
     for logfile in [f for f in experiment_folder.iterdir() if f.is_file()]:
         exp_response = client.experiment.create(
@@ -54,7 +53,7 @@ def handle_experiments(event_id, experiment_folder):
         print(response)
 
 
-def get_robot_version(head_number):
+def get_robot_version(head_number: str) -> str:
     head_number = int(head_number)
 
     if head_number > 90:
