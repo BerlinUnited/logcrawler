@@ -100,7 +100,6 @@ if __name__ == "__main__":
                 # last frame
                 try:
                     sensor_frame_number = frame['FrameInfo'].frameNumber
-                    sensor_frame_time = frame['FrameInfo'].time
                 except Exception as e:
                     print(f"FrameInfo not found in current frame - will not parse any other representation from this frame")
                     print({e})
@@ -118,9 +117,7 @@ if __name__ == "__main__":
                     quit()
 
                 json_obj = {
-                    "log_id":log_id, 
-                    "sensor_frame_number":sensor_frame_number,
-                    "sensor_frame_time": sensor_frame_time,
+                    "motionframe":sensor_frame_number,
                     "representation_name":repr_name,
                     "representation_data":data
                 }

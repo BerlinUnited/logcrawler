@@ -47,7 +47,7 @@ def handle_experiments(event_id: int, experiment_folder: str):
         print(exp_response)
 
         response = client.logs.create(
-            experiment_id=exp_response.id, 
+            log_experiment=exp_response.id, 
             log_path=logfile.name,
         )
         print(response)
@@ -108,7 +108,7 @@ if __name__ == "__main__":
                         sensor_log_path = str(Path(logfolder) / "sensor.log").removeprefix(log_root_path).strip("/")
                         try:
                             response = client.logs.create(
-                                game_id=game_id, 
+                                log_game=game_id, 
                                 robot_version=version,
                                 player_number=int(playernumber),
                                 head_number=int(head_number),
