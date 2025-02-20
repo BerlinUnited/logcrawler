@@ -125,7 +125,7 @@ if __name__ == "__main__":
                     quit()
                 except Exception as e:
                     print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-                    continue
+                    break
                 # TODO: speed it up by removing representations that we dont care about in this dict
                 for repr in new_cognition_status_dict:
                     try:
@@ -183,7 +183,7 @@ if __name__ == "__main__":
                     frame_number = frame['FrameInfo'].frameNumber
                 except Exception as e:
                     print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-                    continue
+                    break
                 for repr in new_motion_status_dict:
                     try:
                         data = MessageToDict(frame[repr])
