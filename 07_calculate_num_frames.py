@@ -7,64 +7,56 @@ from vaapi.client import Vaapi
 from tqdm import tqdm
 import argparse
 
-def is_done(log_id, status_dict):
-    # TODO get log_status representation here and check each field.
-    new_dict = status_dict.copy()
+def is_done(log_id):
+    # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
         response = client.log_status.list(log_id=log_id)
         if len(response) == 0:
-            return status_dict
+            return False
         log_status = response[0]
-
-        for k,v in status_dict.items():
-            if k == "FrameInfo":
-                field_value = getattr(log_status, "num_cognition_frames")
-            else:
-                field_value = getattr(log_status, k)
-            
-            if field_value == None:
-                print(f"\tdid not find a value for repr {k}")
-            else:
-                new_dict.pop(k)
-        return new_dict
-    # TODO would be nice to handle the vaapi API error here explicitely
     except Exception as e:
-        print("error", e)
+        print(e)
+    
+    if not log_status.num_cognition_frames or int(log_status.num_cognition_frames) == 0:
+        print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         quit()
-        return status_dict
 
-def is_done_motion(log_id, status_dict):
-    # TODO get log_status representation here and check each field.
-    new_dict = status_dict.copy()
+
+    response = client.cognitionframe.get_frame_count(log_id=log_id)
+    if int(log_status.num_cognition_frames) == int(response["count"]):
+        return True
+    else:
+        print(log_status.num_cognition_frames, response["count"])
+        return False
+
+
+def is_done_motion(log_id):
+    # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
         response = client.log_status.list(log_id=log_id)
         if len(response) == 0:
-            return status_dict
+            return False
         log_status = response[0]
-
-        for k,v in status_dict.items():
-            if k == "FrameInfo":
-                field_value = getattr(log_status, "num_motion_frames")
-            else:
-                field_value = getattr(log_status, k)
-            
-            if field_value == None:
-                print(f"\tdid not find a value for repr {k}")
-            else:
-                new_dict.pop(k)
-        return new_dict
-    # TODO would be nice to handle the vaapi API error here explicitely
     except Exception as e:
-        print("error", e)
+        print(e)
+    
+    if not log_status.num_motion_frames or int(log_status.num_motion_frames) == 0:
+        print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         quit()
-        return status_dict
 
 
-def parse_cognition_log(log_path):
+    response = client.motionframe.get_frame_count(log_id=log_id)
+    if int(log_status.num_motion_frames) == int(response["count"]):
+        return True
+    else:
+        return False
+
+
+def parse_cognition_log(log_data):
     my_parser = Parser()
-    game_log = LogReader(str(log_path), my_parser)
+    game_log = LogReader(str(log_data.log_path), my_parser)
 
     frame_array = list()
     for idx, frame in enumerate(tqdm(game_log)):
@@ -77,7 +69,7 @@ def parse_cognition_log(log_path):
             break
         
         json_obj = {
-            "log_id":log_id, 
+            "log_id":log_data.log_id, 
             "frame_number":frame_number,
             "frame_time": frame_time,
         }
@@ -164,14 +156,14 @@ if __name__ == "__main__":
         return data.log_path
 
     for log_data in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_id = log_data.id
         log_path = Path(log_root_path) / log_data.log_path
         sensor_log_path = Path(log_root_path) / log_data.sensor_log_path
 
-        # FIXME add useful is done check here
         print("log_path: ", log_path)
-        parse_cognition_log(log_path)
+        if not is_done(log_data.id):
+            parse_cognition_log(log_data)
         
-        # FIXME add useful is done check here
         print("log_path: ", sensor_log_path)
-        parse_motion_log(sensor_log_path)
+        if not is_done_motion(log_data.id):
+            parse_motion_log(sensor_log_path)
+        quit()

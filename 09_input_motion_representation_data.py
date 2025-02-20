@@ -142,4 +142,3 @@ if __name__ == "__main__":
             print(response)
         except Exception as e:
             print(f"error inputing the data {log_path}")
-        # only do the first log for now
