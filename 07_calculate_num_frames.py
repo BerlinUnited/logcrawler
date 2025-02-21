@@ -55,8 +55,10 @@ def is_done_motion(log_id):
 
 
 def parse_cognition_log(log_data):
+    log_path = Path(log_root_path) / log_data.log_path
+
     my_parser = Parser()
-    game_log = LogReader(str(log_data.log_path), my_parser)
+    game_log = LogReader(str(log_path), my_parser)
 
     frame_array = list()
     for idx, frame in enumerate(tqdm(game_log)):
@@ -69,7 +71,7 @@ def parse_cognition_log(log_data):
             break
         
         json_obj = {
-            "log_id":log_data.log_id, 
+            "log_id":log_data.id, 
             "frame_number":frame_number,
             "frame_time": frame_time,
         }
@@ -97,7 +99,9 @@ def parse_cognition_log(log_data):
         print(f"error inputing the data {log_path}")
 
 
-def parse_motion_log(sensor_log_path):
+def parse_motion_log(log_data):
+    sensor_log_path = Path(log_root_path) / log_data.sensor_log_path
+
     my_parser = Parser()
     game_log = LogReader(str(sensor_log_path), my_parser)
 
@@ -113,7 +117,7 @@ def parse_motion_log(sensor_log_path):
             break
         
         json_obj = {
-            "log_id":log_id, 
+            "log_id":log_data.id, 
             "frame_number":frame_number,
             "frame_time": frame_time,
         }
@@ -126,7 +130,7 @@ def parse_motion_log(sensor_log_path):
                 )
                 frame_array.clear()
             except Exception as e:
-                print(f"error inputing the data for {log_path}")
+                print(f"error inputing the data for {sensor_log_path}")
                 print(e)
                 quit()
 
@@ -138,7 +142,8 @@ def parse_motion_log(sensor_log_path):
         )
         print(response)
     except Exception as e:
-        print(f"error inputing the data {log_path}")
+        print(f"error inputing the data {sensor_log_path}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -156,14 +161,10 @@ if __name__ == "__main__":
         return data.log_path
 
     for log_data in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_path = Path(log_root_path) / log_data.log_path
-        sensor_log_path = Path(log_root_path) / log_data.sensor_log_path
-
-        print("log_path: ", log_path)
+        print("log_path: ", log_data.log_path)
         if not is_done(log_data.id):
             parse_cognition_log(log_data)
         
-        print("log_path: ", sensor_log_path)
+        print("log_path: ", log_data.sensor_log_path)
         if not is_done_motion(log_data.id):
-            parse_motion_log(sensor_log_path)
-        quit()
+            parse_motion_log(log_data)
