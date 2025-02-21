@@ -21,7 +21,7 @@ def is_input_done(representation_list):
         print(e)
 
     # check if number of frames were calculated already
-    num_cognition_frames =log_status.num_cognition_frames
+    num_cognition_frames = log_status.num_cognition_frames
     if not num_cognition_frames or int(num_cognition_frames) == 0:
         print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         quit()
@@ -34,18 +34,10 @@ def is_input_done(representation_list):
         # if no entry for a given representation is present this will throw an error
         print(repr, type(repr))
         try:
-            if repr == "FrameInfo":
-                # handle this differently because we called the field num_cognition_frames in the db
-                # FIXME fix the db schema so that this code can be easier
-                num_repr_frames=response[repr]
-                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, 'num_cognition_frames')}")
-                if int(getattr(log_status, "num_cognition_frames")) != int(num_repr_frames):
-                    new_list.append(repr)
-            else:
-                num_repr_frames=response[repr]
-                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
-                if int(getattr(log_status, repr)) != int(num_repr_frames):
-                    new_list.append(repr)
+            num_repr_frames=response[repr]
+            print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
+            if int(getattr(log_status, repr)) != int(num_repr_frames):
+                new_list.append(repr)
         except Exception as e:
             print(e)
             new_list.append(repr)
@@ -66,6 +58,7 @@ if __name__ == "__main__":
         base_url=os.environ.get("VAT_API_URL"),
         api_key=os.environ.get("VAT_API_TOKEN"),
     )
+    # get all logs
     existing_data = client.logs.list()
 
     def sort_key_fn(data):
@@ -79,7 +72,6 @@ if __name__ == "__main__":
 
         # representations that we want to put in the database if they exist in the log
         representation_list = [
-            "FrameInfo",
             "BallModel",
             "BallCandidates",
             "BallCandidatesTop",
@@ -97,14 +89,15 @@ if __name__ == "__main__":
             "ScanLineEdgelPerceptTop",
             "RansacCirclePercept2018"
         ]
-
+        
         # check if we need to insert this log
-        new_representation_list = is_input_done(representation_list)
-        if not args.force and len(new_representation_list) == 0:
-            print("\tall required representations are already inserted, will continue with the next log")
-            continue
-        if args.force:
-            new_representation_list = representation_list
+        #new_representation_list = is_input_done(representation_list)
+        #if not args.force and len(new_representation_list) == 0:
+        #    print("\tall required representations are already inserted, will continue with the next log")
+        #    continue
+        #if args.force:
+        #    new_representation_list = representation_list
+        new_representation_list = representation_list  # TODO revert
         my_parser = Parser()
         my_parser.register("ImageJPEG"   , "Image")
         my_parser.register("ImageJPEGTop", "Image")
@@ -114,14 +107,14 @@ if __name__ == "__main__":
 
         game_log = LogReader(str(log_path), my_parser)
 
-        my_array = list()
+        repr_lists = {}
         for idx, frame in enumerate(tqdm(game_log, desc=f"Parsing frame", leave=True)):
             for repr_name in frame.get_names():
                 if not repr_name in new_representation_list:
                     continue
                 
                 # try accessing framenumber directly because we can have the situation where the framenumber is missing in the
-                # last frame
+                # last frame, also we don't want to parse other representations if frame number is missing
                 try:
                     frame_number = frame['FrameInfo'].frameNumber
                 except Exception as e:
@@ -145,31 +138,26 @@ if __name__ == "__main__":
                     print({e})
                     quit()
 
+                # FIXME fix the backend to also handle normal create function
                 json_obj = {
-                    "log_id":log_id, 
-                    "frame_number":frame_number,
-                    "representation_name":repr_name,
+                    "frame":frame_number, 
                     "representation_data":data
                 }
-                my_array.append(json_obj)
+                # If the repr_name key doesn't exist in the dictionary, create a new list for it
+                if repr_name not in repr_lists:
+                    repr_lists[repr_name] = []
 
-            if idx % 100 == 0:
-                try:
-                    response = client.cognition_repr.bulk_create(
-                        repr_list=my_array
-                    )
-                    my_array.clear()
-                except Exception as e:
-                    print(e)
-                    print(f"error inputing the data {log_path}")
-                    quit()
-        # handle the last frames
-        # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
-        try:
-            response = client.cognition_repr.bulk_create(
-                repr_list=my_array
-            )
-            print(response)
-        except Exception as e:
-            print(e)
-            print(f"error inputing the data {log_path}")
+                # Append the json_obj to the appropriate list
+                repr_lists[repr_name].append(json_obj)
+
+            if idx % 150 == 0:
+                for k,v in repr_lists.items():
+                    try:
+                        model = getattr(client, k.lower())
+                        model.bulk_create(repr_list=v)
+                        v.clear()
+                    except Exception as e:
+                        print(f"error inputing the data {log_path}")
+                        print(e)
+                        quit()
+            # TODO add the last frames
