@@ -11,7 +11,7 @@ def is_input_done(representation_list):
     # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=data.id)
+        response = client.log_status.list(log=data.id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -25,7 +25,7 @@ def is_input_done(representation_list):
         quit()
 
     # query the cognition representation and check how many frames with a given representations are there
-    response = client.motion_repr.get_repr_count(log_id=log_id)
+    response = client.motion_repr.get_repr_count(log=log_id)
 
     new_list = list()
     for repr in representation_list:
@@ -117,8 +117,7 @@ if __name__ == "__main__":
                     quit()
 
                 json_obj = {
-                    "motionframe":sensor_frame_number,
-                    "representation_name":repr_name,
+                    "frame":sensor_frame_number,
                     "representation_data":data
                 }
                 my_array.append(json_obj)

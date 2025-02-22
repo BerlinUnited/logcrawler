@@ -11,7 +11,7 @@ def is_done(log_id):
     # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=log_id)
+        response = client.log_status.list(log=log_id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -35,7 +35,7 @@ def is_done_motion(log_id):
     # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=log_id)
+        response = client.log_status.list(log=log_id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -71,7 +71,7 @@ def parse_cognition_log(log_data):
             break
         
         json_obj = {
-            "log_id":log_data.id, 
+            "log":log_data.id, 
             "frame_number":frame_number,
             "frame_time": frame_time,
         }
@@ -117,7 +117,7 @@ def parse_motion_log(log_data):
             break
         
         json_obj = {
-            "log_id":log_data.id, 
+            "log":log_data.id, 
             "frame_number":frame_number,
             "frame_time": frame_time,
         }

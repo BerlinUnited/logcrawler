@@ -26,7 +26,7 @@ def handle_games(event_id: int, game: str):
 
     date_object = datetime.strptime(timestamp, "%Y-%m-%d_%H-%M-%S")
     response = client.games.create(
-        event_id=event_id,
+        event=event_id,
         team1=team1,
         team2=team2,
         half=halftime,
@@ -106,9 +106,11 @@ if __name__ == "__main__":
                         log_path = str(Path(logfolder) / "game.log").removeprefix(log_root_path).strip("/")
                         combined_log_path = str(Path(logfolder) / "combined.log").removeprefix(log_root_path).strip("/")
                         sensor_log_path = str(Path(logfolder) / "sensor.log").removeprefix(log_root_path).strip("/")
+
+                        
                         try:
                             response = client.logs.create(
-                                log_game=game_id, 
+                                game=game_id, 
                                 robot_version=version,
                                 player_number=int(playernumber),
                                 head_number=int(head_number),
@@ -127,5 +129,5 @@ if __name__ == "__main__":
 
                         # create an empty log status object here
                         response = client.log_status.create(
-                            log_id=log_id,
+                            log=log_id,
                         )

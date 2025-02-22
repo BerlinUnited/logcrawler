@@ -14,7 +14,7 @@ from vaapi.client import Vaapi
 
 def is_done(log_id):
     # get the log status object for a given log_id
-    response = client.log_status.list(log_id=log_id)
+    response = client.log_status.list(log=log_id)
 
     if len(response) == 0:
         print("\tno log_status found")

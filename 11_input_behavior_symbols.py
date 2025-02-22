@@ -6,6 +6,7 @@ from tqdm import tqdm
 from vaapi.client import Vaapi
 import traceback
 
+
 def get_key_and_dict_by_name(dictionary1, dictionary2, name):
     #print("\tchecking the dict")
     for key, value in dictionary1.items():
@@ -18,6 +19,7 @@ def get_key_and_dict_by_name(dictionary1, dictionary2, name):
         if value['name'] == name:
             return key, dictionary2
     return None, None  # Return None if name is not found
+
 
 def is_behavior_done(data):
     print("\tcheck inserted behavior frames")

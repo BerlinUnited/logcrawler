@@ -34,7 +34,7 @@ def calculate_images(log_path, log_id):
 
     # TODO do a try catch here
     response = client.log_status.update(
-        log_id=log_status.log_id, 
+        log=log_status.log, 
         num_jpg_bottom=int(num_jpg_bottom),
         num_jpg_top=int(num_jpg_top),
         num_bottom=int(num_bottom),
@@ -47,7 +47,7 @@ def calculate_images(log_path, log_id):
 
 def is_done(log_id):
     # get the log status object for a given log_id
-    response = client.log_status.list(log_id=log_id)
+    response = client.log_status.list(log=log_id)
 
     if len(response) == 0:
         print("\tno log_status found")

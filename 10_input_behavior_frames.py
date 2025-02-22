@@ -10,7 +10,7 @@ def fill_option_map(log_id):
     # TODO I could build this why parsing the BehaviorComplete representation - saving a call to the database
     try:
         response = client.behavior_option.list(
-            log_id=log_id
+            log=log_id
         )
     except Exception as e:
         print(response)
@@ -19,7 +19,7 @@ def fill_option_map(log_id):
         quit()
     for option in response:
         state_response = client.behavior_option_state.list(
-            log_id=log_id,
+            log=log_id,
             option_id=option.id,
         )
         state_dict = dict()
@@ -58,11 +58,11 @@ def parse_sparse_option(log_id, frame, time, parent, node):
     global_options_id = get_option_id(internal_options_id)
     global_state_id = get_state_id(internal_options_id,internal_state_id)
     json_obj = {
-        "log_id":log_id,
+        "log":log_id,
         "options_id":global_options_id,
         "active_state":global_state_id,
         #"parent":parent, # FIXME we could make it a reference to options if we would have the root option in the db
-        "frame":frame,
+        #"frame":frame,
         #"time":time,
         #"time_of_execution":node.option.timeOfExecution,
         #"state_time":node.option.stateTime,
@@ -83,7 +83,7 @@ def parse_sparse_option(log_id, frame, time, parent, node):
 def is_behavior_done(data):
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=data.id)
+        response = client.log_status.list(log=data.id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -98,7 +98,7 @@ def is_behavior_done(data):
     if log_status.num_cognition_frames and int(log_status.num_cognition_frames) > 0:
         print(f"\tcognition frames are {log_status.num_cognition_frames}")
         
-        response = client.behavior_frame_option.get_behavior_count(log_id=data.id)
+        response = client.behavior_frame_option.get_behavior_count(log=data.id)
         print(f"\tbehavior frames are {response['count']}")
         return response["count"] == int(log_status.num_cognition_frames)
     else:
@@ -153,7 +153,7 @@ if __name__ == "__main__":
                 for i, option in enumerate(full_behavior.options):
                     try:
                         option_response = client.behavior_option.create(
-                            log_id=log_id,
+                            log=log_id,
                             xabsl_internal_option_id=i,
                             option_name=option.name
                         )
@@ -165,7 +165,7 @@ if __name__ == "__main__":
                     state_list = list()
                     for j, state in enumerate(option.states):
                         state_dict = {
-                            "log_id":log_id,
+                            "log":log_id,
                             "option_id":option_response.id,
                             "xabsl_internal_state_id":j,
                             "name":state.name,

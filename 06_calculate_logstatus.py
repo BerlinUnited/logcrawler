@@ -12,7 +12,7 @@ def is_done(log_id, status_dict):
     new_dict = status_dict.copy()
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=log_id)
+        response = client.log_status.list(log=log_id)
         if len(response) == 0:
             return status_dict
         log_status = response[0]
@@ -39,7 +39,7 @@ def is_done_motion(log_id, status_dict):
     new_dict = status_dict.copy()
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=log_id)
+        response = client.log_status.list(log=log_id)
         if len(response) == 0:
             return status_dict
         log_status = response[0]
@@ -145,7 +145,7 @@ if __name__ == "__main__":
                     new_cognition_status_dict['num_cognition_frames'] = new_cognition_status_dict.pop('FrameInfo')
                 
                 response = client.log_status.update(
-                log_id=log_id, 
+                log=log_id, 
                 **new_cognition_status_dict
                 )
             except Exception as e:
@@ -201,7 +201,7 @@ if __name__ == "__main__":
                     new_motion_status_dict['num_motion_frames'] = new_motion_status_dict.pop('FrameInfo')
                 print(new_motion_status_dict)
                 response = client.log_status.update(
-                log_id=log_id, 
+                log=log_id, 
                 **new_motion_status_dict
                 )
             except Exception as e:
