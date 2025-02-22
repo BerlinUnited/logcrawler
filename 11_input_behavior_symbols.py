@@ -25,7 +25,7 @@ def is_behavior_done(data):
     print("\tcheck inserted behavior frames")
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log_id=data.id)
+        response = client.log_status.list(log=data.id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -39,7 +39,7 @@ def is_behavior_done(data):
     
     if log_status.num_cognition_frames and int(log_status.num_cognition_frames) > 0:
         print(f"\tcognition frames are {log_status.num_cognition_frames}")
-        response = client.xabsl_symbol_sparse.get_behavior_count(log_id=data.id)
+        response = client.xabsl_symbol_sparse.get_behavior_count(log=data.id)
         print(f"\tbehavior frames are {response['count']}")
         return response["count"] == int(log_status.num_cognition_frames)
     else:

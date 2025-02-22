@@ -27,7 +27,7 @@ def calculate_images(log_path, log_id):
     print(f"\t\tbottom jpeg: {num_jpg_bottom}")
     print(f"\t\ttop jpeg: {num_jpg_top}")
 
-    response = client.log_status.list(log_id=log_id)
+    response = client.log_status.list(log=log_id)
     if len(response) == 0:
         return False
     log_status = response[0]
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     for data in sorted(existing_data, key=sort_key_fn):
         log_id = data.id
         log_path = Path(log_root_path) / data.log_path
-        print(log_path)
+        print(f"{log_id}: {log_path}")
 
         if is_done(log_id) and not args.force:
             print("\tNumber of images are already put in the database - we assume that it is correct")
