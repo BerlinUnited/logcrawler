@@ -78,7 +78,7 @@ if __name__ == "__main__":
     existing_data = client.logs.list()
 
     def sort_key_fn(data):
-        return data.log_path
+        return data.id
 
     for data in sorted(existing_data, key=sort_key_fn):
         log_id = data.id

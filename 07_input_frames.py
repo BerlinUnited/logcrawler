@@ -23,7 +23,7 @@ def is_done(log_id):
         quit()
 
 
-    response = client.cognitionframe.get_frame_count(log_id=log_id)
+    response = client.cognitionframe.get_frame_count(log=log_id)
     if int(log_status.num_cognition_frames) == int(response["count"]):
         return True
     else:
@@ -47,7 +47,7 @@ def is_done_motion(log_id):
         quit()
 
 
-    response = client.motionframe.get_frame_count(log_id=log_id)
+    response = client.motionframe.get_frame_count(log=log_id)
     if int(log_status.num_motion_frames) == int(response["count"]):
         return True
     else:

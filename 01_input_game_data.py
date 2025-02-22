@@ -78,7 +78,8 @@ if __name__ == "__main__":
             response = client.events.create(name=event.name)
             event_id = response.id
 
-            for game in [f for f in event.iterdir() if f.is_dir()]:
+            all_games = [f for f in event.iterdir() if f.is_dir()]
+            for game in sorted(all_games):
                 if str(game.name) == "Experiments":
                     print("ignoring Experiments folder")
                     #handle_experiments(event_id, game)
@@ -88,7 +89,8 @@ if __name__ == "__main__":
                     game_id = response.id
 
                     gamelog_path = Path(game) / "game_logs"
-                    for logfolder in [f for f in gamelog_path.iterdir() if f.is_dir()]:
+                    all_logs = [f for f in gamelog_path.iterdir() if f.is_dir()]
+                    for logfolder in sorted(all_logs):
                         print(f"\t{logfolder}")
                         logfolder_parsed = str(logfolder.name).split("_")
                         playernumber = logfolder_parsed[0]

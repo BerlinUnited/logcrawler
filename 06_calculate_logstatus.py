@@ -121,8 +121,6 @@ if __name__ == "__main__":
                 # stop parsing log if FrameInfo is missing
                 try:
                     frame_number = frame['FrameInfo'].frameNumber
-                    print(frame['FrameInfo'])
-                    quit()
                 except Exception as e:
                     print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
                     break
