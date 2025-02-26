@@ -29,6 +29,7 @@ def is_done(log_id):
     else:
         return True
 
+
 def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
     """
     creates two folders:
@@ -71,6 +72,13 @@ def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top
 
 
 def get_images(frame):
+    try:
+        frame_number = frame['FrameInfo'].frameNumber
+        frame_time = frame['FrameInfo'].time
+    except Exception as e:
+        print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
+        return [None, None, None, None, None, None, None]
+    
     try:
         image_top = image_from_proto(frame["ImageTop"])
     except KeyError:
@@ -255,6 +263,7 @@ def calculate_output_path(log_folder: str):
 
 if __name__ == "__main__":
     # FIXME aborting this script can result in broken images being written
+    # FIXME make sure to only export images on frames with frame info
     log_root_path = os.environ.get("VAT_LOG_ROOT") 
 
     client = Vaapi(
@@ -264,14 +273,16 @@ if __name__ == "__main__":
 
     existing_data = client.logs.list()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(log):
+        return log.log_path
     
-    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_folder_path = Path(log_root_path) / Path(data.log_path).parent
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+        log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         print(log_folder_path)
 
-        log_id = data.id
+        if log.id != 10:
+            continue
+        log_id = log.id
 
         if is_done(log_id):
            print("\twe already counted all the images and put them in the db we assume that all images have been extracted")

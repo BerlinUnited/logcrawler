@@ -25,7 +25,7 @@ def path_generator(directory: str, batch_size: int = 200) -> Generator[List[str]
 
 def handle_insertion(individual_extracted_folder, log, camera, image_type):
 
-    print(individual_extracted_folder)
+    print(f"\t{individual_extracted_folder.name}")
     if not Path(individual_extracted_folder).is_dir():
         return
 
@@ -118,6 +118,7 @@ if __name__ == "__main__":
         return log.log_path
 
     for log in sorted(existing_data, key=myfunc, reverse=False):
+        print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 
         # TODO could we just switch game_logs with extracted in the paths?
