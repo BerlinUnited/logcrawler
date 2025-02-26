@@ -278,8 +278,9 @@ if __name__ == "__main__":
         return log.log_path
     
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+        print(log.log_path)
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
-        print(log_folder_path)
+        
 
         if log.id != 10:
             continue
