@@ -32,6 +32,14 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
     if is_done(log.id, camera, image_type):
         return
 
+    # get list of frames  for this log
+    frames = client.cognitionframe.list(log=log.id)
+    # Create a dictionary mapping frame_number to id
+    frame_to_id = {frame.frame_number: frame.id for frame in frames}
+
+    def get_id_by_frame_number(target_frame_number):
+        return frame_to_id.get(target_frame_number, None)
+
     for batch in path_generator(individual_extracted_folder):
         image_ar = [None] * len(batch)
         for idx, file in enumerate(batch):
@@ -40,7 +48,7 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
             url_path = str(file).removeprefix(log_root_path).strip("/")
             
             image_ar[idx] = {
-                "frame": framenumber,
+                "frame": get_id_by_frame_number(framenumber),
                 "camera": camera,
                 "type": image_type,
                 "image_url": url_path,
@@ -89,6 +97,7 @@ def is_done(robot_data_id, camera, image_type):
 
 
 if __name__ == "__main__":
+    # FIXME handle the case that frame does not exist explicitely
     log_root_path = os.environ.get("VAT_LOG_ROOT")
     client = Vaapi(
         base_url=os.environ.get("VAT_API_URL"),
@@ -100,8 +109,7 @@ if __name__ == "__main__":
     def myfunc(log):
         return log.log_path
 
-    for log in sorted(existing_data, key=myfunc, reverse=True):
-        log_id = log.id
+    for log in sorted(existing_data, key=myfunc, reverse=False):
         log_path = Path(log_root_path) / log.log_path
 
         # TODO could we just switch game_logs with extracted in the paths?
