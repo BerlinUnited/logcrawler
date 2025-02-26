@@ -77,7 +77,7 @@ if __name__ == "__main__":
     def sort_key_fn(data):
         return data.log_path
 
-    for log_data in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log_data in sorted(existing_data, key=sort_key_fn, reverse=False):
         log_id = log_data.id
         log_path = Path(log_root_path) / log_data.log_path
         sensor_log_path = Path(log_root_path) / log_data.sensor_log_path
@@ -206,3 +206,4 @@ if __name__ == "__main__":
                 print(f"\terror inputing the data {log_path}")
                 print(e)
                 quit()
+        quit()

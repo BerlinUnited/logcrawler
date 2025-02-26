@@ -160,7 +160,7 @@ if __name__ == "__main__":
     def sort_key_fn(data):
         return data.log_path
 
-    for log_data in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log_data in sorted(existing_data, key=sort_key_fn, reverse=False):
         print("log_path: ", log_data.log_path)
         if not is_done(log_data.id):
             parse_cognition_log(log_data)
@@ -168,3 +168,4 @@ if __name__ == "__main__":
         print("log_path: ", log_data.sensor_log_path)
         if not is_done_motion(log_data.id):
             parse_motion_log(log_data)
+        quit()

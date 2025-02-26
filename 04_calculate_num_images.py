@@ -89,3 +89,4 @@ if __name__ == "__main__":
             print("\tNumber of images are already put in the database - we assume that it is correct")
         else:
             calculate_images(log_path.parent, log_id)
+        quit()
