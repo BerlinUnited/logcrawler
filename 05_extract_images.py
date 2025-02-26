@@ -1,16 +1,15 @@
-import queue
-import threading
 import os
-from linetimer import CodeTimer
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
 from pathlib import Path
-import concurrent.futures
+from tqdm import tqdm
 import numpy as np
 import io
 from PIL import PngImagePlugin
 from PIL import Image as PIL_Image
 from vaapi.client import Vaapi
+
+
 
 def is_done(log_id):
     # get the log status object for a given log_id
@@ -30,7 +29,7 @@ def is_done(log_id):
         return True
 
 
-def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
+def export_images(logfile_path, data, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
     """
     creates two folders:
         <logfile name>_top
@@ -39,46 +38,37 @@ def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top
     and saves the images inside those folders
     """
 
-    for i, img_b, img_b_jpg, img_t, img_t_jpg, cm_b, cm_t in img:
-        frame_number = format(
-            i, "07d"
-        )  # make frame number a fixed length string so that the images are in the correct order
-        if img_b:
-            img_b = img_b.convert("RGB")
-            save_image_to_png(
-                frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile
-            )
-        # TODO add meta data indicating this was a jpeg image
-        if img_b_jpg:
-            img_b_jpg = img_b_jpg.convert("RGB")
-            save_image_to_png(
-                frame_number, img_b_jpg, cm_b, out_bottom_jpg, cam_id=1, name=logfile
-            )
+    i, img_b, img_b_jpg, img_t, img_t_jpg, cm_b, cm_t = data
+    frame_number = format(
+        i, "07d"
+    )  # make frame number a fixed length string so that the images are in the correct order
+    if img_b:
+        img_b = img_b.convert("RGB")
+        save_image_to_png(
+            frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile_path
+        )
+    # TODO add meta data indicating this was a jpeg image
+    if img_b_jpg:
+        img_b_jpg = img_b_jpg.convert("RGB")
+        save_image_to_png(
+            frame_number, img_b_jpg, cm_b, out_bottom_jpg, cam_id=1, name=logfile_path
+        )
 
-        if img_t:
-            img_t = img_t.convert("RGB")
-            save_image_to_png(
-                frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile
-            )
+    if img_t:
+        img_t = img_t.convert("RGB")
+        save_image_to_png(
+            frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile_path
+        )
 
-        # TODO add meta data indicating this was a jpeg image
-        if img_t_jpg:
-            img_t_jpg = img_t_jpg.convert("RGB")
-            save_image_to_png(
-                frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=logfile
-            )
-
-        print("\tsaving images from frame ", i, end="\r", flush=True)
+    # TODO add meta data indicating this was a jpeg image
+    if img_t_jpg:
+        img_t_jpg = img_t_jpg.convert("RGB")
+        save_image_to_png(
+            frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=logfile_path
+        )
 
 
 def get_images(frame):
-    try:
-        frame_number = frame['FrameInfo'].frameNumber
-        frame_time = frame['FrameInfo'].time
-    except Exception as e:
-        print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-        return [None, None, None, None, None, None, None]
-    
     try:
         image_top = image_from_proto(frame["ImageTop"])
     except KeyError:
@@ -109,7 +99,7 @@ def get_images(frame):
     except KeyError:
         cm_bottom = None
 
-    return [frame.number, image_bottom, image_bottom_jpeg, image_top, image_top_jpeg, cm_bottom, cm_top]
+    return (frame.number, image_bottom, image_bottom_jpeg, image_top, image_top_jpeg, cm_bottom, cm_top)
 
 
 def image_from_proto(message):
@@ -196,24 +186,23 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
         meta.add_text("r_13", str(cm.pose.rotation[2].x))
         meta.add_text("r_23", str(cm.pose.rotation[2].y))
         meta.add_text("r_33", str(cm.pose.rotation[2].z))
-    filename = target_dir / (str(j) + ".png")
+    filename = Path(target_dir) / (str(j) + ".png")
     img.save(filename, pnginfo=meta)
 
 
-
-def worker(data_queue, output_paths):
-    while True:
-        try:
-            batch = data_queue.get(block=False)
-            if batch is None:  # Sentinel value to exit
-                break
-            for image_data in batch:
-                image, top_path, bottom_path = image_data
-                export_images("test", [image], top_path, bottom_path, top_path, bottom_path)
-            data_queue.task_done()
-        except queue.Empty:
-            continue
-
+def get_log_path(log) -> str | None:
+    """
+    get either full path to game.log or combined.log
+    """
+    game_log_path = log_root_path / Path(log.log_path)
+    combined_log_path = log_root_path / Path(log.combined_log_path)
+    if combined_log_path.is_file():
+        actual_log_path = combined_log_path
+    elif game_log_path.is_file():
+        actual_log_path = game_log_path
+    else:
+        actual_log_path = None
+    return actual_log_path
 
 def calculate_output_path(log_folder: str):
     # FIXME have a better detection if its experiment log or not
@@ -237,15 +226,8 @@ def calculate_output_path(log_folder: str):
     else:
     """
     print("\tdetected normal game log")
-    actual_log_folder = log_root_path / Path(log_folder)
-    combined_log = log_root_path / Path(actual_log_folder) / "combined.log"
-    game_log = log_root_path / Path(actual_log_folder) / "game.log"
-    if combined_log.is_file():
-        log = combined_log
-    elif game_log.is_file():
-        log = game_log
-    else:
-        log = None
+    actual_log_folder = Path(log_folder)
+    
 
     extracted_folder = (
         Path(actual_log_folder).parent.parent
@@ -258,12 +240,11 @@ def calculate_output_path(log_folder: str):
     output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
     output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
-    return log, output_folder_top, output_folder_bottom, output_folder_top_jpg, output_folder_bottom_jpg
+    return output_folder_top, output_folder_bottom, output_folder_top_jpg, output_folder_bottom_jpg
 
 
 if __name__ == "__main__":
     # FIXME aborting this script can result in broken images being written
-    # FIXME make sure to only export images on frames with frame info
     # FIXME add a force flag so we can change wrong data
     log_root_path = os.environ.get("VAT_LOG_ROOT") 
 
@@ -281,64 +262,43 @@ if __name__ == "__main__":
         print(log.log_path)
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         
-
-        if log.id != 10:
+        if log.id != 13:
             continue
-        log_id = log.id
+        
+        actual_log_path = get_log_path(log)
+        if actual_log_path is None:
+            print("\tcouldnt find a valid log file")
+            continue
 
-        #if is_done(log_id):
+        #if is_done(log.id):
         #   print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
         #   continue
         
-        data_queue = queue.Queue()
+        # get the combined_log path or the game.log path
+        out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder_path)
         
-        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder_path)
-        if log is None:
-            print("\tcouldnt find a valid log file")
-            continue
 
         out_top.mkdir(exist_ok=True, parents=True)
         out_bottom.mkdir(exist_ok=True, parents=True)
         out_top_jpg.mkdir(exist_ok=True, parents=True)
         out_bottom_jpg.mkdir(exist_ok=True, parents=True)
 
-        output_paths = {
-            "top": out_top_jpg,
-            "bottom": out_bottom_jpg
-        }
-        num_threads = os.cpu_count() * 2
-        batch_size = 50  # Adjust based on your specific use case
+        my_parser = Parser()
+        my_parser.register("ImageJPEG"   , "Image")
+        my_parser.register("ImageJPEGTop", "Image")
+        game_log = LogReader(str(actual_log_path), my_parser)
 
-        with CodeTimer("Total"):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-                # Start worker threads
-                futures = [executor.submit(worker, data_queue, output_paths) for _ in range(num_threads)]
+        for idx, frame in enumerate(tqdm(game_log)):
+            try:
+                frame_number = frame['FrameInfo'].frameNumber
+                frame_time = frame['FrameInfo'].time
+            except Exception as e:
+                print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
+                break
+            
+            data = get_images(frame)
+            export_images(log.log_path, data, str(out_top), str(out_bottom), str(out_top_jpg), str(out_bottom_jpg))
 
-                my_parser = Parser()
-                my_parser.register("ImageJPEG"   , "Image")
-                my_parser.register("ImageJPEGTop", "Image")
-
-                with CodeTimer("Reading and processing logs"):
-                    with LogReader(log, my_parser) as reader:
-                        batch = []
-                        for image in map(get_images, reader.read()):
-                            batch.append((image, output_paths["top"], output_paths["bottom"]))
-                            if len(batch) >= batch_size:
-                                data_queue.put(batch)
-                                batch = []
-                        if batch:  # Put any remaining items
-                            data_queue.put(batch)
-
-                with CodeTimer("Writing images"):
-                    # Wait for all tasks to be completed
-                    data_queue.join()
-
-                # Signal worker threads to exit
-                for _ in range(num_threads):
-                    data_queue.put(None)
-
-                # Wait for all threads to complete
-                concurrent.futures.wait(futures)
 
         # HACK delete image folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
         if not any(out_top_jpg.iterdir()):

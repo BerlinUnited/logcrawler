@@ -51,6 +51,8 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
             if not frame_id:
                 print("error: frame id not in db")
                 print(f"frame num:  {framenumber} - log id: {log.id}")
+                print(f"{log.log_path}")
+                print("You should run the image extraction again with force flag for this log")
                 quit()
 
             url_path = str(file).removeprefix(log_root_path).strip("/")
@@ -98,7 +100,7 @@ def is_done(robot_data_id, camera, image_type):
         ValueError()
 
     if target_count == db_count:
-        print("\tskipping insertion")
+        print("\t\tskipping insertion")
         return True
 
     return False
