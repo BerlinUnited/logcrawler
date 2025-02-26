@@ -264,6 +264,7 @@ def calculate_output_path(log_folder: str):
 if __name__ == "__main__":
     # FIXME aborting this script can result in broken images being written
     # FIXME make sure to only export images on frames with frame info
+    # FIXME add a force flag so we can change wrong data
     log_root_path = os.environ.get("VAT_LOG_ROOT") 
 
     client = Vaapi(
@@ -284,9 +285,9 @@ if __name__ == "__main__":
             continue
         log_id = log.id
 
-        if is_done(log_id):
-           print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
-           continue
+        #if is_done(log_id):
+        #   print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
+        #   continue
         
         data_queue = queue.Queue()
         
