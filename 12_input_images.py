@@ -40,7 +40,6 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
     def get_id_by_frame_number(target_frame_number):
         return frame_to_id.get(target_frame_number, None)
     
-    
 
     for batch in path_generator(individual_extracted_folder):
         image_ar = [None] * len(batch)
@@ -49,7 +48,7 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
             framenumber = int(Path(file).stem)
             frame_id = get_id_by_frame_number(framenumber)
             if not frame_id:
-                print("error: frame id not in db")
+                print("ERROR: frame id not in db")
                 print(f"frame num:  {framenumber} - log id: {log.id}")
                 print(f"{log.log_path}")
                 print("You should run the image extraction again with force flag for this log")
