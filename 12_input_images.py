@@ -53,7 +53,22 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
                 print(f"frame num:  {framenumber} - log id: {log.id}")
                 print(f"{log.log_path}")
                 print("You should run the image extraction again with force flag for this log")
-                quit()
+                #
+                response = client.log_status.get(id=log.id)
+                if individual_extracted_folder.name == "log_bottom_jpg":
+                    Path(file).unlink()
+                    new_image_num = int(response.num_jpg_bottom) - 1
+                    client.log_status.update(log=log.id, num_jpg_bottom=new_image_num)
+                elif individual_extracted_folder.name == "log_top_jpg":
+                    Path(file).unlink()
+                    new_image_num = int(response.num_jpg_top) - 1
+                    client.log_status.update(log=log.id, num_jpg_top=new_image_num)
+                elif individual_extracted_folder.name == "log_bottom":
+                    Path(file).unlink()
+                    new_image_num = int(response.num_bottom) - 1
+                    client.log_status.update(log=log.id, num_bottom=new_image_num)
+                else:
+                    quit()
 
             url_path = str(file).removeprefix(log_root_path).strip("/")
             
