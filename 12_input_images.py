@@ -25,7 +25,7 @@ def path_generator(directory: str, batch_size: int = 200) -> Generator[List[str]
 
 def handle_insertion(individual_extracted_folder, log, camera, image_type):
 
-    print(individual_extracted_folder)
+    print(f"\t{individual_extracted_folder.name}")
     if not Path(individual_extracted_folder).is_dir():
         return
 
@@ -39,16 +39,25 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
 
     def get_id_by_frame_number(target_frame_number):
         return frame_to_id.get(target_frame_number, None)
+    
 
     for batch in path_generator(individual_extracted_folder):
         image_ar = [None] * len(batch)
         for idx, file in enumerate(batch):
             # get frame number
             framenumber = int(Path(file).stem)
+            frame_id = get_id_by_frame_number(framenumber)
+            if not frame_id:
+                print("ERROR: frame id not in db")
+                print(f"frame num:  {framenumber} - log id: {log.id}")
+                print(f"{log.log_path}")
+                print("You should run the image extraction again with force flag for this log")
+                quit()
+
             url_path = str(file).removeprefix(log_root_path).strip("/")
             
             image_ar[idx] = {
-                "frame": get_id_by_frame_number(framenumber),
+                "frame": frame_id,
                 "camera": camera,
                 "type": image_type,
                 "image_url": url_path,
@@ -90,7 +99,7 @@ def is_done(robot_data_id, camera, image_type):
         ValueError()
 
     if target_count == db_count:
-        print("\tskipping insertion")
+        print("\t\tskipping insertion")
         return True
 
     return False
@@ -110,6 +119,7 @@ if __name__ == "__main__":
         return log.log_path
 
     for log in sorted(existing_data, key=myfunc, reverse=False):
+        print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 
         # TODO could we just switch game_logs with extracted in the paths?
