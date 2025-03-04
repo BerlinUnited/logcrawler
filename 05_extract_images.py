@@ -12,6 +12,14 @@ from PIL import PngImagePlugin
 from PIL import Image as PIL_Image
 from vaapi.client import Vaapi
 
+"""
+TODO: check if images are corrupted
+TODO: make force work like this:
+- export image as temp name and only if not corrupted rename it to new name and overwrite the old file with this
+TODO: build checker for corrupted images
+"""
+
+
 def is_done(log_id):
     # get the log status object for a given log_id
     response = client.log_status.list(log=log_id)

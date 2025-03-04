@@ -150,7 +150,7 @@ if __name__ == "__main__":
                 # Append the json_obj to the appropriate list
                 repr_lists[repr_name].append(json_obj)
 
-            if idx % 150 == 0:
+            if idx % 250 == 0:
                 for k,v in repr_lists.items():
                     try:
                         model = getattr(client, k.lower())
