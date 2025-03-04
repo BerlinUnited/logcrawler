@@ -17,12 +17,14 @@ logs/
     2016-01-16_MM/
     ...
     2018-06-16_RC18/
+        comments.txt
         2018-06-18_15-00-00_Berlin_United_vs_Austin_half1/
         2018-06-18_15-00-00_Berlin_United_vs_Austin_half1_to1/
             **[eine Auszeit (TimeOut) ist ein normaler Spielabschnitt, entsprechend enthÃ¤lt er alle Daten wie eine normale Halbzeit]**
         2018-06-18_15-00-00_Berlin_United_vs_Austin_half1_to2/
             **[2. Auszeit]**
         2018-06-18_15-00-00_Berlin_United_vs_Austin_half2/
+            comments.txt
             extracted/
                 1_91_Nao0379/
                 2_97_Nao0075/
@@ -43,14 +45,17 @@ logs/
                     config.zip
                     game.log
                     nao.info
-                    patch_labels.json  
+                    patch_labels.json
+                    comments.txt
                     ...
             gc_logs/
                     teamcomm_2018-06-18_15-16-19-611_UT Austin Villa_Berlin United_2ndHalf_initial.log
                     teamcomm_2018-06-18_15-21-23-346_UT Austin Villa_Berlin United_2ndHalf.log
                     teamcomm_2018-06-18_15-21-23-346_UT Austin Villa_Berlin United_2ndHalf.log.gtc.json
                     teamcomm_2018-06-18_15-32-25-912_UT Austin Villa_Berlin United_2ndHalf_finished.log
+                    comments.txt
             videos/
+                    comments.txt
                     half2.LRV
                     half2.MP4
                     half2.url
@@ -67,6 +72,8 @@ logs/
             game_logs/
                 1_91_Nao0379-after-failure
 ```
+
+The event folder, game folders, log folders, gc_logs folders and the video folder each can have a comments.txt file 
 
 
 ## Access the log folder
