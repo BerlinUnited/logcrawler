@@ -90,17 +90,17 @@ def is_behavior_done(data):
     except Exception as e:
         print(e)
 
-    if not log_status.num_cognition_frames or int(log_status.num_cognition_frames) == 0:
+    if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
         print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         return False
 
     print("\tcheck inserted behavior frames")
-    if log_status.num_cognition_frames and int(log_status.num_cognition_frames) > 0:
-        print(f"\tcognition frames are {log_status.num_cognition_frames}")
+    if log_status.FrameInfo and int(log_status.FrameInfo) > 0:
+        print(f"\tcognition frames are {log_status.FrameInfo}")
         
         response = client.behavior_frame_option.get_behavior_count(log=data.id)
         print(f"\tbehavior frames are {response['count']}")
-        return response["count"] == int(log_status.num_cognition_frames)
+        return response["count"] == int(log_status.FrameInfo)
     else:
         return False
 

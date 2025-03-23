@@ -18,16 +18,16 @@ def is_done(log_id):
     except Exception as e:
         print(e)
     
-    if not log_status.num_cognition_frames or int(log_status.num_cognition_frames) == 0:
+    if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
         print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         quit()
 
 
     response = client.cognitionframe.get_frame_count(log=log_id)
-    if int(log_status.num_cognition_frames) == int(response["count"]):
+    if int(log_status.FrameInfo) == int(response["count"]):
         return True
     else:
-        print(log_status.num_cognition_frames, response["count"])
+        print(log_status.FrameInfo, response["count"])
         return False
 
 

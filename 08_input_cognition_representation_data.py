@@ -21,7 +21,7 @@ def is_input_done(representation_list):
         print(e)
 
     # check if number of frames were calculated already
-    num_cognition_frames = log_status.num_cognition_frames
+    num_cognition_frames = log_status.FrameInfo
     if not num_cognition_frames or int(num_cognition_frames) == 0:
         print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         quit()

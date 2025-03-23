@@ -7,6 +7,7 @@ from vaapi.client import Vaapi
 from tqdm import tqdm
 import argparse
 
+
 def is_done(log_id, status_dict):
     # TODO get log_status representation here and check each field.
     new_dict = status_dict.copy()
@@ -17,11 +18,8 @@ def is_done(log_id, status_dict):
             return status_dict
         log_status = response[0]
 
-        for k,v in status_dict.items():
-            if k == "FrameInfo":
-                field_value = getattr(log_status, "num_cognition_frames")
-            else:
-                field_value = getattr(log_status, k)
+        for k, v in status_dict.items():
+            field_value = getattr(log_status, k)
             
             if field_value == None:
                 print(f"\tdid not find a value for repr {k}")
@@ -33,6 +31,7 @@ def is_done(log_id, status_dict):
         print("error", e)
         quit()
         return status_dict
+
 
 def is_done_motion(log_id, status_dict):
     # TODO get log_status representation here and check each field.
@@ -102,6 +101,10 @@ if __name__ == "__main__":
             'ScanLineEdgelPerceptTop': 0,
             'OdometryData': 0,
             "FrameInfo": 0,
+            "Image": 0,
+            "ImageTop": 0,
+            "ImageJPEG": 0,
+            "ImageJPEGTop": 0,
         }
 
         new_cognition_status_dict = is_done(log_id, cognition_status_dict)
@@ -138,10 +141,6 @@ if __name__ == "__main__":
                         print({e})
 
             try:
-                # rename the dict key such that it matches what the database expects here
-                if "FrameInfo" in new_cognition_status_dict:
-                    new_cognition_status_dict['num_cognition_frames'] = new_cognition_status_dict.pop('FrameInfo')
-                
                 response = client.log_status.update(
                 log=log_id, 
                 **new_cognition_status_dict
