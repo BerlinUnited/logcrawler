@@ -10,13 +10,12 @@ from PIL import Image as PIL_Image
 from vaapi.client import Vaapi
 
 
-
 def is_done(log_id):
     # get the log status object for a given log_id
     response = client.log_status.list(log=log_id)
 
     if len(response) == 0:
-        print("\tno log_status found")
+        print("\tno log_status found for given log id")
         return False
     
     log_status = response[0]
@@ -39,15 +38,14 @@ def export_images(logfile_path, data, output_folder_top, output_folder_bottom, o
     """
 
     i, img_b, img_b_jpg, img_t, img_t_jpg, cm_b, cm_t = data
-    frame_number = format(
-        i, "07d"
-    )  # make frame number a fixed length string so that the images are in the correct order
+    # make frame number a fixed length string so that the images are in the correct order
+    frame_number = format(i, "07d")  
     if img_b:
         img_b = img_b.convert("RGB")
         save_image_to_png(
             frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile_path
         )
-    # TODO add meta data indicating this was a jpeg image
+
     if img_b_jpg:
         img_b_jpg = img_b_jpg.convert("RGB")
         save_image_to_png(
@@ -60,7 +58,6 @@ def export_images(logfile_path, data, output_folder_top, output_folder_bottom, o
             frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile_path
         )
 
-    # TODO add meta data indicating this was a jpeg image
     if img_t_jpg:
         img_t_jpg = img_t_jpg.convert("RGB")
         save_image_to_png(
@@ -262,17 +259,14 @@ if __name__ == "__main__":
         print(log.log_path)
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         
-        if log.id != 13:
-            continue
-        
         actual_log_path = get_log_path(log)
         if actual_log_path is None:
             print("\tcouldnt find a valid log file")
             continue
 
-        #if is_done(log.id):
-        #   print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
-        #   continue
+        if is_done(log.id):
+           print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
+           continue
         
         # get the combined_log path or the game.log path
         out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder_path)
