@@ -6,7 +6,7 @@ from vaapi.client import Vaapi
 import os
 from datetime import datetime
 
-event_list = ["2024-07-15_RC24"]
+event_list = ["2024-07-15_RC24", "2025-03-12-GO25"]
 
 
 def handle_games(event_id: int, game: str):
