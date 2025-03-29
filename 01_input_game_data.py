@@ -58,10 +58,10 @@ def get_robot_version(head_number: str) -> str:
 
     if head_number > 90:
         return "v5"
-    elif head_number < 30:
+    elif head_number < 40:
         return "v6"
     else:
-        return "unknown"
+        assert False, f"Unexpected head_number value: {head_number}"
 
 
 if __name__ == "__main__":
