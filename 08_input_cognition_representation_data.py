@@ -10,6 +10,7 @@ from vaapi.client import Vaapi
 
 
 def is_input_done(representation_list):
+    # FIXME this is broken right now
     # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
@@ -150,7 +151,7 @@ if __name__ == "__main__":
                 # Append the json_obj to the appropriate list
                 repr_lists[repr_name].append(json_obj)
 
-            if idx % 150 == 0:
+            if idx % 250 == 0:
                 for k,v in repr_lists.items():
                     try:
                         model = getattr(client, k.lower())
