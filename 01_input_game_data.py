@@ -83,6 +83,8 @@ if __name__ == "__main__":
                 if str(game.name) == "Experiments":
                     print("ignoring Experiments folder")
                     #handle_experiments(event_id, game)
+                elif str(game.name) == "Videos":
+                    print("ignoring Videos folder")
                 else:
                     print(f"{game}")
                     response = handle_games(event_id, game)
