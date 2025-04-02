@@ -1,4 +1,4 @@
-vaapi>=0.5.0
+vaapi>=0.6.5
 naoth==0.5.1
 tqdm==4.66.5
 requests==2.32.3
