@@ -5,6 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 import numpy as np
 import io
+import subprocess
 from PIL import PngImagePlugin
 from PIL import Image as PIL_Image
 from vaapi.client import Vaapi
@@ -17,22 +18,49 @@ TODO: build checker for corrupted images
 """
 
 
-def is_done(log_id):
+def is_done(log):
     # get the log status object for a given log_id
-    response = client.log_status.list(log=log_id)
+    response = client.log_status.list(log=log.id)
 
     if len(response) == 0:
         print("\tno log_status found for given log id")
-        return False
+        quit()
     
     log_status = response[0]
-    # if all numbers are zero or null we return false
-    total_images = int(log_status.num_jpg_bottom or 0) + int(log_status.num_jpg_top or 0) + int(log_status.num_bottom or 0) + int(log_status.num_top or 0)
-    print(log_status)
+    total_images = int(log_status.Image or 0) + int(log_status.ImageTop or 0) + int(log_status.ImageJPEG or 0) + int(log_status.ImageJPEGTop or 0)
     if total_images == 0:
+        print("\tCalculate the number of images for this log first")
+        quit()
+
+    # this has to check how many files are in the folder
+    log_path = Path(log_root_path) / log.log_path
+    extracted_path = str(log_path.parent).replace("game_logs", "extracted")
+
+    jpg_bottom_path = Path(extracted_path) / "log_bottom_jpg"
+    jpg_top_path = Path(extracted_path) / "log_top_jpg"
+    bottom_path = Path(extracted_path) / "log_bottom"
+    top_path = Path(extracted_path) / "log_top"
+
+    num_bottom = subprocess.run(f"find {bottom_path} -maxdepth 1 -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if bottom_path.is_dir() else 0
+    num_top = subprocess.run(f"find {top_path} -maxdepth 1 -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if top_path.is_dir() else 0
+    num_jpg_bottom = subprocess.run(f"find {jpg_bottom_path} -maxdepth 1 -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if jpg_bottom_path.is_dir() else 0
+    num_jpg_top = subprocess.run(f"find {jpg_top_path} -maxdepth 1  -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if jpg_top_path.is_dir() else 0
+
+    # FIXME This will also extract images that are already extracted if the log status is not already calculated for this log
+    if int(log_status.Image or 0) != int(num_bottom):
+        print(f"Image Bottom: {log_status.Image or 0} != {num_bottom}")
         return False
-    else:
-        return True
+    if int(log_status.ImageTop or 0) != int(num_top):
+        print(f"Image Top: {log_status.ImageTop or 0} != {num_top}")
+        return False
+    if int(log_status.ImageJPEG or 0) != int(num_jpg_bottom):
+        print(f"ImageJPEG: {log_status.ImageJPEG or 0} != {num_jpg_bottom}")
+        return False
+    if int(log_status.ImageJPEGTop or 0) != int(num_jpg_top):
+        print(f"ImageJPEGTop: {log_status.ImageJPEGTop or 0} != {num_jpg_top}")
+        return False
+    
+    return True
 
 
 def export_images(logfile_path, data, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
@@ -262,16 +290,17 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.log_path
     
-    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
         print(log.log_path)
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         
         actual_log_path = get_log_path(log)
+        # TODO why this check? That should never happen
         if actual_log_path is None:
             print("\tcouldnt find a valid log file")
             continue
 
-        if is_done(log.id):
+        if is_done(log):
            print("\twe already counted all the images and put them in the db we assume that all images have been extracted")
            continue
         
@@ -302,6 +331,7 @@ if __name__ == "__main__":
 
 
         # HACK delete image folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
+        # TODO we know beforehand if we have images or images jpeg in the log - we can just do it right the first time
         if not any(out_top_jpg.iterdir()):
             out_top_jpg.rmdir()
         if not any(out_bottom_jpg.iterdir()):
@@ -310,3 +340,5 @@ if __name__ == "__main__":
             out_top.rmdir()
         if not any(out_bottom.iterdir()):
             out_bottom.rmdir()
+        
+        quit()
