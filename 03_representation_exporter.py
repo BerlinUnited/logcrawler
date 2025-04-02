@@ -27,7 +27,9 @@ def is_done(log, representation_file: str, force_flag: bool) -> bool:
             if "cognition_representations" not in representations or "motion_representations" not in representations:
                 print("\tcognition_representations motion_representations field is missing in json file - will parse log")
                 repr_list_missing = False
-            
+    else:
+        return False
+
     # check if data is in in the log model
     db_repr_dict = log.representation_list
     if "cognition_representations" not in db_repr_dict or "motion_representations" not in db_repr_dict:
