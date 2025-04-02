@@ -72,7 +72,6 @@ def parse_motion_log(log):
         response = client.motionframe.bulk_create(
             frame_list=frame_array
         )
-        print(response)
     except Exception as e:
         print(f"error inputing the data {sensor_log_path}")
 

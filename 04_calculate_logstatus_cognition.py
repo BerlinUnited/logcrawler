@@ -80,8 +80,8 @@ def add_gamelog_representations(log, log_path):
 
         try:
             response = client.log_status.update(
-            log=log.id, 
-            **new_cognition_status_dict
+                log=log.id, 
+                **new_cognition_status_dict
             )
         except Exception as e:
             print(f"\terror inputing the data {log_path}")
@@ -89,7 +89,7 @@ def add_gamelog_representations(log, log_path):
             quit()
 
 
-def main(args):
+def main():
     log_root_path = os.environ.get("VAT_LOG_ROOT")
     
     existing_data = client.logs.list()
@@ -97,7 +97,7 @@ def main(args):
     def sort_key_fn(data):
         return data.log_path
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         # TODO use combined log if its a file. -> it should always be a file if not experiment
         log_path = Path(log_root_path) / log.combined_log_path
 
@@ -115,4 +115,4 @@ if __name__ == "__main__":
         api_key=os.environ.get("VAT_API_TOKEN"),
     )
 
-    main(args)
+    main()
