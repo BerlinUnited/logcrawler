@@ -41,6 +41,10 @@ def is_done(log):
     bottom_path = Path(extracted_path) / "log_bottom"
     top_path = Path(extracted_path) / "log_top"
 
+    hidden_file = Path(extracted_path) / ".images_extracted"
+    if hidden_file.is_file():
+        return True
+
     num_bottom = subprocess.run(f"find {bottom_path} -maxdepth 1 -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if bottom_path.is_dir() else 0
     num_top = subprocess.run(f"find {top_path} -maxdepth 1 -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if top_path.is_dir() else 0
     num_jpg_bottom = subprocess.run(f"find {jpg_bottom_path} -maxdepth 1 -type f | wc -l", shell=True, capture_output=True, text=True).stdout.strip() if jpg_bottom_path.is_dir() else 0
@@ -50,16 +54,22 @@ def is_done(log):
     if int(log_status.Image or 0) != int(num_bottom):
         print(f"Image Bottom: {log_status.Image or 0} != {num_bottom}")
         return False
+
     if int(log_status.ImageTop or 0) != int(num_top):
         print(f"Image Top: {log_status.ImageTop or 0} != {num_top}")
         return False
+
     if int(log_status.ImageJPEG or 0) != int(num_jpg_bottom):
         print(f"ImageJPEG: {log_status.ImageJPEG or 0} != {num_jpg_bottom}")
         return False
+
     if int(log_status.ImageJPEGTop or 0) != int(num_jpg_top):
         print(f"ImageJPEGTop: {log_status.ImageJPEGTop or 0} != {num_jpg_top}")
         return False
     
+    with open(str(hidden_file), 'w') as file:
+        pass
+
     return True
 
 
@@ -268,7 +278,7 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.log_path
     
-    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
         print(log.log_path)
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         
@@ -284,7 +294,6 @@ if __name__ == "__main__":
         
         # get the combined_log path or the game.log path
         out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder_path)
-        
 
         out_top.mkdir(exist_ok=True, parents=True)
         out_bottom.mkdir(exist_ok=True, parents=True)
@@ -296,7 +305,7 @@ if __name__ == "__main__":
         my_parser.register("ImageJPEGTop", "Image")
         game_log = LogReader(str(actual_log_path), my_parser)
 
-        for idx, frame in enumerate(tqdm(game_log)):
+        for frame in tqdm(game_log):
             try:
                 frame_number = frame['FrameInfo'].frameNumber
                 frame_time = frame['FrameInfo'].time
@@ -317,5 +326,3 @@ if __name__ == "__main__":
             out_top.rmdir()
         if not any(out_bottom.iterdir()):
             out_bottom.rmdir()
-        
-        quit()
