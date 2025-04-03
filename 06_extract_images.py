@@ -63,75 +63,53 @@ def is_done(log):
     return True
 
 
-def export_images(logfile_path, data, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
-    """
-    creates two folders:
-        <logfile name>_top
-        <logfile name>_bottom
-
-    and saves the images inside those folders
-    """
-
-    i, img_b, img_b_jpg, img_t, img_t_jpg, cm_b, cm_t = data
-    # make frame number a fixed length string so that the images are in the correct order
-    frame_number = format(i, "07d")  
-    if img_b:
-        img_b = img_b.convert("RGB")
-        save_image_to_png(
-            frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile_path
-        )
-
-    if img_b_jpg:
-        img_b_jpg = img_b_jpg.convert("RGB")
-        save_image_to_png(
-            frame_number, img_b_jpg, cm_b, out_bottom_jpg, cam_id=1, name=logfile_path
-        )
-
-    if img_t:
-        img_t = img_t.convert("RGB")
-        save_image_to_png(
-            frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile_path
-        )
-
-    if img_t_jpg:
-        img_t_jpg = img_t_jpg.convert("RGB")
-        save_image_to_png(
-            frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=logfile_path
-        )
-
-
-def get_images(frame):
+def save_images(frame):
+    frame_number = format(frame.number, "07d")
     try:
         image_top = image_from_proto(frame["ImageTop"])
+        cm_top = frame["CameraMatrixTop"]
+        image_top = image_top.convert("RGB")
+        save_image_to_png(
+            frame_number, image_top, cm_top, out_top, cam_id=0, name=log.log_path
+        )
+
     except KeyError:
         image_top = None
-    
-    try:
-        image_top_jpeg = image_from_proto_jpeg(frame["ImageJPEGTop"])
-    except KeyError:
-        image_top_jpeg = None
+        cm_top = None
 
     try:
+        image_top_jpeg = image_from_proto_jpeg(frame["ImageJPEGTop"])
         cm_top = frame["CameraMatrixTop"]
+        image_top_jpeg = image_top_jpeg.convert("RGB")
+        save_image_to_png(
+            frame_number, image_top_jpeg, cm_top, out_top_jpg, cam_id=0, name=log.log_path
+        )
     except KeyError:
+        image_top_jpeg = None
         cm_top = None
 
     try:
         image_bottom = image_from_proto(frame["Image"])
+        cm_bottom = frame["CameraMatrix"]
+        image_bottom = image_bottom.convert("RGB")
+        save_image_to_png(
+            frame_number, image_bottom, cm_bottom, out_bottom, cam_id=1, name=log.log_path
+        )
     except KeyError:
         image_bottom = None
+        cm_bottom = None
 
     try:
         image_bottom_jpeg = image_from_proto_jpeg(frame["ImageJPEG"])
+        cm_bottom = frame["CameraMatrix"]
+        image_bottom_jpeg = image_bottom_jpeg.convert("RGB")
+        save_image_to_png(
+            frame_number, image_bottom_jpeg, cm_bottom, out_bottom_jpg, cam_id=1, name=log.log_path
+        )
     except KeyError:
         image_bottom_jpeg = None
-
-    try:
-        cm_bottom = frame["CameraMatrix"]
-    except KeyError:
         cm_bottom = None
 
-    return (frame.number, image_bottom, image_bottom_jpeg, image_top, image_top_jpeg, cm_bottom, cm_top)
 
 
 def image_from_proto(message):
@@ -290,7 +268,7 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.log_path
     
-    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         print(log.log_path)
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         
@@ -326,8 +304,7 @@ if __name__ == "__main__":
                 print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
                 break
             
-            data = get_images(frame)
-            export_images(log.log_path, data, str(out_top), str(out_bottom), str(out_top_jpg), str(out_bottom_jpg))
+            save_images(frame)
 
 
         # HACK delete image folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
