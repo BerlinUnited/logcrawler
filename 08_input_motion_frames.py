@@ -46,6 +46,7 @@ def parse_motion_log(log):
 
         except Exception as e:
             print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
+            print(f"last frame number was {frame_array[-1]['frame_number']}")
             break
         
         json_obj = {
