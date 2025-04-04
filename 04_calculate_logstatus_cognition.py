@@ -17,13 +17,22 @@ def is_done(log_id, status_dict):
             return status_dict
         log_status = response[0]
 
+        invalid_data = False
         for k, v in status_dict.items():
             field_value = getattr(log_status, k)
             #print(k, v, field_value)
             if field_value == None:
                 print(f"\tdid not find a value for repr {k}")
+            elif field_value > log_status.FrameInfo:
+                invalid_data = True
+                print(f"\tfound value exceeding number of full frames for repr {k}")
             else:
                 new_dict.pop(k)
+        # Include FrameInfo when we have representations that exceed the number of FrameInfos
+        # Covers the case that the number of FrameInfos was calculated wrongly
+        if invalid_data:
+            new_dict.update({"FrameInfo": 0})
+
         return new_dict
     # TODO would be nice to handle the vaapi API error here explicitely
     except Exception as e:
@@ -39,12 +48,12 @@ def add_gamelog_representations(log, log_path):
     cognition_status_dict = {item: 0 for item in cognition_repr_names}
 
     new_cognition_status_dict = is_done(log.id, cognition_status_dict)
-
     if not args.force and len(new_cognition_status_dict) == 0:
         print("\twe already calculated number of full cognition frames for this log")
     else:
         if args.force:
             new_cognition_status_dict = cognition_status_dict
+
         my_parser = Parser()
         my_parser.register("FieldPerceptTop", "FieldPercept")
         my_parser.register("GoalPerceptTop", "GoalPercept")
@@ -55,6 +64,8 @@ def add_gamelog_representations(log, log_path):
         my_parser.register("ImageJPEGTop", "Image")
 
         game_log = LogReader(str(log_path), my_parser)
+        # FIXME can we parse the game.log here instead of the combined log and then check the images.log and images.jpeg? That would be much faster
+        # when counting images from images_jpeg log we need to be careful to only count frames containing it
         for idx, frame in enumerate(tqdm(game_log)):
             # stop parsing log if FrameInfo is missing
             try:
@@ -99,7 +110,7 @@ def main():
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         # TODO use combined log if its a file. -> it should always be a file if not experiment
-        log_path = Path(log_root_path) / log.combined_log_path
+        log_path = Path(log_root_path) / log.log_path
 
         print(f"{log.id}: {log_path}")
         add_gamelog_representations(log, log_path)

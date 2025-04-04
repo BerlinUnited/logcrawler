@@ -26,6 +26,10 @@ def is_done(log_id):
     response = client.cognitionframe.get_frame_count(log=log_id)
     if int(log_status.FrameInfo) == int(response["count"]):
         return True
+    elif int(response["count"]) > int(log_status.FrameInfo):
+        print("ERROR: there are more frames in the database than they should be")
+        print(f"Run logstatus calculation again for log {log_id}")
+        quit()
     else:
         return False
 

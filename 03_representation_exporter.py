@@ -71,7 +71,7 @@ def main(args):
         return data.log_path
     
     for log in sorted(existing_logs, key=sort_key_fn):
-        print(Path(log.log_path).parent)
+        print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 
         actual_log_folder = log_path.parent
