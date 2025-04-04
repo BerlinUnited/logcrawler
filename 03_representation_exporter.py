@@ -70,7 +70,7 @@ def main(args):
     def sort_key_fn(data):
         return data.log_path
     
-    for log in sorted(existing_logs, key=sort_key_fn):
+    for log in sorted(existing_logs, key=sort_key_fn, reverse=True):
         print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 
