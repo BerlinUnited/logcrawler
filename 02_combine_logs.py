@@ -10,9 +10,10 @@ from pathlib import Path
 from naoth.log import Reader as LogReader
 from naoth.pb.Framework_Representations_pb2 import Image
 from naoth.log import Parser
-from os import environ, stat
+from os import stat
 import os
 from vaapi.client import Vaapi
+import argparse
 
 
 def create_image_log_dict(image_log, first_image_is_top):
@@ -101,7 +102,6 @@ def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image
     # if there are jpeg images, load them
     image_jpeg_log_index = create_jpeg_image_log_dict(str(image_jpeg_log_path)) if image_jpeg_log_path else {}
 
-
     try:
         with open(str(combined_log_path), "wb") as output, open(
             str(img_log_path), "rb"
@@ -129,7 +129,7 @@ def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image
 
                 # if there are jpeg images for this frame, add them to the frame
                 if frame.number in image_jpeg_log_index:
-                    images = image_log_index[frame.number]
+                    images = image_jpeg_log_index[frame.number]
                     for image_repr_name, image_msg in images.items():
                         frame.add_field(image_repr_name, image_msg)
 
@@ -162,6 +162,7 @@ def write_combined_log_jpeg(combined_log_path, img_log_path, gamelog_path):
                 # only write frames which have corresponding images
                 if frame.number not in image_log_index:
                     print('Frame {} has no corresponding image data.'.format(frame.number))
+                    output.write(bytes(frame))
                     continue
 
                 # contains 'ImageTop' and 'Image'
@@ -201,6 +202,10 @@ if __name__ == "__main__":
     # TODO make it possible to run it locally without having to use a database. Useful for seeing the images in the log to figure out a good name.
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--force", action="store_true", default=False)
+    args = parser.parse_args()
+
     client = Vaapi(
         base_url=os.environ.get("VAT_API_URL"),
         api_key=os.environ.get("VAT_API_TOKEN"),
@@ -236,7 +241,7 @@ if __name__ == "__main__":
             print("\tcan't combine anything here, missing game.log or image.log/image_jpeg.log")
             continue
 
-        if not combined_log_path.is_file():
+        if not combined_log_path.is_file() or args.force:
             if has_image_log and has_image_jpeg_log:
                 write_combined_log(log_folder_path, combined_log_path, img_log_path, gamelog_path, img_jpeg_log_path)
             elif has_image_log and not has_image_jpeg_log:

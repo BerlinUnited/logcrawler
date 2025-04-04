@@ -100,6 +100,7 @@ def write_combined_log_jpeg(combined_log_path, img_log_path, gamelog_path):
                 # only write frames which have corresponding images
                 if frame.number not in image_log_index:
                     print('Frame {} has no corresponding image data.'.format(frame.number))
+                    output.write(bytes(frame))
                     continue
 
                 # contains 'ImageTop' and 'Image'
@@ -136,10 +137,10 @@ def calculate_first_image(logpath):
 
 
 if __name__ == "__main__":
-    combined_log_path = log_path / "/home/stella/Downloads/2025-03-03-17:00-kick_test/3_22_Nao0004_250303-1656/combined.log"
-    gamelog_path = log_path / "/home/stella/Downloads/2025-03-03-17:00-kick_test/3_22_Nao0004_250303-1656/game.log"
-    img_log_path = log_path / "images.log"
-    img_jpeg_log_path = log_path / "/home/stella/Downloads/2025-03-03-17:00-kick_test/3_22_Nao0004_250303-1656/images_jpeg.log"
+    combined_log_path = "/mnt/d/logs/2025-03-12-GO25/2025-03-15_17-15-00_BerlinUnited_vs_Hulks_half2/game_logs/7_33_Nao0022_250315-1822/combined.log"
+    gamelog_path = "/mnt/d/logs/2025-03-12-GO25/2025-03-15_17-15-00_BerlinUnited_vs_Hulks_half2/game_logs/7_33_Nao0022_250315-1822/game.log"
+    img_log_path = "images.log"
+    img_jpeg_log_path = "/mnt/d/logs/2025-03-12-GO25/2025-03-15_17-15-00_BerlinUnited_vs_Hulks_half2/game_logs/7_33_Nao0022_250315-1822/images_jpeg.log"
 
 
     write_combined_log_jpeg(combined_log_path, img_jpeg_log_path, gamelog_path)

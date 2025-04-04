@@ -16,7 +16,7 @@ def is_done(log_id, status_dict):
         if len(response) == 0:
             return status_dict
         log_status = response[0]
-
+        print(status_dict)
         invalid_data = False
         for k, v in status_dict.items():
             field_value = getattr(log_status, k)
