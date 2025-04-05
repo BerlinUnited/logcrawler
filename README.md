@@ -10,6 +10,20 @@ VAT_API_URL=<"http://127.0.0.1:8000/ or https://vat.berlin-united.com/">
 VAT_API_TOKEN=<token you can get from the website>
 ```
 
+## Build Rust Part
+Install rust: https://doc.rust-lang.org/stable/book/ch01-01-installation.html
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install -r requirements.txt
+
+maturin develop
+python tests/rusty.py
+```
+
+You need to change the path to the logfile in the python script
+
 ## Log folder structure
 ```
 logs/

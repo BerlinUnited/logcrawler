@@ -1,0 +1,16 @@
+[package]
+name = "log-crawler"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "log_crawler"
+crate-type = ["cdylib"]
+
+[dependencies]
+prost = "0.11"
+pyo3 = "0.19.0"
+
+[build-dependencies]
+prost-build = "0.13.5"

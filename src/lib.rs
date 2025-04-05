@@ -1,4 +1,5 @@
-// Include the generated protobuf code
+use pyo3::prelude::*;
+
 pub mod naothmessages {
     include!(concat!(env!("OUT_DIR"), "/naothmessages.rs"));
 }
@@ -63,10 +64,11 @@ fn read_string(bytes: &[u8], cursor: &mut usize) -> Result<String, EofError> {
     String::from_utf8(chars).map_err(|_| EofError)
 }
 
-
-
-fn main() {
-    let bytes = fs::read("/mnt/repl/2025-03-12-GO25/2025-03-15_17-15-00_BerlinUnited_vs_Hulks_half2/game_logs/7_33_Nao0022_250315-1822/combined.log").unwrap();
+#[pyfunction]
+fn parse_log(full_log_path: &str) {
+    // this loads the whole file in memory - don't do this on your old laptop ;) 
+    println!("{}", full_log_path);
+    let bytes = fs::read(full_log_path).unwrap();
     let mut frames = Vec::new();  // This will store all completed frames
     let mut current_frame: Option<Frame> = None;  // Tracks the frame we're currently building
     let mut last_frame_number = None;  // Remembers the previous frame number
@@ -139,7 +141,7 @@ fn main() {
             frames.push(frame);
         }
     }
-    println!("frames length: {}", frames.len());
+    println!("\tframes length: {}", frames.len());
 
     // TODO move this to a reader class
     let mut unique_fields = HashSet::new();
@@ -148,16 +150,12 @@ fn main() {
             unique_fields.insert(field_name);
         }
     }
-    println!("Unique field names: {:?}", unique_fields);
+    println!("\tUnique field names: {:?}", unique_fields);
+}
 
-    /*
-    // Example usage:
-    match read_bytes(&bytes, &mut cursor, 4) {
-        Ok(data) => println!("Read 4 bytes: {:?}", data),
-        Err(e) => println!("Error: {}", e),
-    }
-    */
-    //for byte in bytes.iter() {
-        //println!("{:b}", byte);
-    //}
+/// A Python module implemented in Rust.
+#[pymodule]
+fn log_crawler(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(parse_log, m)?)?;
+    Ok(())
 }

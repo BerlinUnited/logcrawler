@@ -4,4 +4,5 @@ tqdm==4.66.5
 requests==2.32.3
 opencv-python==4.11.0.86
 pillow==11.1.0
-linetimer
+linetimer==0.1.5
+maturin==1.8.3
