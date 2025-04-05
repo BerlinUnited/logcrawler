@@ -1,0 +1,101 @@
+syntax = "proto2";
+package naothmessages;
+option java_package= "de.naoth.rc.core.messages";
+
+// common types for NaoTH //
+
+enum Color {
+  none = 0;
+  orange = 1;
+  yellow = 2;
+  skyblue = 3;
+  white = 4;
+  red = 5;
+  blue = 6;
+  green = 7;
+  black = 8;
+  pink = 9;
+  gray = 10;
+  yellowOrange = 11;
+}
+
+enum CameraID {
+  top = 0;
+  bottom = 1;
+}
+
+// this can be used to verify the order of joints
+// it should be the same order as in JointData.h
+enum JointID {
+  HeadPitch = 0;
+  HeadYaw = 1;
+  RShoulderRoll = 2;
+  LShoulderRoll = 3;
+  RShoulderPitch = 4;
+  LShoulderPitch = 5;
+  RElbowRoll = 6;
+  LElbowRoll = 7;
+  RElbowYaw = 8;
+  LElbowYaw = 9;
+  RHipYawPitch = 10;
+  LHipYawPitch = 11;
+  RHipPitch = 12;
+  LHipPitch = 13;
+  RHipRoll = 14;
+  LHipRoll = 15;
+  RKneePitch = 16;
+  LKneePitch = 17;
+  RAnklePitch = 18;
+  LAnklePitch = 19;
+  RAnkleRoll = 20;
+  LAnkleRoll = 21;
+  
+  // NOTE: those values don't exist on the old V3.2/V3.3 robots
+  //       so, we pu them at the end for easier support for the old format
+  LWristYaw = 22;
+  RWristYaw = 23;
+  LHand = 24;
+  RHand = 25;
+}
+
+message FloatVector2 {
+  required float x = 1;
+  required float y = 2;
+}
+
+message DoubleVector2 {
+  required double x = 1;
+  required double y = 2;
+}
+
+message IntVector2 {
+  required int32 x = 1;
+  required int32 y = 2;
+}
+
+message Pose2D {
+  required DoubleVector2 translation = 1;
+  required double rotation = 2;
+}
+
+message DoubleVector3 {
+  required double x = 1;
+  required double y = 2;
+  required double z = 3;
+}
+
+message DoubleVector {
+  repeated double v = 1;
+}
+
+message Pose3D {
+  required DoubleVector3 translation = 1;
+  repeated DoubleVector3 rotation = 2;
+}
+
+// Line.h
+message LineSegment {
+  required DoubleVector2 base = 1;
+  required DoubleVector2 direction = 2;
+  required double length = 3;
+}
