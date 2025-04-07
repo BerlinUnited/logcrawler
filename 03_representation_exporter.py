@@ -3,6 +3,7 @@
     FIXME: this fails in some logs -> add error handling and reporting about broken logs
 """
 from vaapi.client import Vaapi
+import log_crawler
 from pathlib import Path
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
@@ -42,19 +43,8 @@ def is_done(log, representation_file: str, force_flag: bool) -> bool:
 def get_representation_set_from_log(log_file_path, representation_set):
     print(f"\tparsing {log_file_path}")
     if (Path(log_file_path).is_file() and os.stat(str(log_file_path)).st_size > 0):
-        my_parser = Parser()
-        log = LogReader(log_file_path, my_parser)
-        try:
-            for frame in tqdm(log):
-                dict_keys = frame.get_names()
-                for key in dict_keys:
-                    representation_set.add(key)
-        except KeyboardInterrupt:
-            print("Exiting loop!")
-            sys.exit(0)
-        except:
-            print(f"error parsing {log_file_path}")
-    
+        representation_set = log_crawler.parse_log(log_file_path)
+
     return representation_set
 
 
