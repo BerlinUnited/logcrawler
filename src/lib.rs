@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
-
+use pyo3::types::IntoPyDict;
+use pyo3::types::PyList;
 pub mod naothmessages {
     include!(concat!(env!("OUT_DIR"), "/naothmessages.rs"));
 }
@@ -11,6 +12,7 @@ use std::fs;
 use std::error::Error;
 use std::fmt;
 use std::collections::HashSet;
+use kdam::tqdm;
 
 #[derive(Debug)]
 struct EofError;
@@ -65,14 +67,17 @@ fn read_string(bytes: &[u8], cursor: &mut usize) -> Result<String, EofError> {
 }
 
 #[pyfunction]
-fn parse_log(full_log_path: &str) {
-    // this loads the whole file in memory - don't do this on your old laptop ;) 
+fn parse_log(full_log_path: &str) -> PyResult<PyObject> {
     println!("{}", full_log_path);
+
+    // this loads the whole file in memory - don't do this on your old laptop ;)
+    println!("\tloading logfile into memory");
     let bytes = fs::read(full_log_path).unwrap();
     let mut frames = Vec::new();  // This will store all completed frames
     let mut current_frame: Option<Frame> = None;  // Tracks the frame we're currently building
     let mut last_frame_number = None;  // Remembers the previous frame number
     let mut cursor = 0;
+
     // go through all the bytes
     while cursor < bytes.len() {
         // parse frame number
@@ -80,7 +85,7 @@ fn parse_log(full_log_path: &str) {
             Ok(value) => value,
             Err(e) => {
                 println!("Error: {}", e);
-                return;
+                break;
             }
         };
 
@@ -88,7 +93,7 @@ fn parse_log(full_log_path: &str) {
             Ok(value) => value,
             Err(e) => {
                 println!("Error: {}", e);
-                return;
+                break;
             }
         };
 
@@ -96,7 +101,7 @@ fn parse_log(full_log_path: &str) {
             Ok(value) => value,
             Err(e) => {
                 println!("Error: {}", e);
-                return;
+                break;
             }
         };
 
@@ -125,6 +130,7 @@ fn parse_log(full_log_path: &str) {
 
         // Add field to the current frame (which is guaranteed to exist at this point)
         if let Some(ref mut frame) = current_frame {
+            // TODO cursor is wrong here because we already go through message_bytes
             frame.add_field_position(&name, cursor as u32, message_size as u32);
         }
 
@@ -141,16 +147,22 @@ fn parse_log(full_log_path: &str) {
             frames.push(frame);
         }
     }
-    println!("\tframes length: {}", frames.len());
+    //println!("\tframes length: {}", frames.len());
 
     // TODO move this to a reader class
     let mut unique_fields = HashSet::new();
-    for frame in &frames {
+    for frame in tqdm!(frames.iter()) {
         for field_name in frame.get_field_names_ref() {
             unique_fields.insert(field_name);
         }
     }
-    println!("\tUnique field names: {:?}", unique_fields);
+    //println!("\tUnique field names: {:?}", unique_fields);
+
+    // Convert HashSet into a Python list
+    Python::with_gil(|py| {
+        let py_list = PyList::new(py, unique_fields.into_iter().collect::<Vec<_>>());
+        Ok(py_list.into())
+    })
 }
 
 /// A Python module implemented in Rust.
