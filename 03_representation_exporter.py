@@ -43,7 +43,7 @@ def is_done(log, representation_file: str, force_flag: bool) -> bool:
 def get_representation_set_from_log(log_file_path, representation_set):
     print(f"\tparsing {log_file_path}")
     if (Path(log_file_path).is_file() and os.stat(str(log_file_path)).st_size > 0):
-        representation_set = log_crawler.parse_log(log_file_path)
+        representation_set = log_crawler.parse_log(str(log_file_path))
 
     return representation_set
 
@@ -60,7 +60,7 @@ def main(args):
     def sort_key_fn(data):
         return data.log_path
     
-    for log in sorted(existing_logs, key=sort_key_fn, reverse=True):
+    for log in sorted(existing_logs, key=sort_key_fn, reverse=False):
         print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 
