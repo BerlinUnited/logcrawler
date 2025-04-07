@@ -1,5 +1,4 @@
 use pyo3::prelude::*;
-use pyo3::types::IntoPyDict;
 use pyo3::types::PyList;
 pub mod naothmessages {
     include!(concat!(env!("OUT_DIR"), "/naothmessages.rs"));
