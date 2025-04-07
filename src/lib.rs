@@ -152,7 +152,7 @@ fn parse_log(full_log_path: &str) -> PyResult<PyObject> {
     // TODO move this to a reader class
     let mut unique_fields = HashSet::new();
     for frame in tqdm!(frames.iter()) {
-        for field_name in frame.get_field_names_ref() {
+        for field_name in frame.get_representation_names() {
             unique_fields.insert(field_name);
         }
     }

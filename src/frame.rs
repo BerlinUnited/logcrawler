@@ -27,11 +27,7 @@ impl Frame{
         self.size += 4 + (name.len() as u32 + 1) * std::mem::size_of::<u8>() as u32 + 4 + size;
     }
 
-    pub fn get_names(&self)-> Vec<&str>{
-        self.fields.keys().map(|s| s.as_str()).collect()
-    }
-
-    pub fn get_field_names_ref(&self) -> Vec<&str> {
+    pub fn get_representation_names(&self)-> Vec<&str>{
         self.fields.keys().map(|s| s.as_str()).collect()
     }
 }
