@@ -1,10 +1,7 @@
 from pathlib import Path
-from naoth.log import Reader as LogReader
-from naoth.log import Parser
+import log_crawler
 import os
-from google.protobuf.json_format import MessageToDict
 from vaapi.client import Vaapi
-from tqdm import tqdm
 import argparse
 
 
@@ -16,7 +13,7 @@ def is_done(log_id, status_dict):
         if len(response) == 0:
             return status_dict
         log_status = response[0]
-        print(status_dict)
+        
         invalid_data = False
         for k, v in status_dict.items():
             field_value = getattr(log_status, k)
@@ -54,40 +51,9 @@ def add_gamelog_representations(log, log_path):
         if args.force:
             new_cognition_status_dict = cognition_status_dict
 
-        my_parser = Parser()
-        my_parser.register("FieldPerceptTop", "FieldPercept")
-        my_parser.register("GoalPerceptTop", "GoalPercept")
-        my_parser.register("FieldPerceptTop", "FieldPercept")
-        my_parser.register("BallCandidatesTop", "BallCandidates")
-        my_parser.register("ImageTop", "Image")
-        my_parser.register("ImageJPEG"   , "Image")
-        my_parser.register("ImageJPEGTop", "Image")
+        # TODO check if new_cognition_status_dict empty 
 
-        game_log = LogReader(str(log_path), my_parser)
-        # FIXME can we parse the game.log here instead of the combined log and then check the images.log and images.jpeg? That would be much faster
-        # when counting images from images_jpeg log we need to be careful to only count frames containing it
-        for idx, frame in enumerate(tqdm(game_log)):
-            # stop parsing log if FrameInfo is missing
-            try:
-                frame_number = frame['FrameInfo'].frameNumber
-            except Exception as e:
-                print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-                break
-            # TODO: speed it up by removing representations that we dont care about in this dict
-            for repr in new_cognition_status_dict:
-                try:
-                    data = MessageToDict(frame[repr])
-                    new_cognition_status_dict[repr] += 1
-                except AttributeError:
-                    # TODO only print something when in debug mode
-                    #print("skip frame because representation is not present")
-                    continue
-                except KeyError:
-                    # if image is not in frame
-                    continue
-                except Exception as e:
-                    print(f"error parsing {repr} in log {log_path} at frame {idx}")
-                    print({e})
+        new_cognition_status_dict = log_crawler.get_num_representation(str(log_path))
 
         try:
             response = client.log_status.update(

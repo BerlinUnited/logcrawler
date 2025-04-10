@@ -5,10 +5,7 @@
 from vaapi.client import Vaapi
 import log_crawler
 from pathlib import Path
-from naoth.log import Reader as LogReader
-from naoth.log import Parser
-from tqdm import tqdm
-import os, sys
+import os
 import json
 import argparse
 
@@ -43,7 +40,7 @@ def is_done(log, representation_file: str, force_flag: bool) -> bool:
 def get_representation_set_from_log(log_file_path, representation_set):
     print(f"\tparsing {log_file_path}")
     if (Path(log_file_path).is_file() and os.stat(str(log_file_path)).st_size > 0):
-        representation_set = log_crawler.parse_log(str(log_file_path))
+        representation_set = log_crawler.get_representation_set(str(log_file_path))
 
     return representation_set
 

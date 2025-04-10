@@ -8,7 +8,7 @@ pub struct Frame{
     pub frame_number: u32,
     pub size: u32,
     pub start: u32,
-    fields: HashMap<String, (u32, u32)>
+    pub fields: HashMap<String, (u32, u32)>
 }
 
 impl Frame{

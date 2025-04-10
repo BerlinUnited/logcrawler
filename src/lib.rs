@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyList;
+use pyo3::types::IntoPyDict;
 pub mod naothmessages {
     include!(concat!(env!("OUT_DIR"), "/naothmessages.rs"));
 }
@@ -11,6 +12,7 @@ use std::fs;
 use std::error::Error;
 use std::fmt;
 use std::collections::HashSet;
+use std::collections::HashMap;
 use kdam::tqdm;
 
 #[derive(Debug)]
@@ -66,9 +68,7 @@ fn read_string(bytes: &[u8], cursor: &mut usize) -> Result<String, EofError> {
 }
 
 #[pyfunction]
-fn parse_log(full_log_path: &str) -> PyResult<PyObject> {
-    println!("{}", full_log_path);
-
+fn get_representation_set(full_log_path: &str) -> PyResult<PyObject> {
     // this loads the whole file in memory - don't do this on your old laptop ;)
     println!("\tloading logfile into memory");
     let bytes = fs::read(full_log_path).unwrap();
@@ -164,9 +164,110 @@ fn parse_log(full_log_path: &str) -> PyResult<PyObject> {
     })
 }
 
+#[pyfunction]
+fn get_num_representation(full_log_path: &str) -> PyResult<PyObject> {
+    // this loads the whole file in memory - don't do this on your old laptop ;)
+    println!("\tloading logfile into memory");
+    let bytes = fs::read(full_log_path).unwrap();
+    let mut frames = Vec::new();  // This will store all completed frames
+    let mut current_frame: Option<Frame> = None;  // Tracks the frame we're currently building
+    let mut last_frame_number = None;  // Remembers the previous frame number
+    let mut cursor = 0;
+
+    // go through all the bytes
+    while cursor < bytes.len() {
+        // parse frame number
+        let frame_number = match read_long(&bytes, &mut cursor) {
+            Ok(value) => value,
+            Err(e) => {
+                println!("Error: {}", e);
+                break;
+            }
+        };
+
+        let name = match read_string(&bytes, &mut cursor) {
+            Ok(value) => value,
+            Err(e) => {
+                println!("Error: {}", e);
+                break;
+            }
+        };
+        
+
+        let message_size = match read_long(&bytes, &mut cursor) {
+            Ok(value) => value,
+            Err(e) => {
+                println!("Error: {}", e);
+                break;
+            }
+        };
+
+        // Read and parse the protobuf message
+        let message_bytes = match read_bytes(&bytes, &mut cursor, message_size as usize) {
+            Ok(b) => b,
+            Err(e) => {
+                println!("Error reading message bytes: {}", e);
+                break;
+            }
+        };
+
+        // Check if we need a new frame
+        if last_frame_number != Some(frame_number) {
+            // If we were working on a frame, push it to the list
+            if let Some(frame) = current_frame.take() {
+                //println!("Hello from frame {:?}", frame.get_field_names_ref());
+                frames.push(frame);
+                //println!("{}", frame_number);
+            }
+            
+            // Create a new frame
+            current_frame = Some(Frame::new(cursor as u32, frame_number as u32));
+            last_frame_number = Some(frame_number);
+        }
+
+        // Add field to the current frame (which is guaranteed to exist at this point)
+        if let Some(ref mut frame) = current_frame {
+            // TODO cursor is wrong here because we already go through message_bytes
+            frame.add_field_position(&name, cursor as u32, message_size as u32);
+        }
+
+        //cursor += message_size as usize;
+        
+        //println!("------------------");  // Separator between frames
+        //println!("Hello from frame {:?}", a.get_names());
+    }
+
+    // Don't forget to add the last frame to the list
+    if let Some(frame) = current_frame.take() {
+        // TODO add check here
+        if frame.start + frame.size <= bytes.len() as u32 {
+            frames.push(frame);
+        }
+    }
+    //println!("\tframes length: {}", frames.len());
+
+    let mut field_counts = HashMap::new();
+    for frame in frames {
+        for (field_name, my_tuple) in &frame.fields {
+            // ignore empty representations here
+            if my_tuple.1 > 0 {
+                *field_counts.entry(field_name.clone()).or_insert(0) += 1;
+            }
+        }
+    }
+
+    // Convert HashMap into a Python dictionary
+    Python::with_gil(|py| {
+        let py_dict = field_counts.into_py_dict(py);
+        Ok(py_dict.into())
+    })
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn log_crawler(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(parse_log, m)?)?;
+    m.add_function(wrap_pyfunction!(get_representation_set, m)?)?;
+    m.add_function(wrap_pyfunction!(get_num_representation, m)?)?;
+    
     Ok(())
 }
