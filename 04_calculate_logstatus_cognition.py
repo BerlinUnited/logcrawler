@@ -76,10 +76,10 @@ def main():
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         # TODO use combined log if its a file. -> it should always be a file if not experiment
-        log_path = Path(log_root_path) / log.log_path
+        combined_log_path = Path(log_root_path) / log.combined_log_path
 
-        print(f"{log.id}: {log_path}")
-        add_gamelog_representations(log, log_path)
+        print(f"{log.id}: {combined_log_path}")
+        add_gamelog_representations(log, combined_log_path)
         
 
 if __name__ == "__main__":
