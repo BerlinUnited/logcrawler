@@ -48,7 +48,8 @@ def parse_cognition_log(log):
             frame_time = frame['FrameInfo'].time
         except Exception as e:
             print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-            print(f"last frame number was {frame_array[-1]['frame_number']}")
+            #print(len(frame_array))
+            #print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
             break
 
         json_obj = {
@@ -98,5 +99,5 @@ if __name__ == "__main__":
         log_path = Path(log_root_path) / log.log_path
 
         print(f"{log.id}: {log_path}")
-        if not is_done(log.id):
+        if not is_done(log.id) or args.force:
             parse_cognition_log(log)

@@ -2,7 +2,6 @@ from pathlib import Path
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
 import os
-from google.protobuf.json_format import MessageToDict
 from vaapi.client import Vaapi
 from tqdm import tqdm
 import argparse
@@ -23,8 +22,9 @@ def is_done_motion(log_id):
         print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
         quit()
 
-
+    # TODO maybe add sanity check about too many frames in db
     response = client.motionframe.get_frame_count(log=log_id)
+    print(response)
     if int(log_status.num_motion_frames) == int(response["count"]):
         return True
     else:
@@ -46,7 +46,7 @@ def parse_motion_log(log):
 
         except Exception as e:
             print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-            print(f"last frame number was {frame_array[-1]['frame_number']}")
+            #print(f"last frame number was {frame_array[-1]['frame_number']}") # FIXME does not work if its the first frame or every 100th
             break
         
         json_obj = {
@@ -92,9 +92,9 @@ if __name__ == "__main__":
     def sort_key_fn(data):
         return data.log_path
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         sensor_log_path = Path(log_root_path) / log.sensor_log_path
 
         print(f"{log.id}: {sensor_log_path}")
-        if not is_done_motion(log.id):
+        if not is_done_motion(log.id) or args.force:
             parse_motion_log(log)
