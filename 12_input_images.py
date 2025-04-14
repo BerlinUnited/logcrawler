@@ -25,7 +25,7 @@ def path_generator(directory: str, batch_size: int = 200) -> Generator[List[str]
 
 def handle_insertion(individual_extracted_folder, log, camera, image_type):
 
-    print(f"\t{individual_extracted_folder.name}")
+    print(f"\tadding images from {individual_extracted_folder.name} to db")
     if not Path(individual_extracted_folder).is_dir():
         return
 
@@ -77,29 +77,29 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
         sleep(0.5)
     #sleep(5)
 
-def is_done(robot_data_id, camera, image_type):
-    response = client.image.get_image_count(log=robot_data_id, camera=camera, type=image_type)
+def is_done(log_id, camera, image_type):
+    response = client.image.get_image_count(log=log_id, camera=camera, type=image_type)
     db_count = int(response["count"])
-    # FIXME use the correct data for check if its done
-    response2 = client.log_status.list(log=robot_data_id)
+
+    response2 = client.log_status.list(log=log_id)
     if len(response2) == 0:
         print("\tno log_status found")
         return False
     log_status = response2[0]
 
     if camera == "BOTTOM" and image_type == "RAW":
-        target_count = int(log_status.num_bottom)
+        target_count = int(log_status.Image)
     elif camera == "TOP" and image_type == "RAW":
-        target_count = int(log_status.num_top)
+        target_count = int(log_status.ImageTop)
     elif camera == "BOTTOM" and image_type == "JPEG":
-        target_count = int(log_status.num_jpg_bottom)
+        target_count = int(log_status.ImageJPEG)
     elif camera == "TOP" and image_type == "JPEG":
-        target_count = int(log_status.num_jpg_top)
+        target_count = int(log_status.ImageJPEGTop)
     else:
         ValueError()
 
     if target_count == db_count:
-        print("\t\tskipping insertion")
+        print("\t\tall images are already inserted")
         return True
 
     return False
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     def myfunc(log):
         return log.log_path
 
-    for log in sorted(existing_data, key=myfunc, reverse=False):
+    for log in sorted(existing_data, key=myfunc, reverse=True):
         print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 

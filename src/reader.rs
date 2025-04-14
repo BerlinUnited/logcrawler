@@ -5,6 +5,8 @@ pub fn parse_frames_from_bytes(bytes: &[u8]) -> Vec<Frame> {
     let mut last_frame_number = None;  // Remembers the previous frame number
     let mut cursor = 0;
 
+    let mut payload_start;
+
     // go through all the bytes
     while cursor < bytes.len() {
         // parse frame number
@@ -33,6 +35,8 @@ pub fn parse_frames_from_bytes(bytes: &[u8]) -> Vec<Frame> {
             }
         };
 
+        payload_start = cursor;
+        
         // Read and parse the protobuf message
         let message_bytes = match read_bytes(&bytes, &mut cursor, message_size as usize) {
             Ok(b) => b,
@@ -59,13 +63,9 @@ pub fn parse_frames_from_bytes(bytes: &[u8]) -> Vec<Frame> {
         // Add field to the current frame (which is guaranteed to exist at this point)
         if let Some(ref mut frame) = current_frame {
             // TODO cursor is wrong here because we already go through message_bytes
-            frame.add_field_position(&name, cursor as u32, message_size as u32);
+            // second argument is the start of the payload data
+            frame.add_field_position(&name, payload_start as u32, message_size as u32);
         }
-
-        //cursor += message_size as usize;
-        
-        //println!("------------------");  // Separator between frames
-        //println!("Hello from frame {:?}", a.get_names());
     }
 
     // Don't forget to add the last frame to the list
