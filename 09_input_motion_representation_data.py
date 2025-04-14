@@ -2,6 +2,7 @@ from pathlib import Path
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
 from google.protobuf.json_format import MessageToDict
+import argparse
 import os
 from tqdm import tqdm
 from vaapi.client import Vaapi
@@ -11,7 +12,7 @@ def is_input_done(representation_list):
     # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log=data.id)
+        response = client.log_status.list(log=log.id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -24,26 +25,21 @@ def is_input_done(representation_list):
         print("\tWARNING: first calculate the number of motion frames and put it in the db")
         quit()
 
-    # query the cognition representation and check how many frames with a given representations are there
-    response = client.motion_repr.get_repr_count(log=log_id)
+    
 
     new_list = list()
     for repr in representation_list:
         # if no entry for a given representation is present this will throw an error
         try:
-            if repr == "FrameInfo":
-                # handle this differently because we called the field num_motion_frames in the db
-                # FIXME fix the db schema so that this code can be easier
-                num_repr_frames=response[repr]
-                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, 'num_motion_frames')}")
-                if int(getattr(log_status, "num_motion_frames")) != int(num_repr_frames):
-                    new_list.append(repr)
-            else:
-                num_repr_frames=response[repr]
-                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
-                if int(getattr(log_status, repr)) != int(num_repr_frames):
-                    new_list.append(repr)
-        except:
+            # query the motion representation and check how many frames with a given representations are there
+            model = getattr(client, repr.lower())
+            num_repr_frames=model.get_repr_count(log=log_id)["count"]
+
+            print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
+            if int(getattr(log_status, repr)) != int(num_repr_frames):
+                new_list.append(repr)
+        except Exception as e:
+            print(e)
             new_list.append(repr)
         
     if len(new_list) > 0:
@@ -53,6 +49,10 @@ def is_input_done(representation_list):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--force", action="store_true", default=False)
+    args = parser.parse_args()
+
     log_root_path = os.environ.get("VAT_LOG_ROOT")
     client = Vaapi(
         base_url=os.environ.get("VAT_API_URL"),
@@ -63,14 +63,15 @@ if __name__ == "__main__":
     def sort_key_fn(data):
         return data.sensor_log_path
 
-    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_id = data.id
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+        log_id = log.id
 
-        log_path = Path(log_root_path) / data.sensor_log_path
-        print("log_path: ", log_path)
+        sensor_log_path = Path(log_root_path) / log.sensor_log_path
+        print(f"{log.id}: {log.sensor_log_path}")
 
+        # NOTE is done would fail if frameinfo is here
+        # FIXME load all representation from file or log model
         representation_list = [
-            "FrameInfo",
             "IMUData", 
             "FSRData", 
             "ButtonData", 
@@ -82,62 +83,81 @@ if __name__ == "__main__":
             "GyrometerData",
         ]
         # check if we need to insert this log
-        representation_list = is_input_done(representation_list)
-        if len(representation_list) == 0:
+        new_representation_list = is_input_done(representation_list)
+        if not args.force and len(new_representation_list) == 0:
             print("\tall required representations are already inserted, will continue with the next log")
             continue
+        if args.force:
+            new_representation_list = representation_list
 
         my_parser = Parser()
-        game_log = LogReader(str(log_path), my_parser)
+        motion_log = LogReader(str(sensor_log_path), my_parser)
         
-        my_array = list()
-        for idx, frame in enumerate(tqdm(game_log, desc=f"Parsing frame", leave=True)):
+        # get list of frames  for this log
+        frames = client.motionframe.list(log=log.id)
+        # Create a dictionary mapping frame_number to id
+        frame_to_id = {frame.frame_number: frame.id for frame in frames}
+
+        def get_id_by_frame_number(target_frame_number):
+            return frame_to_id.get(target_frame_number, None)
+
+        repr_lists = {}
+        for idx, frame in enumerate(tqdm(motion_log, desc=f"Parsing frame", leave=True)):
             for repr_name in frame.get_names():
-                if not repr_name in representation_list:
+                if not repr_name in new_representation_list:
                     continue
                 
                 # try accessing framenumber directly because we can have the situation where the framenumber is missing in the
                 # last frame
                 try:
                     sensor_frame_number = frame['FrameInfo'].frameNumber
+                    frame_time = frame['FrameInfo'].time
                 except Exception as e:
                     print(f"FrameInfo not found in current frame - will not parse any other representation from this frame")
                     print({e})
                     break
 
                 try:
-                    data = MessageToDict(frame[repr_name])
+                    message_dict = MessageToDict(frame[repr_name])
                 except AttributeError:
                     #print("skip frame because representation is not present")
                     continue               
                 except Exception as e:
                     print(repr_name)
-                    print(f"error parsing the log {log_path}")
+                    print(f"error parsing the log {sensor_log_path}")
                     print({e})
                     quit()
 
                 json_obj = {
-                    "frame":sensor_frame_number,
-                    "representation_data":data
+                    "frame": get_id_by_frame_number(sensor_frame_number),
+                    "representation_data": message_dict
                 }
-                my_array.append(json_obj)
+               # If the repr_name key doesn't exist in the dictionary, create a new list for it
+                if repr_name not in repr_lists:
+                    repr_lists[repr_name] = []
 
-            if idx % 100 == 0:
-                try:
-                    response = client.motion_repr.bulk_create(
-                        repr_list=my_array
-                    )
-                    my_array.clear()
-                except Exception as e:
-                    print(f"error inputing the data {log_path}")
-                    print(e)
-                    quit()
+                # Append the json_obj to the appropriate list
+                repr_lists[repr_name].append(json_obj)
+
+            if idx % 250 == 0:
+                for k,v in repr_lists.items():
+                    try:
+                        model = getattr(client, k.lower())
+                        model.bulk_create(repr_list=v)
+                        v.clear()
+                    except Exception as e:
+                        print(f"error inputing the data {sensor_log_path}")
+                        print(e)
+                        quit()
+
         # handle the last frames
         # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
-        try:
-            response = client.motion_repr.bulk_create(
-                repr_list=my_array
-            )
-            print(response)
-        except Exception as e:
-            print(f"error inputing the data {log_path}")
+        for k,v in repr_lists.items():
+            try:
+                model = getattr(client, k.lower())
+                model.bulk_create(repr_list=v)
+                v.clear()
+            except Exception as e:
+                print(f"error inputing the data {sensor_log_path}")
+                print(e)
+                quit()

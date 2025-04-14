@@ -49,7 +49,8 @@ def add_sensorlog_representations(log, sensor_log_path):
         if args.force:
             new_motion_status_dict = motion_status_dict
 
-        new_motion_status_dict = log_crawler.get_num_representation(str(sensor_log_path))
+        crawler = log_crawler.LogCrawler(str(sensor_log_path))
+        new_motion_status_dict = crawler.get_num_representation()
 
         try:
             if "FrameInfo" in new_motion_status_dict:
@@ -71,8 +72,8 @@ def main(args):
     
     existing_data = client.logs.list()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(log):
+        return log.id
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         sensor_log_path = Path(log_root_path) / log.sensor_log_path

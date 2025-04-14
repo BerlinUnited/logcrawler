@@ -70,7 +70,8 @@ pub fn parse_frames_from_bytes(bytes: &[u8]) -> Vec<Frame> {
 
     // Don't forget to add the last frame to the list
     if let Some(frame) = current_frame.take() {
-        // TODO add check here
+        // this skips the frame as soon as a representation is not fully there and only the metadata for a representation was written
+        // e.g. add_field_position was called for a representation but the data is not in the log
         if frame.start + frame.size <= bytes.len() as u32 {
             frames.push(frame);
         }

@@ -21,10 +21,9 @@ pub use crawler::parse_frames_from_bytes;
 use std::fs;
 use std::collections::HashSet;
 use std::collections::HashMap;
+
+use naothmessages::*; // Import all types from naothmessages
 use prost::Message;
-use naothmessages::FrameInfo;
-use naothmessages::SensorJointData;
-use naothmessages::Image;
 
 #[pyclass]  // Expose the struct to Python
 struct LogCrawler {
@@ -33,10 +32,14 @@ struct LogCrawler {
     bytes: Vec<u8>,
 }
 
+fn parse_representation2<T: Message + Default>(data: &[u8]) -> Result<T, prost::DecodeError> {
+    T::decode(data)
+}
+/*
 fn parse_representation(data: &[u8]) -> Result<SensorJointData, prost::DecodeError> {
     SensorJointData::decode(data)
 }
-
+*/
 
 fn message_to_json<T: Message + serde::Serialize>(message: &T) -> serde_json::Result<String> {
     Python::with_gil(|py| {
@@ -87,6 +90,8 @@ impl LogCrawler {
             for (field_name, my_tuple) in &frame.fields {
                 // ignore empty representations here
                 if my_tuple.1 > 0 {
+                    // TODO try to parse the representation here
+
                     *field_counts.entry(field_name.clone()).or_insert(0) += 1;
                 }
             }
@@ -129,60 +134,63 @@ impl LogCrawler {
         })
     }
 
-    fn get_first_representation(&mut self, representation: String) -> PyResult<PyObject> {
+    fn get_unparsed_representation_list(&mut self, representation: String) -> PyResult<PyObject> {
         let frames = parse_frames_from_bytes(&self.bytes);
-        let mut jpeg_data = Vec::new();
+        //let mut data = Vec::new();
+        let mut data = HashMap::new();
+        for frame in frames{
+            for (field_name, my_tuple) in &frame.fields {
+                // ignore empty representations here
+                if my_tuple.1 > 0  && field_name == &representation{
+                    let start: usize = my_tuple.0 as usize;
+                    let size: usize = my_tuple.1 as usize;
 
-        for (field_name, my_tuple) in &frames[0].fields {
-            // ignore empty representations here
-            if my_tuple.1 > 0  && field_name == &representation{
-                //println!("ImageJPEGTop");
-                let start: usize = my_tuple.0 as usize;
-                let size: usize = my_tuple.1 as usize;
-
-                // Read the byte slice from bytes
-                let slice = &self.bytes[start..start+size];
-                jpeg_data.push(slice);
+                    // Read the byte slice from bytes
+                    let slice = &self.bytes[start..start+size];
+                    //data.push(slice);
+                    data.insert(frame.frame_number, slice);
+                }
             }
         }
-
+        // FIXME: return a dict frame_number: data
         Python::with_gil(|py| {
-            let py_list = PyList::new(py, jpeg_data);
-            Ok(py_list.into())
+            let py_dict = data.into_py_dict(py);
+            Ok(py_dict.into())
         })
 
     }
     
-    fn get_first_representation2(&mut self, representation: String) -> PyResult<PyObject> {
-        let frames = parse_frames_from_bytes(&self.bytes);
+        fn get_first_representation2(&mut self, representation: String) -> PyResult<PyObject> {
+            let frames = parse_frames_from_bytes(&self.bytes);
 
-        let mut data = Vec::new();
-        for (field_name, my_tuple) in &frames[0].fields {
-            // ignore empty representations here
-            if my_tuple.1 > 0  && field_name == &representation{
-                let start: usize = my_tuple.0 as usize;
-                let size: usize = my_tuple.1 as usize;
+            let mut data = Vec::new();
+            for (field_name, my_tuple) in &frames[0].fields {
+                // ignore empty representations here
+                if my_tuple.1 > 0  && field_name == &representation{
+                    let start: usize = my_tuple.0 as usize;
+                    let size: usize = my_tuple.1 as usize;
 
-                // Read the byte slice from bytes
-                let slice = &self.bytes[start..start+size];
-                
-                let repr = match parse_representation(&slice) {
-                    Ok(value) => value,
-                    Err(e) => {
-                        println!("Error: {}", e);
-                        break;
-                    }
-                };
-                data.push(repr)
+                    // Read the byte slice from bytes
+                    let slice = &self.bytes[start..start+size];
+                    
+                    let repr = match parse_representation2(&slice) {
+                        Ok(value) => value,
+                        Err(e) => {
+                            println!("Error: {}", e);
+                            break;
+                        }
+                    };
+                    println!("Error: {:?}", repr);
+                    data.push(repr)
+                }
             }
+
+            Python::with_gil(|py| {
+                let obj = to_pyobject(py, &data[0]).unwrap();
+                Ok(obj.into())
+            })
+
         }
-
-        Python::with_gil(|py| {
-            let obj = to_pyobject(py, &data[0]).unwrap();
-            Ok(obj.into())
-        })
-
-    }
 }
 
 #[pyfunction]
@@ -211,6 +219,7 @@ fn get_representation(full_log_path: &str) -> PyResult<PyObject> {
             }
         }
     };
+    
     Python::with_gil(|py| {
         let py_list = PyList::new(py, jpeg_data);
         Ok(py_list.into())
