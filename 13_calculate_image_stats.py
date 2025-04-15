@@ -43,20 +43,21 @@ if __name__ == "__main__":
         api_key=os.environ.get("VAT_API_TOKEN"),
     )
     
-    data = client.logs.list()
+    log = client.logs.list()
 
     # only check server availability if we are not working with local files
     if not args.local:
         base_url = get_alive_fileserver()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(log):
+        return log.id
 
-    for data in sorted(data, key=sort_key_fn, reverse=True):
-        print("log_path: ", data.id, data.log_path)
-        log_id = data.id
-        images = client.image.list(log_id=log_id, blurredness_value="None")
+    for log in sorted(log, key=sort_key_fn, reverse=True):
+        print(f"{log.id}: {log.log_path}")
 
+        # FIXME how to query for a given log?
+        images = client.image.list(log_id=log.id, blurredness_value="None")
+        quit()
         image_data = list()
 
         for idx, img in enumerate(tqdm(images)):
@@ -89,7 +90,7 @@ if __name__ == "__main__":
 
             except Exception as e:
                  print(e)
-                 print(f"Image broken at {url} in log: {log_id}")
+                 print(f"Image broken at {url} in log: {log.id}")
                  print("This problem can occur if the image extraction for this log was aborted")
                  quit()
             

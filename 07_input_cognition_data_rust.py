@@ -114,7 +114,6 @@ def input_representation_data(log, crawler, my_parser, representation_list):
             return frame_to_id.get(target_frame_number, None)
     
     for repr_name in representation_list:
-        print(repr_name)
         repr_dict = crawler.get_unparsed_representation_list(repr_name)
 
         print(f"\tparse all {repr_name} messages in python")
