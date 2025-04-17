@@ -57,8 +57,8 @@ def input_representation_done(representation_list):
             model = getattr(client, repr.lower())
             num_repr_frames=model.get_repr_count(log=log.id)["count"]
 
-            print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
             if int(getattr(log_status, repr)) != int(num_repr_frames):
+                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
                 new_list.append(repr)
         except Exception as e:
             print(e)
