@@ -31,11 +31,11 @@ def input_frames_done(log_id):
         print(f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way")
         quit()
     else:
+        print(f"\t number of frames is not correct: {log_status.num_motion_frames} != {response["count"]}")
         return False
 
+
 def input_representation_done(representation_list):
-    # remove Frameinfo from the list, frameinfo is inserted as frames in db and not a seperate representation
-    if "FrameInfo" in representation_list: representation_list.remove("FrameInfo")
     # get the log status - showing how many entries per representation there should be
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
@@ -60,15 +60,14 @@ def input_representation_done(representation_list):
             model = getattr(client, repr.lower())
             num_repr_frames=model.get_repr_count(log=log.id)["count"]
 
-            print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
             if int(getattr(log_status, repr)) != int(num_repr_frames):
+                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
                 new_list.append(repr)
         except Exception as e:
             print(e)
             new_list.append(repr)
         
     if len(new_list) > 0:
-        print("\tneed to run insertion again")
         print(f"{new_list}")
     return new_list
 
@@ -107,37 +106,16 @@ def input_frames(crawler, parser):
         print(f"error inputing the data {sensor_log_path}")
 
 
-def parse_motion_log(log):
-    sensor_log_path = Path(log_root_path) / log.sensor_log_path
-    my_parser = Parser()
-    crawler = log_crawler.LogCrawler(str(sensor_log_path))
-    # FIXME we load the log before we check if we need this -> can we restructure this cooler?
-    if not input_frames_done(log.id) or args.force:
-
-        input_frames(crawler, my_parser)
-
-    """
-    ---------------------------------------------------------------------------------
-    """
-    representation_list = crawler.get_representation_set()
-    new_representation_list = input_representation_done(representation_list)
-
-    if not args.force and len(new_representation_list) == 0:
-        print("\tall required representations are already inserted, will continue with the next log")
-        return
-    if args.force:
-        new_representation_list = representation_list
-    
+def input_representation_data(log, crawler, my_parser, representation_list):    
     # get list of frames  for this log
     frames = client.motionframe.list(log=log.id)
     # Create a dictionary mapping frame_number to id
     frame_to_id = {frame.frame_number: frame.id for frame in frames}
 
     def get_id_by_frame_number(target_frame_number):
-            return frame_to_id.get(target_frame_number, None)
+            return frame_to_id.get(target_frame_number, None) 
     
-    for repr_name in new_representation_list:
-        print(repr_name)
+    for repr_name in representation_list:
         repr_dict = crawler.get_unparsed_representation_list(repr_name)
 
         print(f"\tparse all {repr_name} messages in python")
@@ -168,6 +146,14 @@ def parse_motion_log(log):
             print(f"error inputing the data {sensor_log_path}")
 
 
+def get_motion_representations(log):
+    motion_repr = log.representation_list["motion_representations"]
+    # remove Frameinfo from the list, frameinfo is inserted as frames in db and not a seperate representation
+    if "FrameInfo" in motion_repr: motion_repr.remove("FrameInfo")
+
+    return motion_repr
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--force", action="store_true", default=False)
@@ -187,4 +173,26 @@ if __name__ == "__main__":
         sensor_log_path = Path(log_root_path) / log.sensor_log_path
 
         print(f"{log.id}: {sensor_log_path}")
-        parse_motion_log(log)
+
+        representation_list = get_motion_representations(log)
+
+        if input_frames_done(log.id) and not args.force:
+            new_representation_list = input_representation_done(representation_list)
+            if len(new_representation_list) == 0:
+                print("\tall required representations are already inserted, will continue with the next log")
+                continue
+            else:
+                print(f"\tneed to run insertion for {new_representation_list}")
+            
+        my_parser = Parser()
+        crawler = log_crawler.LogCrawler(str(sensor_log_path))
+
+        if args.force:
+            new_representation_list = representation_list
+        
+        if not input_frames_done(log.id) or args.force:
+             input_frames(crawler, my_parser)
+             new_representation_list = representation_list
+
+        if len(new_representation_list) != 0 or args.force:
+            input_representation_data(log, crawler, my_parser, new_representation_list)

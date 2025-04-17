@@ -31,6 +31,7 @@ def input_frames_done(log_id):
         print(f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way")
         quit()
     else:
+        print(f"\t number of frames is not correct: {log_status.FrameInfo} != {response["count"]}")
         return False
 
 def input_representation_done(representation_list):
@@ -143,6 +144,7 @@ def input_representation_data(log, crawler, my_parser, representation_list):
         except Exception as e:
             print(f"error inputing the data {log_path}")
 
+
 def get_cognition_representations(log):
     cog_repr = log.representation_list["cognition_representations"]
     if "ImageJPEGTop" in cog_repr: cog_repr.remove("ImageJPEGTop")
@@ -156,6 +158,7 @@ def get_cognition_representations(log):
     if "BehaviorStateSparse" in cog_repr: cog_repr.remove("BehaviorStateSparse")
     
     return cog_repr
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -184,19 +187,18 @@ if __name__ == "__main__":
             new_representation_list = input_representation_done(representation_list)
             if len(new_representation_list) == 0:
                 print("\tall required representations are already inserted, will continue with the next log")
-                continue
-        
+                continue            
+
         my_parser = Parser()
         my_parser.register("GoalPerceptTop", "GoalPercept")
         my_parser.register("FieldPerceptTop", "FieldPercept")
         my_parser.register("BallCandidatesTop", "BallCandidates")
         crawler = log_crawler.LogCrawler(str(log_path))
         
-        if args.force:
-            new_representation_list = representation_list
 
         if not input_frames_done(log.id) or args.force:
              input_frames(crawler, my_parser)
+             new_representation_list = representation_list
 
         if len(new_representation_list) != 0 or args.force:
             input_representation_data(log, crawler, my_parser, new_representation_list)

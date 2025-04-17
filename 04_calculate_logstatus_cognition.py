@@ -52,9 +52,10 @@ def add_gamelog_representations(log, log_path):
             new_cognition_status_dict = cognition_status_dict
 
         # TODO check if new_cognition_status_dict empty 
+        crawler = log_crawler.LogCrawler(str(log_path))
+        new_cognition_status_dict = crawler.get_num_representation()
 
-        new_cognition_status_dict = log_crawler.get_num_representation(str(log_path))
-
+        print(new_cognition_status_dict)
         try:
             response = client.log_status.update(
                 log=log.id, 
@@ -71,8 +72,8 @@ def main():
     
     existing_data = client.logs.list()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(dalogta):
+        return log.id
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         # TODO use combined log if its a file. -> it should always be a file if not experiment
