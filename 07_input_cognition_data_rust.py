@@ -124,6 +124,11 @@ def input_representation_data(log, crawler, my_parser, representation_list):
             
             message_dict = MessageToDict(message)
 
+            if repr_name in ["BallCandidates", "BallCandidatesTop"]:
+                for patch in message_dict['patches']:
+                    del patch['data']
+                    del patch['type']
+
             json_obj = {
                 "frame": get_id_by_frame_number(frame_number),
                 "representation_data": message_dict
@@ -196,9 +201,10 @@ if __name__ == "__main__":
         crawler = log_crawler.LogCrawler(str(log_path))
         
 
-        if not input_frames_done(log.id) or args.force:
-             input_frames(crawler, my_parser)
-             new_representation_list = representation_list
+        #if not input_frames_done(log.id) or args.force:
+        #     input_frames(crawler, my_parser)
+        #     new_representation_list = representation_list
 
+        new_representation_list = ["BallCandidates", "BallCandidatesTop"]
         if len(new_representation_list) != 0 or args.force:
             input_representation_data(log, crawler, my_parser, new_representation_list)
