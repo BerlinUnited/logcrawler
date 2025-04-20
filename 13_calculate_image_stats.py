@@ -57,7 +57,6 @@ if __name__ == "__main__":
 
         # FIXME how to query for a given log?
         images = client.image.list(log_id=log.id, blurredness_value="None")
-        quit()
         image_data = list()
 
         for idx, img in enumerate(tqdm(images)):
