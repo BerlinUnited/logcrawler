@@ -1,9 +1,9 @@
 """
-    Combine Image and game logs the right way
-    see: https://scm.cms.hu-berlin.de/berlinunited/naoth-2020/-/commit/0a79c8c2ae1143ab63f8ec907580de9eae5bc50
+Combine Image and game logs the right way
+see: https://scm.cms.hu-berlin.de/berlinunited/naoth-2020/-/commit/0a79c8c2ae1143ab63f8ec907580de9eae5bc50
 
-    # TODO: we have stuff like this: /vol/repl261-vol4/naoth/logs/2023-08-cccamp/2023-08-18-testgame_04/2_22_Nao0004_230818-1213
-    were we only have an image log and no game.log
+# TODO: we have stuff like this: /vol/repl261-vol4/naoth/logs/2023-08-cccamp/2023-08-18-testgame_04/2_22_Nao0004_230818-1213
+were we only have an image log and no game.log
 """
 
 from pathlib import Path
@@ -67,6 +67,7 @@ def create_image_log_dict(image_log, first_image_is_top):
 
     return images_dict
 
+
 def create_jpeg_image_log_dict(image_log):
     """
     Return a dictionary with frame numbers as key and image data as values.
@@ -74,7 +75,7 @@ def create_jpeg_image_log_dict(image_log):
     images_by_frame = {}
 
     myParser = Parser()
-    myParser.register("ImageJPEG"   , "Image")
+    myParser.register("ImageJPEG", "Image")
     myParser.register("ImageJPEGTop", "Image")
 
     reader = LogReader(image_log, parser=myParser)
@@ -88,28 +89,35 @@ def create_jpeg_image_log_dict(image_log):
         if "ImageJPEGTop" in frame.get_names():
             images["ImageJPEGTop"] = frame["ImageJPEGTop"]
 
-        
         images_by_frame[frame.number] = images
 
     return images_by_frame
 
-def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image_jpeg_log_path=None):
+
+def write_combined_log(
+    log, combined_log_path, img_log_path, gamelog_path, image_jpeg_log_path=None
+):
     is_first_image_top = calculate_first_image(log)
     image_log_index = create_image_log_dict(
-                str(img_log_path), first_image_is_top=is_first_image_top
-            )
+        str(img_log_path), first_image_is_top=is_first_image_top
+    )
 
     # if there are jpeg images, load them
-    image_jpeg_log_index = create_jpeg_image_log_dict(str(image_jpeg_log_path)) if image_jpeg_log_path else {}
+    image_jpeg_log_index = (
+        create_jpeg_image_log_dict(str(image_jpeg_log_path))
+        if image_jpeg_log_path
+        else {}
+    )
 
     try:
-        with open(str(combined_log_path), "wb") as output, open(
-            str(img_log_path), "rb"
-        ) as image_log, LogReader(str(gamelog_path)) as reader:
+        with (
+            open(str(combined_log_path), "wb") as output,
+            open(str(img_log_path), "rb") as image_log,
+            LogReader(str(gamelog_path)) as reader,
+        ):
             for frame in reader.read():
                 # only write frames which have corresponding images
                 if frame.number in image_log_index:
-
                     # may contain 'ImageTop' and 'Image'
                     for image_name, (offset, size) in image_log_index[
                         frame.number
@@ -136,14 +144,14 @@ def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image
                 # write the potentially modified frame to the new log
                 output.write(bytes(frame))
 
-                # HACK: Frames are indexed by the log reader. 
+                # HACK: Frames are indexed by the log reader.
                 # Remove the image of already processed frames to preserve memory.
                 if frame.number in image_log_index:
                     for image_name in image_log_index[frame.number]:
                         frame.remove(image_name)
                 if frame.number in image_jpeg_log_index:
                     for image_name in image_jpeg_log_index[frame.number]:
-                        frame.remove(image_name)               
+                        frame.remove(image_name)
 
     except Exception as e:
         print(f"failed to combine file: {e}")
@@ -153,15 +161,18 @@ def write_combined_log(log, combined_log_path, img_log_path, gamelog_path, image
         if combined_log_path.is_file():
             combined_log_path.unlink()
 
+
 def write_combined_log_jpeg(combined_log_path, img_log_path, gamelog_path):
     image_log_index = create_jpeg_image_log_dict(str(img_log_path))
 
     try:
-        with open(combined_log_path, 'wb') as output, LogReader(gamelog_path) as reader:
+        with open(combined_log_path, "wb") as output, LogReader(gamelog_path) as reader:
             for frame in reader.read():
                 # only write frames which have corresponding images
                 if frame.number not in image_log_index:
-                    print('Frame {} has no corresponding image data.'.format(frame.number))
+                    print(
+                        "Frame {} has no corresponding image data.".format(frame.number)
+                    )
                     output.write(bytes(frame))
                     continue
 
@@ -215,10 +226,9 @@ if __name__ == "__main__":
     def sort_key_fn(data):
         return data.log_path
 
-
     for data in sorted(existing_data, key=sort_key_fn, reverse=True):
         log_id = data.id
-        log_folder_path = Path(data.log_path).parent # data.log_path is path to file
+        log_folder_path = Path(data.log_path).parent  # data.log_path is path to file
         log_path = Path(log_root_path) / log_folder_path
         print("log_path: ", log_path)
 
@@ -233,22 +243,41 @@ if __name__ == "__main__":
         img_log_path = log_path / "images.log"
         img_jpeg_log_path = log_path / "images_jpeg.log"
 
-        has_game_log = Path(gamelog_path).is_file() and stat(str(gamelog_path)).st_size > 0
-        has_image_log = Path(img_log_path).is_file() and stat(str(img_log_path)).st_size > 0
-        has_image_jpeg_log = Path(img_jpeg_log_path).is_file() and stat(str(img_jpeg_log_path)).st_size > 0
+        has_game_log = (
+            Path(gamelog_path).is_file() and stat(str(gamelog_path)).st_size > 0
+        )
+        has_image_log = (
+            Path(img_log_path).is_file() and stat(str(img_log_path)).st_size > 0
+        )
+        has_image_jpeg_log = (
+            Path(img_jpeg_log_path).is_file()
+            and stat(str(img_jpeg_log_path)).st_size > 0
+        )
 
         if not has_game_log and (has_image_log or has_image_jpeg_log):
-            print("\tcan't combine anything here, missing game.log or image.log/image_jpeg.log")
+            print(
+                "\tcan't combine anything here, missing game.log or image.log/image_jpeg.log"
+            )
             continue
 
         if not combined_log_path.is_file() or args.force:
             if has_image_log and has_image_jpeg_log:
-                write_combined_log(log_folder_path, combined_log_path, img_log_path, gamelog_path, img_jpeg_log_path)
+                write_combined_log(
+                    log_folder_path,
+                    combined_log_path,
+                    img_log_path,
+                    gamelog_path,
+                    img_jpeg_log_path,
+                )
             elif has_image_log and not has_image_jpeg_log:
-                write_combined_log(log_folder_path, combined_log_path, img_log_path, gamelog_path)
+                write_combined_log(
+                    log_folder_path, combined_log_path, img_log_path, gamelog_path
+                )
             elif has_image_jpeg_log and not has_image_log:
-                write_combined_log_jpeg(combined_log_path, img_jpeg_log_path, gamelog_path)
+                write_combined_log_jpeg(
+                    combined_log_path, img_jpeg_log_path, gamelog_path
+                )
             else:
                 # not an error: /vol/repl261-vol4/naoth/logs/2024-04-17_GO24/2024-04-19_21-00-00_Berlin United_vs_Nao Devils_half1-test/game_logs/7_16_Nao0017_240419-1937
-                #raise ValueError("We shouldn't have gotten this far, either image.log or image_jpeg.log should exist")
+                # raise ValueError("We shouldn't have gotten this far, either image.log or image_jpeg.log should exist")
                 print("WARNING: nothing to combine found here")

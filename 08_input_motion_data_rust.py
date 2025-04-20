@@ -17,9 +17,11 @@ def input_frames_done(log_id):
         log_status = response[0]
     except Exception as e:
         print(e)
-    
+
     if not log_status.num_motion_frames or int(log_status.num_motion_frames) == 0:
-        print("\tWARNING: first calculate the number of motion frames and put it in the db")
+        print(
+            "\tWARNING: first calculate the number of motion frames and put it in the db"
+        )
         quit()
 
     response = client.motionframe.get_frame_count(log=log_id)
@@ -28,10 +30,14 @@ def input_frames_done(log_id):
     elif int(response["count"]) > int(log_status.num_motion_frames):
         # rust based calculation for num frames stops if one broken representation is in the last frame
         print("ERROR: there are more frames in the database than they should be")
-        print(f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way")
+        print(
+            f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way"
+        )
         quit()
     else:
-        print(f"\t number of frames is not correct: {log_status.num_motion_frames} != {response["count"]}")
+        print(
+            f"\t number of frames is not correct: {log_status.num_motion_frames} != {response['count']}"
+        )
         return False
 
 
@@ -49,7 +55,9 @@ def input_representation_done(representation_list):
     # check if number of frames were calculated already
     num_motion_frames = log_status.num_motion_frames
     if not num_motion_frames or int(num_motion_frames) == 0:
-        print("\tWARNING: first calculate the number of motion frames and put it in the db")
+        print(
+            "\tWARNING: first calculate the number of motion frames and put it in the db"
+        )
         quit()
 
     new_list = list()
@@ -58,15 +66,17 @@ def input_representation_done(representation_list):
         try:
             # query the motion representation and check how many frames with a given representations are there
             model = getattr(client, repr.lower())
-            num_repr_frames=model.get_repr_count(log=log.id)["count"]
+            num_repr_frames = model.get_repr_count(log=log.id)["count"]
 
             if int(getattr(log_status, repr)) != int(num_repr_frames):
-                print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
+                print(
+                    f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}"
+                )
                 new_list.append(repr)
         except Exception as e:
             print(e)
             new_list.append(repr)
-        
+
     if len(new_list) > 0:
         print(f"{new_list}")
     return new_list
@@ -79,7 +89,7 @@ def input_frames(crawler, parser):
         message = parser.parse("FrameInfo", bytes(data))
 
         json_obj = {
-            "log":log.id, 
+            "log": log.id,
             "frame_number": message.frameNumber,
             "frame_time": message.time,
         }
@@ -87,34 +97,30 @@ def input_frames(crawler, parser):
 
         if idx % 1000 == 0:
             try:
-                response = client.motionframe.bulk_create(
-                    frame_list=parsed_messages
-                )
+                response = client.motionframe.bulk_create(frame_list=parsed_messages)
                 parsed_messages.clear()
             except Exception as e:
                 print(f"error inputing the data for {sensor_log_path}")
                 print(e)
                 quit()
-    
+
     # handle the last frames
     # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
     try:
-        response = client.motionframe.bulk_create(
-            frame_list=parsed_messages
-        )
+        response = client.motionframe.bulk_create(frame_list=parsed_messages)
     except Exception as e:
         print(f"error inputing the data {sensor_log_path}")
 
 
-def input_representation_data(log, crawler, my_parser, representation_list):    
+def input_representation_data(log, crawler, my_parser, representation_list):
     # get list of frames  for this log
     frames = client.motionframe.list(log=log.id)
     # Create a dictionary mapping frame_number to id
     frame_to_id = {frame.frame_number: frame.id for frame in frames}
 
     def get_id_by_frame_number(target_frame_number):
-            return frame_to_id.get(target_frame_number, None) 
-    
+        return frame_to_id.get(target_frame_number, None)
+
     for repr_name in representation_list:
         repr_dict = crawler.get_unparsed_representation_list(repr_name)
 
@@ -122,12 +128,12 @@ def input_representation_data(log, crawler, my_parser, representation_list):
         parsed_messages = list()
         for idx, (frame_number, data) in enumerate(repr_dict.items()):
             message = my_parser.parse(repr_name, bytes(data))
-            
+
             message_dict = MessageToDict(message)
 
             json_obj = {
                 "frame": get_id_by_frame_number(frame_number),
-                "representation_data": message_dict
+                "representation_data": message_dict,
             }
             parsed_messages.append(json_obj)
             if idx % 600 == 0:
@@ -149,7 +155,8 @@ def input_representation_data(log, crawler, my_parser, representation_list):
 def get_motion_representations(log):
     motion_repr = log.representation_list["motion_representations"]
     # remove Frameinfo from the list, frameinfo is inserted as frames in db and not a seperate representation
-    if "FrameInfo" in motion_repr: motion_repr.remove("FrameInfo")
+    if "FrameInfo" in motion_repr:
+        motion_repr.remove("FrameInfo")
 
     return motion_repr
 
@@ -179,20 +186,22 @@ if __name__ == "__main__":
         if input_frames_done(log.id) and not args.force:
             new_representation_list = input_representation_done(representation_list)
             if len(new_representation_list) == 0:
-                print("\tall required representations are already inserted, will continue with the next log")
+                print(
+                    "\tall required representations are already inserted, will continue with the next log"
+                )
                 continue
             else:
                 print(f"\tneed to run insertion for {new_representation_list}")
-            
+
         my_parser = Parser()
         crawler = log_crawler.LogCrawler(str(sensor_log_path))
 
         if args.force:
             new_representation_list = representation_list
-        
+
         if not input_frames_done(log.id) or args.force:
-             input_frames(crawler, my_parser)
-             new_representation_list = representation_list
+            input_frames(crawler, my_parser)
+            new_representation_list = representation_list
 
         if len(new_representation_list) != 0 or args.force:
             input_representation_data(log, crawler, my_parser, new_representation_list)

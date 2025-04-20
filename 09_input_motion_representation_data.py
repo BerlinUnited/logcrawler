@@ -22,10 +22,10 @@ def is_input_done(representation_list):
     # check if number of frames were calculated already
     num_motion_frames = log_status.num_motion_frames
     if not num_motion_frames or int(num_motion_frames) == 0:
-        print("\tWARNING: first calculate the number of motion frames and put it in the db")
+        print(
+            "\tWARNING: first calculate the number of motion frames and put it in the db"
+        )
         quit()
-
-    
 
     new_list = list()
     for repr in representation_list:
@@ -33,15 +33,17 @@ def is_input_done(representation_list):
         try:
             # query the motion representation and check how many frames with a given representations are there
             model = getattr(client, repr.lower())
-            num_repr_frames=model.get_repr_count(log=log_id)["count"]
+            num_repr_frames = model.get_repr_count(log=log_id)["count"]
 
-            print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
+            print(
+                f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}"
+            )
             if int(getattr(log_status, repr)) != int(num_repr_frames):
                 new_list.append(repr)
         except Exception as e:
             print(e)
             new_list.append(repr)
-        
+
     if len(new_list) > 0:
         print("\tneed to run insertion again")
         print(f"{new_list}")
@@ -72,12 +74,12 @@ if __name__ == "__main__":
         # NOTE is done would fail if frameinfo is here
         # FIXME load all representation from file or log model
         representation_list = [
-            "IMUData", 
-            "FSRData", 
-            "ButtonData", 
-            "SensorJointData", 
-            "AccelerometerData", 
-            "InertialSensorData", 
+            "IMUData",
+            "FSRData",
+            "ButtonData",
+            "SensorJointData",
+            "AccelerometerData",
+            "InertialSensorData",
             "MotionStatus",
             "MotorJointData",
             "GyrometerData",
@@ -85,14 +87,16 @@ if __name__ == "__main__":
         # check if we need to insert this log
         new_representation_list = is_input_done(representation_list)
         if not args.force and len(new_representation_list) == 0:
-            print("\tall required representations are already inserted, will continue with the next log")
+            print(
+                "\tall required representations are already inserted, will continue with the next log"
+            )
             continue
         if args.force:
             new_representation_list = representation_list
 
         my_parser = Parser()
         motion_log = LogReader(str(sensor_log_path), my_parser)
-        
+
         # get list of frames  for this log
         frames = client.motionframe.list(log=log.id)
         # Create a dictionary mapping frame_number to id
@@ -102,26 +106,30 @@ if __name__ == "__main__":
             return frame_to_id.get(target_frame_number, None)
 
         repr_lists = {}
-        for idx, frame in enumerate(tqdm(motion_log, desc=f"Parsing frame", leave=True)):
+        for idx, frame in enumerate(
+            tqdm(motion_log, desc=f"Parsing frame", leave=True)
+        ):
             for repr_name in frame.get_names():
                 if not repr_name in new_representation_list:
                     continue
-                
+
                 # try accessing framenumber directly because we can have the situation where the framenumber is missing in the
                 # last frame
                 try:
-                    sensor_frame_number = frame['FrameInfo'].frameNumber
-                    frame_time = frame['FrameInfo'].time
+                    sensor_frame_number = frame["FrameInfo"].frameNumber
+                    frame_time = frame["FrameInfo"].time
                 except Exception as e:
-                    print(f"FrameInfo not found in current frame - will not parse any other representation from this frame")
+                    print(
+                        f"FrameInfo not found in current frame - will not parse any other representation from this frame"
+                    )
                     print({e})
                     break
 
                 try:
                     message_dict = MessageToDict(frame[repr_name])
                 except AttributeError:
-                    #print("skip frame because representation is not present")
-                    continue               
+                    # print("skip frame because representation is not present")
+                    continue
                 except Exception as e:
                     print(repr_name)
                     print(f"error parsing the log {sensor_log_path}")
@@ -130,9 +138,9 @@ if __name__ == "__main__":
 
                 json_obj = {
                     "frame": get_id_by_frame_number(sensor_frame_number),
-                    "representation_data": message_dict
+                    "representation_data": message_dict,
                 }
-               # If the repr_name key doesn't exist in the dictionary, create a new list for it
+                # If the repr_name key doesn't exist in the dictionary, create a new list for it
                 if repr_name not in repr_lists:
                     repr_lists[repr_name] = []
 
@@ -140,7 +148,7 @@ if __name__ == "__main__":
                 repr_lists[repr_name].append(json_obj)
 
             if idx % 250 == 0:
-                for k,v in repr_lists.items():
+                for k, v in repr_lists.items():
                     try:
                         model = getattr(client, k.lower())
                         model.bulk_create(repr_list=v)
@@ -152,7 +160,7 @@ if __name__ == "__main__":
 
         # handle the last frames
         # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
-        for k,v in repr_lists.items():
+        for k, v in repr_lists.items():
             try:
                 model = getattr(client, k.lower())
                 model.bulk_create(repr_list=v)

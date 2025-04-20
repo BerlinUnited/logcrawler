@@ -1,6 +1,7 @@
 """
-    This script should put all necessary data from one event into the database
+This script should put all necessary data from one event into the database
 """
+
 from pathlib import Path
 from vaapi.client import Vaapi
 import os
@@ -23,7 +24,6 @@ def handle_games(event_id: int, game: str):
         print(e)
         print(game_parsed)
 
-
     date_object = datetime.strptime(timestamp, "%Y-%m-%d_%H-%M-%S")
     response = client.games.create(
         event=event_id,
@@ -32,7 +32,7 @@ def handle_games(event_id: int, game: str):
         half=halftime,
         # Hack: by default django return the time with Z appended. We do that on input as well so we can compare it in the add_games function
         # TODO: check if this is still necessary
-        start_time=date_object.isoformat()+ "Z",
+        start_time=date_object.isoformat() + "Z",
     )
     return response
 
@@ -41,13 +41,13 @@ def handle_experiments(event_id: int, experiment_folder: str):
     # TODO make sure it only looks at logfiles
     for logfile in [f for f in experiment_folder.iterdir() if f.is_file()]:
         exp_response = client.experiment.create(
-            event_id=event_id, 
+            event_id=event_id,
             name=logfile.name,
         )
         print(exp_response)
 
         response = client.logs.create(
-            log_experiment=exp_response.id, 
+            log_experiment=exp_response.id,
             log_path=logfile.name,
         )
         print(response)
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         base_url=os.environ.get("VAT_API_URL"),
         api_key=os.environ.get("VAT_API_TOKEN"),
     )
-  
+
     all_events = [f for f in Path(log_root_path).iterdir() if f.is_dir()]
     for event in sorted(all_events, reverse=True):
         if event.name in event_list:
@@ -82,7 +82,7 @@ if __name__ == "__main__":
             for game in sorted(all_games):
                 if str(game.name) == "Experiments":
                     print("ignoring Experiments folder")
-                    #handle_experiments(event_id, game)
+                    # handle_experiments(event_id, game)
                 elif str(game.name) == "Videos":
                     print("ignoring Videos folder")
                 else:
@@ -99,22 +99,35 @@ if __name__ == "__main__":
                         head_number = logfolder_parsed[1]
                         version = get_robot_version(head_number)
                         nao_config_file = Path(logfolder) / "nao.info"
-                        with open(str(nao_config_file), 'r') as file:
+                        with open(str(nao_config_file), "r") as file:
                             # Read all lines from the file
                             lines = file.readlines()
 
                             # Extract the first and third lines
-                            body_serial = lines[0].strip()  # Strip to remove any trailing newline characters
+                            body_serial = lines[
+                                0
+                            ].strip()  # Strip to remove any trailing newline characters
                             head_serial = lines[2].strip()
 
-                        log_path = str(Path(logfolder) / "game.log").removeprefix(log_root_path).strip("/")
-                        combined_log_path = str(Path(logfolder) / "combined.log").removeprefix(log_root_path).strip("/")
-                        sensor_log_path = str(Path(logfolder) / "sensor.log").removeprefix(log_root_path).strip("/")
+                        log_path = (
+                            str(Path(logfolder) / "game.log")
+                            .removeprefix(log_root_path)
+                            .strip("/")
+                        )
+                        combined_log_path = (
+                            str(Path(logfolder) / "combined.log")
+                            .removeprefix(log_root_path)
+                            .strip("/")
+                        )
+                        sensor_log_path = (
+                            str(Path(logfolder) / "sensor.log")
+                            .removeprefix(log_root_path)
+                            .strip("/")
+                        )
 
-                        
                         try:
                             response = client.logs.create(
-                                game=game_id, 
+                                game=game_id,
                                 robot_version=version,
                                 player_number=int(playernumber),
                                 head_number=int(head_number),

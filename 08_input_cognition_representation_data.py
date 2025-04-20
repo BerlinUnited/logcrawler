@@ -22,7 +22,9 @@ def is_input_done(representation_list):
     # check if number of frames were calculated already
     num_cognition_frames = log_status.FrameInfo
     if not num_cognition_frames or int(num_cognition_frames) == 0:
-        print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
+        print(
+            "\tWARNING: first calculate the number of cognitions frames and put it in the db"
+        )
         quit()
 
     new_list = list()
@@ -31,9 +33,11 @@ def is_input_done(representation_list):
         try:
             # query the cognition representation and check how many frames with a given representations are there
             model = getattr(client, repr.lower())
-            num_repr_frames=model.get_repr_count(log=log_id)["count"]
+            num_repr_frames = model.get_repr_count(log=log_id)["count"]
 
-            print(f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}")
+            print(
+                f"\t{repr} inserted frames: {num_repr_frames}/{getattr(log_status, repr)}"
+            )
             if int(getattr(log_status, repr)) != int(num_repr_frames):
                 new_list.append(repr)
         except Exception as e:
@@ -44,7 +48,7 @@ def is_input_done(representation_list):
         print("\tneed to run insertion again")
         print(f"{new_list}")
     return new_list
-        
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -83,23 +87,25 @@ if __name__ == "__main__":
             "GoalPercept",
             "GoalPerceptTop",
             "MultiBallPercept",
-            "RansacLinePercept", 
+            "RansacLinePercept",
             "ShortLinePercept",
             "ScanLineEdgelPercept",
             "ScanLineEdgelPerceptTop",
-            "RansacCirclePercept2018"
+            "RansacCirclePercept2018",
         ]
-        
+
         # check if we need to insert this log
         new_representation_list = is_input_done(representation_list)
         if not args.force and len(new_representation_list) == 0:
-            print("\tall required representations are already inserted, will continue with the next log")
+            print(
+                "\tall required representations are already inserted, will continue with the next log"
+            )
             continue
         if args.force:
             new_representation_list = representation_list
 
         my_parser = Parser()
-        my_parser.register("ImageJPEG"   , "Image")
+        my_parser.register("ImageJPEG", "Image")
         my_parser.register("ImageJPEGTop", "Image")
         my_parser.register("GoalPerceptTop", "GoalPercept")
         my_parser.register("FieldPerceptTop", "FieldPercept")
@@ -120,25 +126,27 @@ if __name__ == "__main__":
             for repr_name in frame.get_names():
                 if not repr_name in new_representation_list:
                     continue
-                
+
                 # try accessing framenumber directly because we can have the situation where the framenumber is missing in the
                 # last frame, also we don't want to parse other representations if frame number is missing
                 try:
-                    frame_number = frame['FrameInfo'].frameNumber
+                    frame_number = frame["FrameInfo"].frameNumber
                 except Exception as e:
-                    print(f"FrameInfo not found in current frame - will not parse any other representation from this frame")
+                    print(
+                        f"FrameInfo not found in current frame - will not parse any other representation from this frame"
+                    )
                     break
 
                 try:
                     message_dict = MessageToDict(frame[repr_name])
                     # drop binary data from BallCandidates
                     if repr_name in ["BallCandidates", "BallCandidatesTop"]:
-                        for patch in message_dict['patches']:
-                            del patch['data']
-                            del patch['type']
+                        for patch in message_dict["patches"]:
+                            del patch["data"]
+                            del patch["type"]
 
                 except AttributeError:
-                    #print("skip frame because representation is not present")
+                    # print("skip frame because representation is not present")
                     continue
                 except Exception as e:
                     print(repr_name)
@@ -148,8 +156,8 @@ if __name__ == "__main__":
 
                 # FIXME fix the backend to also handle normal create function
                 json_obj = {
-                    "frame": get_id_by_frame_number(frame_number), 
-                    "representation_data": message_dict
+                    "frame": get_id_by_frame_number(frame_number),
+                    "representation_data": message_dict,
                 }
                 # If the repr_name key doesn't exist in the dictionary, create a new list for it
                 if repr_name not in repr_lists:
@@ -159,7 +167,7 @@ if __name__ == "__main__":
                 repr_lists[repr_name].append(json_obj)
 
             if idx % 250 == 0:
-                for k,v in repr_lists.items():
+                for k, v in repr_lists.items():
                     try:
                         model = getattr(client, k.lower())
                         model.bulk_create(repr_list=v)
@@ -170,7 +178,7 @@ if __name__ == "__main__":
                         quit()
         # handle the last frames
         # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
-        for k,v in repr_lists.items():
+        for k, v in repr_lists.items():
             try:
                 model = getattr(client, k.lower())
                 model.bulk_create(repr_list=v)

@@ -10,7 +10,6 @@ from PIL import Image as PIL_Image
 from vaapi.client import Vaapi
 
 
-
 def is_done(log_id):
     # get the log status object for a given log_id
     response = client.log_status.list(log=log_id)
@@ -18,10 +17,15 @@ def is_done(log_id):
     if len(response) == 0:
         print("\tno log_status found")
         return False
-    
+
     log_status = response[0]
     # if all numbers are zero or null we return false
-    total_images = int(log_status.num_jpg_bottom or 0) + int(log_status.num_jpg_top or 0) + int(log_status.num_bottom or 0) + int(log_status.num_top or 0)
+    total_images = (
+        int(log_status.num_jpg_bottom or 0)
+        + int(log_status.num_jpg_top or 0)
+        + int(log_status.num_bottom or 0)
+        + int(log_status.num_top or 0)
+    )
     print(log_status)
     if total_images == 0:
         return False
@@ -29,7 +33,14 @@ def is_done(log_id):
         return True
 
 
-def export_images(logfile_path, data, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
+def export_images(
+    logfile_path,
+    data,
+    output_folder_top,
+    output_folder_bottom,
+    out_top_jpg,
+    out_bottom_jpg,
+):
     """
     creates two folders:
         <logfile name>_top
@@ -73,7 +84,7 @@ def get_images(frame):
         image_top = image_from_proto(frame["ImageTop"])
     except KeyError:
         image_top = None
-    
+
     try:
         image_top_jpeg = image_from_proto_jpeg(frame["ImageJPEGTop"])
     except KeyError:
@@ -99,7 +110,15 @@ def get_images(frame):
     except KeyError:
         cm_bottom = None
 
-    return (frame.number, image_bottom, image_bottom_jpeg, image_top, image_top_jpeg, cm_bottom, cm_top)
+    return (
+        frame.number,
+        image_bottom,
+        image_bottom_jpeg,
+        image_top,
+        image_top_jpeg,
+        cm_bottom,
+        cm_top,
+    )
 
 
 def image_from_proto(message):
@@ -128,21 +147,20 @@ def image_from_proto(message):
 
 
 def image_from_proto_jpeg(message):
-    
-    # hack: 
+    # hack:
     if message.format == message.JPEG:
         # unpack JPG
         img = PIL_Image.open(io.BytesIO(message.data))
-    
+
         # HACK: for some reason the decoded image is inverted ...
         yuv422 = 255 - np.array(img, dtype=np.uint8)
-        
+
         # flatten the image to get the same data formal like a usual yuv422
         yuv422 = yuv422.reshape(message.height * message.width * 2)
     else:
         # read each channel of yuv422 separately
         yuv422 = np.frombuffer(message.data, dtype=np.uint8)
-    
+
     y = yuv422[0::2]
     u = yuv422[1::4]
     v = yuv422[3::4]
@@ -157,10 +175,12 @@ def image_from_proto_jpeg(message):
     yuv888[5::6] = v
 
     yuv888 = yuv888.reshape((message.height, message.width, 3))
-    
+
     # convert the image to rgb
-    img = PIL_Image.frombytes('YCbCr', (message.width, message.height), yuv888.tobytes())
-    
+    img = PIL_Image.frombytes(
+        "YCbCr", (message.width, message.height), yuv888.tobytes()
+    )
+
     return img
 
 
@@ -204,6 +224,7 @@ def get_log_path(log) -> str | None:
         actual_log_path = None
     return actual_log_path
 
+
 def calculate_output_path(log_folder: str):
     # FIXME have a better detection if its experiment log or not
     """
@@ -227,7 +248,6 @@ def calculate_output_path(log_folder: str):
     """
     print("\tdetected normal game log")
     actual_log_folder = Path(log_folder)
-    
 
     extracted_folder = (
         Path(actual_log_folder).parent.parent
@@ -240,17 +260,20 @@ def calculate_output_path(log_folder: str):
     output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
     output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
-    return output_folder_top, output_folder_bottom, output_folder_top_jpg, output_folder_bottom_jpg
+    return (
+        output_folder_top,
+        output_folder_bottom,
+        output_folder_top_jpg,
+        output_folder_bottom_jpg,
+    )
 
 
 if __name__ == "__main__":
-
     log_path = "./arms-up_01.log"
     out_top = "out_top"
     out_bottom = "out_bottom"
     out_top_jpg = "out_top_jpg"
     out_bottom_jpg = "out_bottom_jpg"
-    
 
     Path(out_top).mkdir(exist_ok=True, parents=True)
     Path(out_bottom).mkdir(exist_ok=True, parents=True)
@@ -258,21 +281,29 @@ if __name__ == "__main__":
     Path(out_bottom_jpg).mkdir(exist_ok=True, parents=True)
 
     my_parser = Parser()
-    my_parser.register("ImageJPEG"   , "Image")
+    my_parser.register("ImageJPEG", "Image")
     my_parser.register("ImageJPEGTop", "Image")
     game_log = LogReader(str(log_path), my_parser)
 
     for idx, frame in enumerate(tqdm(game_log)):
         try:
-            frame_number = frame['FrameInfo'].frameNumber
-            frame_time = frame['FrameInfo'].time
+            frame_number = frame["FrameInfo"].frameNumber
+            frame_time = frame["FrameInfo"].time
         except Exception as e:
-            print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
+            print(
+                f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
+            )
             break
-        
-        data = get_images(frame)
-        export_images(log_path, data, str(out_top), str(out_bottom), str(out_top_jpg), str(out_bottom_jpg))
 
+        data = get_images(frame)
+        export_images(
+            log_path,
+            data,
+            str(out_top),
+            str(out_bottom),
+            str(out_top_jpg),
+            str(out_bottom_jpg),
+        )
 
     # HACK delete image folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
     if not any(out_top_jpg.iterdir()):

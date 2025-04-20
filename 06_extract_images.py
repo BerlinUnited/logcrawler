@@ -21,13 +21,18 @@ def is_done(log):
     if len(response) == 0:
         print("\tno log_status found for given log id")
         quit()
-    
+
     log_status = response[0]
-    total_images = int(log_status.Image or 0) + int(log_status.ImageTop or 0) + int(log_status.ImageJPEG or 0) + int(log_status.ImageJPEGTop or 0)
+    total_images = (
+        int(log_status.Image or 0)
+        + int(log_status.ImageTop or 0)
+        + int(log_status.ImageJPEG or 0)
+        + int(log_status.ImageJPEGTop or 0)
+    )
     if total_images == 0:
         print("\tCalculate the number of images for this log first")
         quit()
-    
+
     # this has to check how many files are in the folder
     log_path = Path(log_root_path) / log.log_path
     extracted_path = str(log_path.parent).replace("game_logs", "extracted")
@@ -42,13 +47,37 @@ def is_done(log):
         return True
 
     print("\tcalculating num bottom images in folder")
-    num_bottom = subprocess.run(f"./fast_ls {bottom_path}", shell=True, capture_output=True, text=True).stdout.strip() if bottom_path.is_dir() else 0
+    num_bottom = (
+        subprocess.run(
+            f"./fast_ls {bottom_path}", shell=True, capture_output=True, text=True
+        ).stdout.strip()
+        if bottom_path.is_dir()
+        else 0
+    )
     print("\tcalculating num top images in folder")
-    num_top = subprocess.run(f"./fast_ls {top_path}", shell=True, capture_output=True, text=True).stdout.strip() if top_path.is_dir() else 0
+    num_top = (
+        subprocess.run(
+            f"./fast_ls {top_path}", shell=True, capture_output=True, text=True
+        ).stdout.strip()
+        if top_path.is_dir()
+        else 0
+    )
     print("\tcalculating num bottom jpeg images in folder")
-    num_jpg_bottom = subprocess.run(f"./fast_ls {jpg_bottom_path}", shell=True, capture_output=True, text=True).stdout.strip() if jpg_bottom_path.is_dir() else 0
+    num_jpg_bottom = (
+        subprocess.run(
+            f"./fast_ls {jpg_bottom_path}", shell=True, capture_output=True, text=True
+        ).stdout.strip()
+        if jpg_bottom_path.is_dir()
+        else 0
+    )
     print("\tcalculating num top jpeg images in folder")
-    num_jpg_top = subprocess.run(f"./fast_ls {jpg_top_path} ", shell=True, capture_output=True, text=True).stdout.strip() if jpg_top_path.is_dir() else 0
+    num_jpg_top = (
+        subprocess.run(
+            f"./fast_ls {jpg_top_path} ", shell=True, capture_output=True, text=True
+        ).stdout.strip()
+        if jpg_top_path.is_dir()
+        else 0
+    )
 
     # FIXME This will also extract images that are already extracted if the log status is not already calculated for this log
     if int(log_status.Image or 0) != int(num_bottom):
@@ -66,13 +95,16 @@ def is_done(log):
     if int(log_status.ImageJPEGTop or 0) != int(num_jpg_top):
         print(f"ImageJPEGTop: {log_status.ImageJPEGTop or 0} != {num_jpg_top}")
         return False
-    
-    with open(str(hidden_file), 'w') as file:
+
+    with open(str(hidden_file), "w") as file:
         pass
 
     return True
 
-def export_images(logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg):
+
+def export_images(
+    logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg
+):
     """
     creates two folders:
         <logfile name>_top
@@ -118,7 +150,7 @@ def get_images(frame):
         image_top = image_from_proto(frame["ImageTop"])
     except KeyError:
         image_top = None
-    
+
     try:
         image_top_jpeg = image_from_proto_jpeg(frame["ImageJPEGTop"])
     except KeyError:
@@ -144,7 +176,15 @@ def get_images(frame):
     except KeyError:
         cm_bottom = None
 
-    return [frame.number, image_bottom, image_bottom_jpeg, image_top, image_top_jpeg, cm_bottom, cm_top]
+    return [
+        frame.number,
+        image_bottom,
+        image_bottom_jpeg,
+        image_top,
+        image_top_jpeg,
+        cm_bottom,
+        cm_top,
+    ]
 
 
 def image_from_proto(message):
@@ -173,21 +213,20 @@ def image_from_proto(message):
 
 
 def image_from_proto_jpeg(message):
-    
-    # hack: 
+    # hack:
     if message.format == message.JPEG:
         # unpack JPG
         img = PIL_Image.open(io.BytesIO(message.data))
-    
+
         # HACK: for some reason the decoded image is inverted ...
         yuv422 = 255 - np.array(img, dtype=np.uint8)
-        
+
         # flatten the image to get the same data formal like a usual yuv422
         yuv422 = yuv422.reshape(message.height * message.width * 2)
     else:
         # read each channel of yuv422 separately
         yuv422 = np.frombuffer(message.data, dtype=np.uint8)
-    
+
     y = yuv422[0::2]
     u = yuv422[1::4]
     v = yuv422[3::4]
@@ -202,10 +241,12 @@ def image_from_proto_jpeg(message):
     yuv888[5::6] = v
 
     yuv888 = yuv888.reshape((message.height, message.width, 3))
-    
+
     # convert the image to rgb
-    img = PIL_Image.frombytes('YCbCr', (message.width, message.height), yuv888.tobytes())
-    
+    img = PIL_Image.frombytes(
+        "YCbCr", (message.width, message.height), yuv888.tobytes()
+    )
+
     return img
 
 
@@ -235,7 +276,6 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
     img.save(filename, pnginfo=meta)
 
 
-
 def worker(data_queue, output_paths):
     while True:
         try:
@@ -244,7 +284,9 @@ def worker(data_queue, output_paths):
                 break
             for image_data in batch:
                 image, top_path, bottom_path = image_data
-                export_images("test", [image], top_path, bottom_path, top_path, bottom_path)
+                export_images(
+                    "test", [image], top_path, bottom_path, top_path, bottom_path
+                )
             data_queue.task_done()
         except queue.Empty:
             continue
@@ -293,12 +335,18 @@ def calculate_output_path(log_folder: str):
     output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
     output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
 
-    return log, output_folder_top, output_folder_bottom, output_folder_top_jpg, output_folder_bottom_jpg
+    return (
+        log,
+        output_folder_top,
+        output_folder_bottom,
+        output_folder_top_jpg,
+        output_folder_bottom_jpg,
+    )
 
 
 if __name__ == "__main__":
     # FIXME aborting this script can result in broken images being written
-    log_root_path = os.environ.get("VAT_LOG_ROOT") 
+    log_root_path = os.environ.get("VAT_LOG_ROOT")
 
     client = Vaapi(
         base_url=os.environ.get("VAT_API_URL"),
@@ -309,17 +357,19 @@ if __name__ == "__main__":
 
     def sort_key_fn(data):
         return data.log_path
-    
+
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
         log_folder_path = Path(log_root_path) / Path(log.log_path).parent
         print(f"{log.id}: {log.log_path}")
 
         if is_done(log):
-           continue
-        
+            continue
+
         data_queue = queue.Queue()
-        
-        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(log_folder_path)
+
+        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(
+            log_folder_path
+        )
         if log is None:
             print("\tcouldnt find a valid log file")
             continue
@@ -329,20 +379,22 @@ if __name__ == "__main__":
         out_top_jpg.mkdir(exist_ok=True, parents=True)
         out_bottom_jpg.mkdir(exist_ok=True, parents=True)
 
-        output_paths = {
-            "top": out_top_jpg,
-            "bottom": out_bottom_jpg
-        }
+        output_paths = {"top": out_top_jpg, "bottom": out_bottom_jpg}
         num_threads = os.cpu_count() * 2
         batch_size = 50  # Adjust based on your specific use case
 
         with CodeTimer("Total"):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=num_threads
+            ) as executor:
                 # Start worker threads
-                futures = [executor.submit(worker, data_queue, output_paths) for _ in range(num_threads)]
+                futures = [
+                    executor.submit(worker, data_queue, output_paths)
+                    for _ in range(num_threads)
+                ]
 
                 my_parser = Parser()
-                my_parser.register("ImageJPEG"   , "Image")
+                my_parser.register("ImageJPEG", "Image")
                 my_parser.register("ImageJPEGTop", "Image")
 
                 with CodeTimer("Reading and processing logs"):
@@ -350,16 +402,20 @@ if __name__ == "__main__":
                         batch = []
                         for frame in reader.read():
                             try:
-                                frame_number = frame['FrameInfo'].frameNumber
-                                frame_time = frame['FrameInfo'].time
+                                frame_number = frame["FrameInfo"].frameNumber
+                                frame_time = frame["FrameInfo"].time
                             except Exception as e:
-                                print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-                                #print(len(frame_array))
-                                #print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
+                                print(
+                                    f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
+                                )
+                                # print(len(frame_array))
+                                # print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
                                 break
                             image = get_images(frame)
-                            #for image in map(get_images, reader.read()):
-                            batch.append((image, output_paths["top"], output_paths["bottom"]))
+                            # for image in map(get_images, reader.read()):
+                            batch.append(
+                                (image, output_paths["top"], output_paths["bottom"])
+                            )
                             if len(batch) >= batch_size:
                                 data_queue.put(batch)
                                 batch = []

@@ -13,7 +13,10 @@ def scandir_yield_files(directory):
             if entry.is_file():
                 yield entry.path
 
-def path_generator(directory: str, batch_size: int = 200) -> Generator[List[str], None, None]:
+
+def path_generator(
+    directory: str, batch_size: int = 200
+) -> Generator[List[str], None, None]:
     batch = []
     for path in scandir_yield_files(directory):
         batch.append(path)
@@ -23,8 +26,8 @@ def path_generator(directory: str, batch_size: int = 200) -> Generator[List[str]
     if batch:
         yield batch
 
-def handle_insertion(individual_extracted_folder, log, camera, image_type):
 
+def handle_insertion(individual_extracted_folder, log, camera, image_type):
     print(f"\tadding images from {individual_extracted_folder.name} to db")
     if not Path(individual_extracted_folder).is_dir():
         return
@@ -39,7 +42,6 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
 
     def get_id_by_frame_number(target_frame_number):
         return frame_to_id.get(target_frame_number, None)
-    
 
     for batch in path_generator(individual_extracted_folder):
         image_ar = [None] * len(batch)
@@ -51,11 +53,13 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
                 print("ERROR: frame id not in db")
                 print(f"frame num:  {framenumber} - log id: {log.id}")
                 print(f"{log.log_path}")
-                print("You should run the image extraction again with force flag for this log")
+                print(
+                    "You should run the image extraction again with force flag for this log"
+                )
                 quit()
 
             url_path = str(file).removeprefix(log_root_path).strip("/")
-            
+
             image_ar[idx] = {
                 "frame": frame_id,
                 "camera": camera,
@@ -67,15 +71,14 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
                 "resolution": None,
             }
         try:
-            response = client.image.bulk_create(
-                data_list=image_ar
-            )
+            response = client.image.bulk_create(data_list=image_ar)
         except Exception as e:
             print(f"error inputing the data {log_path}")
             print(e)
 
         sleep(0.5)
-    #sleep(5)
+    # sleep(5)
+
 
 def is_done(log_id, camera, image_type):
     response = client.image.get_image_count(log=log_id, camera=camera, type=image_type)

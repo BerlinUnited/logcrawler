@@ -17,11 +17,12 @@ def is_done(log_id):
         log_status = response[0]
     except Exception as e:
         print(e)
-    
-    if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
-        print("\tWARNING: first calculate the number of cognitions frames and put it in the db")
-        quit()
 
+    if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
+        print(
+            "\tWARNING: first calculate the number of cognitions frames and put it in the db"
+        )
+        quit()
 
     response = client.cognitionframe.get_frame_count(log=log_id)
     if int(log_status.FrameInfo) == int(response["count"]):
@@ -29,7 +30,9 @@ def is_done(log_id):
     elif int(response["count"]) > int(log_status.FrameInfo):
         # rust based calculation for num frames stops if one broken representation is in the last frame
         print("ERROR: there are more frames in the database than they should be")
-        print(f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way")
+        print(
+            f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way"
+        )
         quit()
     else:
         return False
@@ -45,26 +48,26 @@ def parse_cognition_log(log):
     for idx, frame in enumerate(tqdm(game_log)):
         # stop parsing log if FrameInfo is missing
         try:
-            frame_number = frame['FrameInfo'].frameNumber
-            frame_time = frame['FrameInfo'].time
+            frame_number = frame["FrameInfo"].frameNumber
+            frame_time = frame["FrameInfo"].time
         except Exception as e:
-            print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
-            #print(len(frame_array))
-            #print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
+            print(
+                f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
+            )
+            # print(len(frame_array))
+            # print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
             break
 
         json_obj = {
-            "log":log.id, 
-            "frame_number":frame_number,
+            "log": log.id,
+            "frame_number": frame_number,
             "frame_time": frame_time,
         }
         frame_array.append(json_obj)
 
         if idx % 100 == 0:
             try:
-                response = client.cognitionframe.bulk_create(
-                    frame_list=frame_array
-                )
+                response = client.cognitionframe.bulk_create(frame_list=frame_array)
                 frame_array.clear()
             except Exception as e:
                 print(f"error inputing the data for {log_path}")
@@ -74,9 +77,7 @@ def parse_cognition_log(log):
     # handle the last frames
     # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
     try:
-        response = client.cognitionframe.bulk_create(
-            frame_list=frame_array
-        )
+        response = client.cognitionframe.bulk_create(frame_list=frame_array)
     except Exception as e:
         print(f"error inputing the data {log_path}")
 

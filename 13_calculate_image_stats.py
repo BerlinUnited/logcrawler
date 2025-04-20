@@ -56,10 +56,10 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.id
 
+    # FIXME how to query for a given log?
     for log in sorted(log, key=sort_key_fn, reverse=True):
         print(f"{log.id}: {log.log_path}")
 
-        # FIXME how to query for a given log?
         if args.camera:
             images = client.image.list(
                 log_id=log.id, camera=args.camera, blurredness_value="None"

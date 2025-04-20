@@ -18,12 +18,12 @@ def is_done_motion(log_id, status_dict):
             return status_dict
         log_status = response[0]
 
-        for k,v in status_dict.items():
+        for k, v in status_dict.items():
             if k == "FrameInfo":
                 field_value = getattr(log_status, "num_motion_frames")
             else:
                 field_value = getattr(log_status, k)
-            
+
             if field_value == None:
                 print(f"\tdid not find a value for repr {k}")
             else:
@@ -54,13 +54,12 @@ def add_sensorlog_representations(log, sensor_log_path):
 
         try:
             if "FrameInfo" in new_motion_status_dict:
-                new_motion_status_dict['num_motion_frames'] = new_motion_status_dict.pop('FrameInfo')
+                new_motion_status_dict["num_motion_frames"] = (
+                    new_motion_status_dict.pop("FrameInfo")
+                )
 
             print(new_motion_status_dict)
-            response = client.log_status.update(
-                log=log.id, 
-                **new_motion_status_dict
-            )
+            response = client.log_status.update(log=log.id, **new_motion_status_dict)
         except Exception as e:
             print(f"\terror inputing the data {sensor_log_path}")
             print(e)
@@ -69,7 +68,7 @@ def add_sensorlog_representations(log, sensor_log_path):
 
 def main(args):
     log_root_path = os.environ.get("VAT_LOG_ROOT")
-    
+
     existing_data = client.logs.list()
 
     def sort_key_fn(log):
@@ -80,7 +79,7 @@ def main(args):
 
         print(f"{log.id}: {sensor_log_path}")
         add_sensorlog_representations(log, sensor_log_path)
-        
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
