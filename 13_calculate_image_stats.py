@@ -56,7 +56,7 @@ if __name__ == "__main__":
         print(f"{log.id}: {log.log_path}")
 
         # FIXME how to query for a given log?
-        images = client.image.list(log_id=log.id, blurredness_value="None")
+        images = client.image.list(log_id=log.id, camera="BOTTOM", blurredness_value="None")
         image_data = list()
 
         for idx, img in enumerate(tqdm(images)):
