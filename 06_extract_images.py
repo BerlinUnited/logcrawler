@@ -54,6 +54,7 @@ def is_done(log):
         if bottom_path.is_dir()
         else 0
     )
+    """
     print("\tcalculating num top images in folder")
     num_top = (
         subprocess.run(
@@ -62,6 +63,7 @@ def is_done(log):
         if top_path.is_dir()
         else 0
     )
+    """
     print("\tcalculating num bottom jpeg images in folder")
     num_jpg_bottom = (
         subprocess.run(
@@ -70,6 +72,7 @@ def is_done(log):
         if jpg_bottom_path.is_dir()
         else 0
     )
+    """
     print("\tcalculating num top jpeg images in folder")
     num_jpg_top = (
         subprocess.run(
@@ -78,24 +81,25 @@ def is_done(log):
         if jpg_top_path.is_dir()
         else 0
     )
+    """
 
     # FIXME This will also extract images that are already extracted if the log status is not already calculated for this log
     if int(log_status.Image or 0) != int(num_bottom):
         print(f"Image Bottom: {log_status.Image or 0} != {num_bottom}")
         return False
-
+    """
     if int(log_status.ImageTop or 0) != int(num_top):
         print(f"Image Top: {log_status.ImageTop or 0} != {num_top}")
         return False
-
+    """
     if int(log_status.ImageJPEG or 0) != int(num_jpg_bottom):
         print(f"ImageJPEG: {log_status.ImageJPEG or 0} != {num_jpg_bottom}")
         return False
-
+    """
     if int(log_status.ImageJPEGTop or 0) != int(num_jpg_top):
         print(f"ImageJPEGTop: {log_status.ImageJPEGTop or 0} != {num_jpg_top}")
         return False
-
+    """
     with open(str(hidden_file), "w") as file:
         pass
 
@@ -123,12 +127,13 @@ def export_images(
                 frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile
             )
         # TODO add meta data indicating this was a jpeg image
+        
         if img_b_jpg:
             img_b_jpg = img_b_jpg.convert("RGB")
             save_image_to_png(
                 frame_number, img_b_jpg, cm_b, out_bottom_jpg, cam_id=1, name=logfile
             )
-
+        """
         if img_t:
             img_t = img_t.convert("RGB")
             save_image_to_png(
@@ -141,7 +146,7 @@ def export_images(
             save_image_to_png(
                 frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=logfile
             )
-
+        """
         print("\tsaving images from frame ", i, end="\r", flush=True)
 
 
@@ -355,22 +360,22 @@ if __name__ == "__main__":
 
     existing_data = client.logs.list()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(log):
+        return log.id
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_folder_path = Path(log_root_path) / Path(log.log_path).parent
-        print(f"{log.id}: {log.log_path}")
+        log_folder_path = Path(log_root_path) / Path(log.combined_log_path).parent
+        print(f"{log.id}: {log.combined_log_path}")
 
         if is_done(log):
             continue
 
         data_queue = queue.Queue()
 
-        log, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(
+        log_path, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(
             log_folder_path
         )
-        if log is None:
+        if log_path is None:
             print("\tcouldnt find a valid log file")
             continue
 
@@ -398,7 +403,7 @@ if __name__ == "__main__":
                 my_parser.register("ImageJPEGTop", "Image")
 
                 with CodeTimer("Reading and processing logs"):
-                    with LogReader(log, my_parser) as reader:
+                    with LogReader(log_path, my_parser) as reader:
                         batch = []
                         for frame in reader.read():
                             try:
