@@ -6,7 +6,7 @@ from tqdm import tqdm
 import numpy as np
 import argparse
 from pathlib import Path
-#from PIL import Image 
+
 
 def get_alive_fileserver(timeout=2):
     url = "https://logs.berlin-united.com/"
@@ -24,17 +24,21 @@ def get_alive_fileserver(timeout=2):
             return url
         except requests.exceptions.RequestException as e:
             print("No fileserver is reachable")
-            quit() 
+            quit()
 
 
 def variance_of_laplacian(image):
-	# compute the Laplacian of the image and then return the focus
-	# measure, which is simply the variance of the Laplacian
-	return cv2.Laplacian(image, cv2.CV_64F).var()
+    # compute the Laplacian of the image and then return the focus
+    # measure, which is simply the variance of the Laplacian
+    return cv2.Laplacian(image, cv2.CV_64F).var()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--local", action="store_true", default=False)
+    parser.add_argument(
+        "-c", "--camera", type=str, help="Set either BOTTOM or TOP", default=False
+    )
     args = parser.parse_args()
 
     log_root_path = os.environ.get("VAT_LOG_ROOT")
@@ -42,7 +46,7 @@ if __name__ == "__main__":
         base_url=os.environ.get("VAT_API_URL"),
         api_key=os.environ.get("VAT_API_TOKEN"),
     )
-    
+
     log = client.logs.list()
 
     # only check server availability if we are not working with local files
@@ -56,7 +60,13 @@ if __name__ == "__main__":
         print(f"{log.id}: {log.log_path}")
 
         # FIXME how to query for a given log?
-        images = client.image.list(log_id=log.id, camera="BOTTOM", blurredness_value="None")
+        if args.camera:
+            images = client.image.list(
+                log_id=log.id, camera=args.camera, blurredness_value="None"
+            )
+        else:
+            images = client.image.list(log_id=log.id, blurredness_value="None")
+
         image_data = list()
 
         for idx, img in enumerate(tqdm(images)):
@@ -73,31 +83,31 @@ if __name__ == "__main__":
                 image_cv = cv2.imdecode(image, cv2.IMREAD_COLOR)
 
             try:
-                gray = cv2.cvtColor(image_cv,cv2.COLOR_BGR2GRAY)
+                gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
                 brightness_value = np.average(gray)
                 blurredness_value = variance_of_laplacian(gray)
-                height,width,channels = image_cv.shape
+                height, width, channels = image_cv.shape
 
                 json_obj = {
-                     "id": img.id,
-                     "blurredness_value":blurredness_value,
-                     "brightness_value": brightness_value,
-                     "resolution": f"{width}x{height}x{channels}"
+                    "id": img.id,
+                    "blurredness_value": blurredness_value,
+                    "brightness_value": brightness_value,
+                    "resolution": f"{width}x{height}x{channels}",
                 }
 
                 image_data.append(json_obj)
 
             except Exception as e:
-                 print(e)
-                 print(f"Image broken at {url} in log: {log.id}")
-                 print("This problem can occur if the image extraction for this log was aborted")
-                 quit()
-            
+                print(e)
+                print(f"Image broken at {url} in log: {log.id}")
+                print(
+                    "This problem can occur if the image extraction for this log was aborted"
+                )
+                quit()
+
             if idx % 100 == 0 and idx != 0:
                 try:
-                    response = client.image.bulk_update(
-                        data=image_data
-                    )
+                    response = client.image.bulk_update(data=image_data)
                     image_data.clear()
                 except Exception as e:
                     print(e)
@@ -106,9 +116,7 @@ if __name__ == "__main__":
 
         if len(image_data) > 0:
             try:
-                response = client.image.bulk_update(
-                    data=image_data
-                )
+                response = client.image.bulk_update(data=image_data)
             except Exception as e:
                 print(e)
                 print(f"error inputing the data")
