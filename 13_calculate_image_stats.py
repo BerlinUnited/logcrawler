@@ -37,7 +37,7 @@ def variance_of_laplacian(image):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--local", action="store_true", default=False)
+    parser.add_argument("-l", "--local", action="store_true", default=False)
     parser.add_argument(
         "-c", "--camera", type=str, help="Set either BOTTOM or TOP", default=False
     )
