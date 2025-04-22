@@ -71,7 +71,7 @@ def handle_insertion(individual_extracted_folder, log, camera, image_type):
                 "resolution": None,
             }
         try:
-            response = client.image.bulk_create(data_list=image_ar)
+            _ = client.image.bulk_create(data_list=image_ar)
         except Exception as e:
             print(f"error inputing the data {log_path}")
             print(e)

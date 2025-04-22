@@ -1,5 +1,4 @@
 
-import log_crawler
 from naoth.log import Parser
 from PIL import Image as PIL_Image
 import numpy as np

@@ -1,7 +1,6 @@
 import os
 from naoth.pb.Framework_Representations_pb2 import Image
 from naoth.log import Reader as LogReader
-from naoth.log import Parser
 
 from pathlib import Path
 from urllib.request import urlretrieve

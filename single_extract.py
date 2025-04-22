@@ -1,4 +1,3 @@
-import os
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
 from pathlib import Path
@@ -7,30 +6,6 @@ import numpy as np
 import io
 from PIL import PngImagePlugin
 from PIL import Image as PIL_Image
-from vaapi.client import Vaapi
-
-
-def is_done(log_id):
-    # get the log status object for a given log_id
-    response = client.log_status.list(log=log_id)
-
-    if len(response) == 0:
-        print("\tno log_status found")
-        return False
-
-    log_status = response[0]
-    # if all numbers are zero or null we return false
-    total_images = (
-        int(log_status.num_jpg_bottom or 0)
-        + int(log_status.num_jpg_top or 0)
-        + int(log_status.num_bottom or 0)
-        + int(log_status.num_top or 0)
-    )
-    print(log_status)
-    if total_images == 0:
-        return False
-    else:
-        return True
 
 
 def export_images(
@@ -210,21 +185,6 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
     img.save(filename, pnginfo=meta)
 
 
-def get_log_path(log) -> str | None:
-    """
-    get either full path to game.log or combined.log
-    """
-    game_log_path = log_root_path / Path(log.log_path)
-    combined_log_path = log_root_path / Path(log.combined_log_path)
-    if combined_log_path.is_file():
-        actual_log_path = combined_log_path
-    elif game_log_path.is_file():
-        actual_log_path = game_log_path
-    else:
-        actual_log_path = None
-    return actual_log_path
-
-
 def calculate_output_path(log_folder: str):
     # FIXME have a better detection if its experiment log or not
     """
@@ -291,8 +251,9 @@ if __name__ == "__main__":
             frame_time = frame["FrameInfo"].time
         except Exception as e:
             print(
-                f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
+                "FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
             )
+            print(e)
             break
 
         data = get_images(frame)

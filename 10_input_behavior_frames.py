@@ -156,7 +156,7 @@ if __name__ == "__main__":
         option_map = dict()
         
         broken_behavior = False
-        for idx, frame in enumerate(tqdm(game_log, desc=f"Parsing frame", leave=True)):
+        for idx, frame in enumerate(tqdm(game_log, desc="Parsing frame", leave=True)):
             if "FrameInfo" in frame:
                 fi = frame["FrameInfo"]
             else:
@@ -172,6 +172,7 @@ if __name__ == "__main__":
                 try:
                     full_behavior = frame["BehaviorStateComplete"]
                 except Exception as e:
+                    print(e)
                     traceback.print_exc()
                     print("can't parse the Behavior will continue with the next log")
                     broken_behavior = True

@@ -97,18 +97,19 @@ def input_frames(crawler, parser):
 
         if idx % 1000 == 0:
             try:
-                response = client.motionframe.bulk_create(frame_list=parsed_messages)
+                _ = client.motionframe.bulk_create(frame_list=parsed_messages)
                 parsed_messages.clear()
             except Exception as e:
-                print(f"error inputing the data for {sensor_log_path}")
                 print(e)
+                print(f"error inputing the data for {sensor_log_path}")
                 quit()
 
     # handle the last frames
     # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
     try:
-        response = client.motionframe.bulk_create(frame_list=parsed_messages)
+        _ = client.motionframe.bulk_create(frame_list=parsed_messages)
     except Exception as e:
+        print(e)
         print(f"error inputing the data {sensor_log_path}")
 
 
@@ -142,13 +143,14 @@ def input_representation_data(log, crawler, my_parser, representation_list):
                     model.bulk_create(repr_list=parsed_messages)
                     parsed_messages.clear()
                 except Exception as e:
-                    print(f"error inputing the data for {sensor_log_path}")
                     print(e)
+                    print(f"error inputing the data for {sensor_log_path}")
                     quit()
         try:
             model = getattr(client, repr_name.lower())
             model.bulk_create(repr_list=parsed_messages)
         except Exception as e:
+            print(e)
             print(f"error inputing the data {sensor_log_path}")
 
 

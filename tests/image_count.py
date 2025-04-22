@@ -50,13 +50,14 @@ def count_images_combined_log(combined_log_path):
     for idx, frame in enumerate(tqdm(game_log)):
         # stop parsing log if FrameInfo is missing
         try:
-            frame_number = frame['FrameInfo'].frameNumber
+            _ = frame['FrameInfo'].frameNumber
         except Exception as e:
-            print(f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
+            print("FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one")
+            print(e)
             break
         for repr in cognition_status_dict:
             try:
-                data = MessageToDict(frame[repr])
+                _ = MessageToDict(frame[repr])
                 cognition_status_dict[repr] += 1
             except AttributeError:
                 # TODO only print something when in debug mode

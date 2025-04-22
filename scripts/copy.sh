@@ -1,4 +1,4 @@
-#rsync -avv --include='*/' --progress -h --include='combined.log' --exclude='*' /mnt/repl/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half1-test/game_logs/ /mnt/d/logs/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half1-test/game_logs/
+rsync -avv --include='*/' --progress -h --include='combined.log' --exclude='*' /mnt/repl/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half1-test/game_logs/ /mnt/d/logs/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half1-test/game_logs/#
 rsync -avv --include='*/' --progress -h --include='combined.log' --exclude='*' /mnt/repl/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half2-test/game_logs/ /mnt/d/logs/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half2-test/game_logs/
 
 rsync -avv --include='*/' --progress -h --include='combined.log' --exclude='*' /mnt/repl/2024-07-15_RC24/2024-07-16_20-00-00_BerlinUnited_vs_empty_half1-test/game_logs/ /mnt/d/logs/2024-07-15_RC24/2024-07-16_20-00-00_BerlinUnited_vs_empty_half1-test/game_logs/

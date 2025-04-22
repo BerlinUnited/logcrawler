@@ -51,8 +51,9 @@ def parse_cognition_log(log):
             frame_number = frame["FrameInfo"].frameNumber
             frame_time = frame["FrameInfo"].time
         except Exception as e:
+            print(e)
             print(
-                f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
+                "FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
             )
             # print(len(frame_array))
             # print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
@@ -67,7 +68,7 @@ def parse_cognition_log(log):
 
         if idx % 100 == 0:
             try:
-                response = client.cognitionframe.bulk_create(frame_list=frame_array)
+                _ = client.cognitionframe.bulk_create(frame_list=frame_array)
                 frame_array.clear()
             except Exception as e:
                 print(f"error inputing the data for {log_path}")
@@ -77,8 +78,9 @@ def parse_cognition_log(log):
     # handle the last frames
     # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
     try:
-        response = client.cognitionframe.bulk_create(frame_list=frame_array)
+        _ = client.cognitionframe.bulk_create(frame_list=frame_array)
     except Exception as e:
+        print(e)
         print(f"error inputing the data {log_path}")
 
 

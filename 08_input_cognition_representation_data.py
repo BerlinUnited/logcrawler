@@ -122,9 +122,9 @@ if __name__ == "__main__":
         game_log = LogReader(str(log_path), my_parser)
 
         repr_lists = {}
-        for idx, frame in enumerate(tqdm(game_log, desc=f"Parsing frame", leave=True)):
+        for idx, frame in enumerate(tqdm(game_log, desc="Parsing frame", leave=True)):
             for repr_name in frame.get_names():
-                if not repr_name in new_representation_list:
+                if repr_name not in new_representation_list:
                     continue
 
                 # try accessing framenumber directly because we can have the situation where the framenumber is missing in the
@@ -132,8 +132,9 @@ if __name__ == "__main__":
                 try:
                     frame_number = frame["FrameInfo"].frameNumber
                 except Exception as e:
+                    print(e)
                     print(
-                        f"FrameInfo not found in current frame - will not parse any other representation from this frame"
+                        "FrameInfo not found in current frame - will not parse any other representation from this frame"
                     )
                     break
 

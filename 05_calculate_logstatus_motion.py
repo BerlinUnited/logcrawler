@@ -1,11 +1,7 @@
 from pathlib import Path
-from naoth.log import Reader as LogReader
-from naoth.log import Parser
 import os
 import log_crawler
-from google.protobuf.json_format import MessageToDict
 from vaapi.client import Vaapi
-from tqdm import tqdm
 import argparse
 
 
@@ -24,7 +20,7 @@ def is_done_motion(log_id, status_dict):
             else:
                 field_value = getattr(log_status, k)
 
-            if field_value == None:
+            if field_value is None:
                 print(f"\tdid not find a value for repr {k}")
             else:
                 new_dict.pop(k)
@@ -59,7 +55,7 @@ def add_sensorlog_representations(log, sensor_log_path):
                 )
 
             print(new_motion_status_dict)
-            response = client.log_status.update(log=log.id, **new_motion_status_dict)
+            _ = client.log_status.update(log=log.id, **new_motion_status_dict)
         except Exception as e:
             print(f"\terror inputing the data {sensor_log_path}")
             print(e)

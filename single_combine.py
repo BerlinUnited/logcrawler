@@ -6,11 +6,8 @@ see: https://scm.cms.hu-berlin.de/berlinunited/naoth-2020/-/commit/0a79c8c2ae114
 were we only have an image log and no game.log
 """
 
-from pathlib import Path
 from naoth.log import Reader as LogReader
-from naoth.pb.Framework_Representations_pb2 import Image
 from naoth.log import Parser
-from os import environ, stat
 import os
 
 

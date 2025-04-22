@@ -97,7 +97,7 @@ def input_frames(crawler, parser):
 
         if idx % 1000 == 0:
             try:
-                response = client.cognitionframe.bulk_create(frame_list=parsed_messages)
+                _ = client.cognitionframe.bulk_create(frame_list=parsed_messages)
                 parsed_messages.clear()
             except Exception as e:
                 print(f"error inputing the data for {log_path}")
@@ -107,8 +107,9 @@ def input_frames(crawler, parser):
     # handle the last frames
     # just upload whatever is in the array. There will be old data but that does not matter, it will be filtered out on insertion
     try:
-        response = client.cognitionframe.bulk_create(frame_list=parsed_messages)
+        _ = client.cognitionframe.bulk_create(frame_list=parsed_messages)
     except Exception as e:
+        print(e)
         print(f"error inputing the data {log_path}")
 
 
@@ -154,6 +155,7 @@ def input_representation_data(log, crawler, my_parser, representation_list):
             model = getattr(client, repr_name.lower())
             model.bulk_create(repr_list=parsed_messages)
         except Exception as e:
+            print(e)
             print(f"error inputing the data {log_path}")
 
 

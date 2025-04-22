@@ -107,10 +107,10 @@ if __name__ == "__main__":
 
         repr_lists = {}
         for idx, frame in enumerate(
-            tqdm(motion_log, desc=f"Parsing frame", leave=True)
+            tqdm(motion_log, desc="Parsing frame", leave=True)
         ):
             for repr_name in frame.get_names():
-                if not repr_name in new_representation_list:
+                if repr_name not in new_representation_list:
                     continue
 
                 # try accessing framenumber directly because we can have the situation where the framenumber is missing in the
@@ -120,7 +120,7 @@ if __name__ == "__main__":
                     frame_time = frame["FrameInfo"].time
                 except Exception as e:
                     print(
-                        f"FrameInfo not found in current frame - will not parse any other representation from this frame"
+                        "FrameInfo not found in current frame - will not parse any other representation from this frame"
                     )
                     print({e})
                     break

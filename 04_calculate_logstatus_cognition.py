@@ -18,7 +18,7 @@ def is_done(log_id, status_dict):
         for k, v in status_dict.items():
             field_value = getattr(log_status, k)
             # print(k, v, field_value)
-            if field_value == None:
+            if field_value is None:
                 print(f"\tdid not find a value for repr {k}")
             elif field_value > log_status.FrameInfo:
                 invalid_data = True
@@ -57,10 +57,10 @@ def add_gamelog_representations(log, log_path):
 
         print(new_cognition_status_dict)
         try:
-            response = client.log_status.update(log=log.id, **new_cognition_status_dict)
+            _ = client.log_status.update(log=log.id, **new_cognition_status_dict)
         except Exception as e:
-            print(f"\terror inputing the data {log_path}")
             print(e)
+            print(f"\terror inputing the data {log_path}")
             quit()
 
 
@@ -69,7 +69,7 @@ def main():
 
     existing_data = client.logs.list()
 
-    def sort_key_fn(dalogta):
+    def sort_key_fn(log):
         return log.id
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=True):

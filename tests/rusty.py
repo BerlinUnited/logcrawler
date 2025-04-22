@@ -1,8 +1,5 @@
 import log_crawler
-from naoth.log import Parser
-from PIL import Image as PIL_Image
-import numpy as np
-import io
+# from naoth.log import Parser
 import pickle
 
 def get_unparsed_message():
@@ -14,12 +11,12 @@ def get_unparsed_message():
     all_repr.remove("FrameInfo")
     print(all_repr)
     
-    my_parser = Parser()
+    #my_parser = Parser()
     for repr_name in all_repr:
         print(repr_name)
         repr_dict = crawler.get_unparsed_representation_list(repr_name)
         print(repr_dict.keys())
-        quit()
+
         #print(f"\tparse all {repr_name} messages in python")
         #for data in repr_list:
         #    message = my_parser.parse(repr_name, bytes(data))

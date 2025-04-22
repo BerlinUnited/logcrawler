@@ -16,6 +16,7 @@ def get_alive_fileserver(timeout=2):
         print(f"Server {url} is alive.")
         return url
     except requests.exceptions.RequestException as e:
+        print(e)
         url = "https://logs.naoth.de/"
         try:
             response = requests.get(url, timeout=timeout)
@@ -23,6 +24,7 @@ def get_alive_fileserver(timeout=2):
             print(f"Server {url} is alive.")
             return url
         except requests.exceptions.RequestException as e:
+            print(e)
             print("No fileserver is reachable")
             quit()
 
@@ -111,7 +113,7 @@ if __name__ == "__main__":
                     image_data.clear()
                 except Exception as e:
                     print(e)
-                    print(f"error inputing the data")
+                    print("error inputing the data")
                     quit()
 
         if len(image_data) > 0:
@@ -119,5 +121,5 @@ if __name__ == "__main__":
                 response = client.image.bulk_update(data=image_data)
             except Exception as e:
                 print(e)
-                print(f"error inputing the data")
+                print("error inputing the data")
                 quit()

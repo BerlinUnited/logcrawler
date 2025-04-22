@@ -80,7 +80,7 @@ if __name__ == "__main__":
         input_boolean_lookup = dict()  # will be updated on each frame
         broken_behavior = False
 
-        for idx, frame in enumerate(tqdm(game_log, desc=f"Parsing frame", leave=True)):
+        for idx, frame in enumerate(tqdm(game_log, desc="Parsing frame", leave=True)):
             if "FrameInfo" in frame:
                 fi = frame["FrameInfo"]
             else:
@@ -97,6 +97,7 @@ if __name__ == "__main__":
                     full_behavior = frame["BehaviorStateComplete"]
                 except Exception as e:
                     traceback.print_exc()
+                    print(e)
                     print("can't parse the Behavior will continue with the next log")
                     broken_behavior = True
                     break

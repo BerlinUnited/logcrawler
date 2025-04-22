@@ -1,10 +1,5 @@
-from pathlib import Path
-import os
-from tqdm import tqdm
 from naoth.log import Reader as LogReader
-from google.protobuf.json_format import MessageToDict
 from naoth.log import Parser
-from vaapi.client import Vaapi
 
 my_parser = Parser()
 my_parser.register("ImageTop", "Image")
@@ -19,5 +14,6 @@ for frame in game_log:
     try:
         frame_number = frame['FrameInfo'].frameNumber
         print(frame_number)
-    except:
+    except Exception as e:
+        print(e)
         quit()
