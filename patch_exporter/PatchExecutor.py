@@ -1,5 +1,5 @@
 """
-    Patchexecutor handles the input and execution of the naoth lib
+Patchexecutor handles the input and execution of the naoth lib
 """
 
 import ctypes
@@ -145,7 +145,6 @@ class PatchExecutor:
         image.copyImageDataYUV422(p_data, data.size)
 
     def set_current_frame(self, frame: Frame):
-
         # get access to relevant representations
         image_bottom = self.ball_detector.getRequire().at("Image")
         image_top = self.ball_detector.getRequire().at("ImageTop")
@@ -190,7 +189,6 @@ class PatchExecutor:
             )
 
         for gt_ball in gt_balls:
-
             intersection = gt_ball.intersection(patch_box)
 
             if intersection is None:
@@ -341,7 +339,6 @@ class PatchExecutor:
             with PIL.Image.open(str(patch_file_name)) as im_pil:
                 im_pil.save(str(patch_file_name), pnginfo=meta)
 
-
     def export_patches(
         self,
         frame: Frame,
@@ -378,15 +375,31 @@ class PatchExecutor:
         Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(detected_balls.patchesYUVClassified):
-            #FIXME the border has no effect on the overlap calculation
+            # FIXME the border has no effect on the overlap calculation
             # calculate extra space around the found patch if possible
-            top_left_y = patch.min.y - extra_border if patch.min.y - extra_border > 0 else patch.min.y
-            bottom_right_y = patch.max.y - extra_border if patch.max.y + extra_border > img.shape[0] else patch.max.y
-            top_left_x = patch.min.x - extra_border if patch.min.x - extra_border > 0 else patch.min.x
-            bottom_right_x = patch.max.x - extra_border if patch.max.x + extra_border > img.shape[1] else patch.max.x
+            top_left_y = (
+                patch.min.y - extra_border
+                if patch.min.y - extra_border > 0
+                else patch.min.y
+            )
+            bottom_right_y = (
+                patch.max.y - extra_border
+                if patch.max.y + extra_border > img.shape[0]
+                else patch.max.y
+            )
+            top_left_x = (
+                patch.min.x - extra_border
+                if patch.min.x - extra_border > 0
+                else patch.min.x
+            )
+            bottom_right_x = (
+                patch.max.x - extra_border
+                if patch.max.x + extra_border > img.shape[1]
+                else patch.max.x
+            )
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             # crop full image to calculated patch
-            crop_img = img[top_left_y : bottom_right_y, top_left_x : bottom_right_x]
+            crop_img = img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
             # compute overlaps with ground truth bounding boxes for
             # ball, robot and penalty mark
@@ -421,7 +434,7 @@ class PatchExecutor:
                 "p_min_x": top_left_x,
                 "p_min_y": top_left_y,
                 "p_max_x": bottom_right_x,
-                "p_max_y": bottom_right_y
+                "p_max_y": bottom_right_y,
             }
 
             # Here we perform a hierarchical decision on the patch class.
@@ -488,7 +501,6 @@ class PatchExecutor:
                     crop_img, frame, bucketname, other_folder, idx, intersect, meta_info
                 )
 
-
     def export_patches_segmentation(
         self,
         frame: Frame,
@@ -497,7 +509,7 @@ class PatchExecutor:
         min_gt_intersect_ratio: float = 0.2,
         debug: bool = False,
         model=None,
-        extra_border = 0
+        extra_border=0,
     ):
         """
         This function exports patches as images for future training.
@@ -511,22 +523,24 @@ class PatchExecutor:
             cam_id = 1
             input_image = load_image_as_yuv422_y_only_better(frame.file)
             image_input = np.expand_dims(input_image, axis=0)
-            result = model.predict(image_input, verbose = 0)
+            result = model.predict(image_input, verbose=0)
             result = result[0]
-            ball_result = result[:,:,0]
+            ball_result = result[:, :, 0]
             factor = 32
-            upscaled_array = np.repeat(np.repeat(ball_result, factor, axis=0), factor, axis=1)
+            upscaled_array = np.repeat(
+                np.repeat(ball_result, factor, axis=0), factor, axis=1
+            )
             threshold_value = 0.5
             binary_mask = np.uint8(upscaled_array > threshold_value) * 255
             if sum == 0:
                 return
             # Find contours
-            contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv2.findContours(
+                binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
             for idx, contour in enumerate(contours):
                 x, y, w, h = cv2.boundingRect(contour)
-                patch_box = BoundingBox.from_coords(
-                    x, y, x+w, y+h
-                )
+                patch_box = BoundingBox.from_coords(x, y, x + w, y + h)
                 patch_list_segmentation.append(patch_box)
         else:
             return
@@ -544,16 +558,32 @@ class PatchExecutor:
         Path(other_folder).mkdir(exist_ok=True, parents=True)
 
         for idx, patch in enumerate(patch_list_segmentation):
-            #FIXME the border has no effect on the overlap calculation
+            # FIXME the border has no effect on the overlap calculation
             # calculate extra space around the found patch if possible
-            top_left_y = patch.top_left.y - extra_border if patch.top_left.y - extra_border > 0 else patch.top_left.y
-            bottom_right_y = patch.bottom_right.y - extra_border if patch.bottom_right.y + extra_border > img.shape[0] else patch.bottom_right.y
-            top_left_x = patch.top_left.x - extra_border if patch.top_left.x - extra_border > 0 else patch.top_left.x
-            bottom_right_x = patch.bottom_right.x - extra_border if patch.bottom_right.x + extra_border > img.shape[1] else patch.bottom_right.x
+            top_left_y = (
+                patch.top_left.y - extra_border
+                if patch.top_left.y - extra_border > 0
+                else patch.top_left.y
+            )
+            bottom_right_y = (
+                patch.bottom_right.y - extra_border
+                if patch.bottom_right.y + extra_border > img.shape[0]
+                else patch.bottom_right.y
+            )
+            top_left_x = (
+                patch.top_left.x - extra_border
+                if patch.top_left.x - extra_border > 0
+                else patch.top_left.x
+            )
+            bottom_right_x = (
+                patch.bottom_right.x - extra_border
+                if patch.bottom_right.x + extra_border > img.shape[1]
+                else patch.bottom_right.x
+            )
 
             # TODO use naoth like resizing (subsampling) like in Patchwork.cpp line 39
             # crop full image to calculated patch
-            crop_img = img[top_left_y : bottom_right_y, top_left_x : bottom_right_x]
+            crop_img = img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
             # compute overlaps with ground truth bounding boxes for
             # ball, robot and penalty mark
@@ -588,7 +618,7 @@ class PatchExecutor:
                 "p_min_x": top_left_x,
                 "p_min_y": top_left_y,
                 "p_max_x": bottom_right_x,
-                "p_max_y": bottom_right_y
+                "p_max_y": bottom_right_y,
             }
 
             # Here we perform a hierarchical decision on the patch class.

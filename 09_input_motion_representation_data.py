@@ -106,9 +106,7 @@ if __name__ == "__main__":
             return frame_to_id.get(target_frame_number, None)
 
         repr_lists = {}
-        for idx, frame in enumerate(
-            tqdm(motion_log, desc="Parsing frame", leave=True)
-        ):
+        for idx, frame in enumerate(tqdm(motion_log, desc="Parsing frame", leave=True)):
             for repr_name in frame.get_names():
                 if repr_name not in new_representation_list:
                     continue

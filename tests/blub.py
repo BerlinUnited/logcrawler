@@ -1,15 +1,14 @@
-
 from naoth.log import Parser
 from PIL import Image as PIL_Image
 import numpy as np
 import io
 import pickle
 
-with open('filename.pickle', 'rb') as handle:
+with open("filename.pickle", "rb") as handle:
     my_message = pickle.load(handle)
 
 my_parser = Parser()
-my_parser.register("ImageJPEG"   , "Image")
+my_parser.register("ImageJPEG", "Image")
 my_parser.register("ImageJPEGTop", "Image")
 
 message = my_parser.parse("ImageJPEGTop", bytes(my_message))
@@ -17,7 +16,7 @@ message = my_parser.parse("ImageJPEGTop", bytes(my_message))
 if message.format == message.JPEG:
     # unpack JPG
     img = PIL_Image.open(io.BytesIO(message.data))
-    
+
     # HACK: for some reason the decoded image is inverted ...
     yuv422 = 255 - np.array(img, dtype=np.uint8)
 
@@ -44,6 +43,6 @@ yuv888 = yuv888.reshape((message.height, message.width, 3))
 print(yuv888.dtype, y.dtype)
 
 # convert the image to rgb
-img = PIL_Image.frombytes('YCbCr', (message.width, message.height), yuv888.tobytes())
+img = PIL_Image.frombytes("YCbCr", (message.width, message.height), yuv888.tobytes())
 img = img.convert("RGB")
 img.save("0.png")

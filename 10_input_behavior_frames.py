@@ -110,14 +110,13 @@ def is_behavior_done(log):
 
     # TODO also check for number of frames that are actually there.
 
-
     print("\tcheck inserted behavior frames")
     if log_status.FrameInfo and int(log_status.FrameInfo) > 0:
         print(f"\tcognition frames are {log_status.FrameInfo}")
 
         response = client.behavior_frame_option.get_behavior_count(log=log.id)
         print(f"\tbehavior frames are {response['count']}")
-        
+
         return response["count"] == int(log_status.FrameInfo)
     else:
         return False
@@ -149,12 +148,12 @@ if __name__ == "__main__":
         if is_behavior_done(log):
             print("\tbehavior already inserted, will continue with the next log")
             continue
-        
+
         my_parser = Parser()
         game_log = LogReader(str(log_path), my_parser)
         parse_sparse_option_list = list()
         option_map = dict()
-        
+
         broken_behavior = False
         for idx, frame in enumerate(tqdm(game_log, desc="Parsing frame", leave=True)):
             if "FrameInfo" in frame:
@@ -191,7 +190,7 @@ if __name__ == "__main__":
                         )
                         print(e)
                         quit()
-                    
+
                     state_list = list()
                     for j, state in enumerate(option.states):
                         state_dict = {
