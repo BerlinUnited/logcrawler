@@ -1,5 +1,4 @@
 import queue
-import threading
 import os
 from linetimer import CodeTimer
 from naoth.log import Reader as LogReader
@@ -106,9 +105,7 @@ def is_done(log):
     return True
 
 
-def export_images(
-    logfile, img, output_folder_top, output_folder_bottom, out_top_jpg, out_bottom_jpg
-):
+def export_images(img):
     """
     creates two folders:
         <logfile name>_top
@@ -124,29 +121,38 @@ def export_images(
         if img_b:
             img_b = img_b.convert("RGB")
             save_image_to_png(
-                frame_number, img_b, cm_b, output_folder_bottom, cam_id=1, name=logfile
+                frame_number,
+                img_b,
+                cm_b,
+                out_bottom,
+                cam_id=1,
+                name=log.combined_log_path,
             )
         # TODO add meta data indicating this was a jpeg image
-        
         if img_b_jpg:
             img_b_jpg = img_b_jpg.convert("RGB")
             save_image_to_png(
-                frame_number, img_b_jpg, cm_b, out_bottom_jpg, cam_id=1, name=logfile
+                frame_number,
+                img_b_jpg,
+                cm_b,
+                out_bottom_jpg,
+                cam_id=1,
+                name=log.combined_log_path,
             )
-        """
+
         if img_t:
             img_t = img_t.convert("RGB")
             save_image_to_png(
-                frame_number, img_t, cm_t, output_folder_top, cam_id=0, name=logfile
+                frame_number, img_t, cm_t, out_top, cam_id=0, name=log.combined_log_path
             )
 
         # TODO add meta data indicating this was a jpeg image
         if img_t_jpg:
             img_t_jpg = img_t_jpg.convert("RGB")
             save_image_to_png(
-                frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=logfile
+                frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=log.combined_log_path
             )
-        """
+
         print("\tsaving images from frame ", i, end="\r", flush=True)
 
 
@@ -281,72 +287,20 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
     img.save(filename, pnginfo=meta)
 
 
-def worker(data_queue, output_paths):
+def worker(data_queue):
     while True:
         try:
             batch = data_queue.get(block=False)
             if batch is None:  # Sentinel value to exit
                 break
+            # FIXME: argh I though image_data contains more fields then 3
             for image_data in batch:
-                image, top_path, bottom_path = image_data
-                export_images(
-                    "test", [image], top_path, bottom_path, top_path, bottom_path
-                )
+                # unpacking 1 tuple here
+                (image,) = image_data
+                export_images([image])
             data_queue.task_done()
         except queue.Empty:
             continue
-
-
-def calculate_output_path(log_folder: str):
-    # FIXME have a better detection if its experiment log or not
-    """
-    log_path_w_prefix = log_root_path / Path(log_folder)
-    if Path(log_path_w_prefix).is_file():
-        print("\tdetected experiment log")
-        actual_log_folder = log_root_path / Path(log_folder).parent
-        log = log_path_w_prefix
-
-        extracted_folder = (
-            Path(actual_log_folder) / Path("extracted") / Path(log_path_w_prefix).stem
-        )
-        output_folder_top = extracted_folder / Path("log_top")
-        output_folder_bottom = extracted_folder / Path("log_bottom")
-        output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
-        output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
-
-        print(f"\toutput folder will be {extracted_folder}")
-
-    else:
-    """
-    print("\tdetected normal game log")
-    actual_log_folder = log_root_path / Path(log_folder)
-    combined_log = log_root_path / Path(actual_log_folder) / "combined.log"
-    game_log = log_root_path / Path(actual_log_folder) / "game.log"
-    if combined_log.is_file():
-        log = combined_log
-    elif game_log.is_file():
-        log = game_log
-    else:
-        log = None
-
-    extracted_folder = (
-        Path(actual_log_folder).parent.parent
-        / Path("extracted")
-        / Path(actual_log_folder).name
-    )
-
-    output_folder_top = extracted_folder / Path("log_top")
-    output_folder_bottom = extracted_folder / Path("log_bottom")
-    output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
-    output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
-
-    return (
-        log,
-        output_folder_top,
-        output_folder_bottom,
-        output_folder_top_jpg,
-        output_folder_bottom_jpg,
-    )
 
 
 if __name__ == "__main__":
@@ -363,8 +317,9 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.id
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_folder_path = Path(log_root_path) / Path(log.combined_log_path).parent
+    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
+        log_path = Path(log_root_path) / Path(log.combined_log_path)
+        log_folder_path = log_path.parent
         print(f"{log.id}: {log.combined_log_path}")
 
         if is_done(log):
@@ -372,19 +327,21 @@ if __name__ == "__main__":
 
         data_queue = queue.Queue()
 
-        log_path, out_top, out_bottom, out_top_jpg, out_bottom_jpg = calculate_output_path(
-            log_folder_path
-        )
         if log_path is None:
             print("\tcouldnt find a valid log file")
             continue
 
+        extracted_folder = str(log_path.parent).replace("game_logs", "extracted")
+
+        out_top = extracted_folder / Path("log_top")
+        out_bottom = extracted_folder / Path("log_bottom")
+        out_top_jpg = extracted_folder / Path("log_top_jpg")
+        out_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
         out_top.mkdir(exist_ok=True, parents=True)
         out_bottom.mkdir(exist_ok=True, parents=True)
         out_top_jpg.mkdir(exist_ok=True, parents=True)
         out_bottom_jpg.mkdir(exist_ok=True, parents=True)
 
-        output_paths = {"top": out_top_jpg, "bottom": out_bottom_jpg}
         num_threads = os.cpu_count() * 2
         batch_size = 50  # Adjust based on your specific use case
 
@@ -394,8 +351,7 @@ if __name__ == "__main__":
             ) as executor:
                 # Start worker threads
                 futures = [
-                    executor.submit(worker, data_queue, output_paths)
-                    for _ in range(num_threads)
+                    executor.submit(worker, data_queue) for _ in range(num_threads)
                 ]
 
                 my_parser = Parser()
@@ -410,17 +366,17 @@ if __name__ == "__main__":
                                 frame_number = frame["FrameInfo"].frameNumber
                                 frame_time = frame["FrameInfo"].time
                             except Exception as e:
+                                print(e)
                                 print(
-                                    f"FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
+                                    "FrameInfo not found in current frame - will not parse any other frames from this log and continue with the next one"
                                 )
                                 # print(len(frame_array))
                                 # print(f"last frame number was {frame_array[-1]}") # FIXME does not work if its the first frame or every 100th
                                 break
                             image = get_images(frame)
-                            # for image in map(get_images, reader.read()):
-                            batch.append(
-                                (image, output_paths["top"], output_paths["bottom"])
-                            )
+
+                            # Note: its important that this is a tuple
+                            batch.append((image,))
                             if len(batch) >= batch_size:
                                 data_queue.put(batch)
                                 batch = []
