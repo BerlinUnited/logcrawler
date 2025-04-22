@@ -8,9 +8,9 @@ import argparse
 
 
 def input_frames_done(log_id):
-    # get the log status - showing how many entries per representation there should be
+    # get the log status object for this log
     try:
-        # we use list here because we only know the log_id here and not the if of the logstatus object
+        # we use list here because we only know the log_id here and not the id of the logstatus object
         response = client.log_status.list(log=log_id)
         if len(response) == 0:
             return False
@@ -18,6 +18,7 @@ def input_frames_done(log_id):
     except Exception as e:
         print(e)
 
+    # set to not done if Logstatus reports no Cognition frames for this log
     if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
         print(
             "\tWARNING: first calculate the number of cognition frames and put it in the db"
