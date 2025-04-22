@@ -56,13 +56,18 @@ def get_state_id(internal_options_id, internal_state_id):
     return state_id
 
 
+def get_frame_id(target_frame_number):
+    return frame_to_id.get(target_frame_number, None)
+
+
 def parse_sparse_option(log_id, frame, time, parent, node):
     internal_options_id = node.option.id
     internal_state_id = node.option.activeState
     global_options_id = get_option_id(internal_options_id)
     global_state_id = get_state_id(internal_options_id, internal_state_id)
+
     json_obj = {
-        "log": log_id,
+        "frame": get_frame_id(frame),
         "options_id": global_options_id,
         "active_state": global_state_id,
         # "parent":parent, # FIXME we could make it a reference to options if we would have the root option in the db
@@ -87,10 +92,10 @@ def parse_sparse_option(log_id, frame, time, parent, node):
             print(sub)
 
 
-def is_behavior_done(data):
+def is_behavior_done(log):
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log=data.id)
+        response = client.log_status.list(log=log.id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -103,12 +108,16 @@ def is_behavior_done(data):
         )
         return False
 
+    # TODO also check for number of frames that are actually there.
+
+
     print("\tcheck inserted behavior frames")
     if log_status.FrameInfo and int(log_status.FrameInfo) > 0:
         print(f"\tcognition frames are {log_status.FrameInfo}")
 
-        response = client.behavior_frame_option.get_behavior_count(log=data.id)
+        response = client.behavior_frame_option.get_behavior_count(log=log.id)
         print(f"\tbehavior frames are {response['count']}")
+        
         return response["count"] == int(log_status.FrameInfo)
     else:
         return False
@@ -122,25 +131,30 @@ if __name__ == "__main__":
     )
     existing_data = client.logs.list()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(log):
+        return log.id
 
-    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_id = data.id
-        log_path = Path(log_root_path) / data.log_path
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+        log_id = log.id
+        log_path = Path(log_root_path) / log.log_path
 
-        print(log_path)
+        print(f"{log.id}: {log_path}")
+
+        # precalculate frame mapping for this log
+        frame_list = client.cognitionframe.list(log=log.id)
+        # Create a dictionary mapping frame_number to id
+        frame_to_id = {frame.frame_number: frame.id for frame in frame_list}
 
         # check if we need to insert this log
-        if is_behavior_done(data):
+        if is_behavior_done(log):
             print("\tbehavior already inserted, will continue with the next log")
             continue
-
+        
         my_parser = Parser()
         game_log = LogReader(str(log_path), my_parser)
         parse_sparse_option_list = list()
         option_map = dict()
-
+        
         broken_behavior = False
         for idx, frame in enumerate(tqdm(game_log, desc=f"Parsing frame", leave=True)):
             if "FrameInfo" in frame:
@@ -176,7 +190,7 @@ if __name__ == "__main__":
                         )
                         print(e)
                         quit()
-
+                    
                     state_list = list()
                     for j, state in enumerate(option.states):
                         state_dict = {

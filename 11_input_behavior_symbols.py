@@ -56,16 +56,16 @@ if __name__ == "__main__":
     )
     existing_data = client.logs.list()
 
-    def sort_key_fn(data):
-        return data.log_path
+    def sort_key_fn(log):
+        return log.id
 
-    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
-        log_id = data.id
-        log_path = Path(log_root_path) / data.log_path
+    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+        log_id = log.id
+        log_path = Path(log_root_path) / log.log_path
 
-        print(log_path)
+        print(f"{log.id}: {log_path}")
         # check if we need to insert this log
-        if is_behavior_done(data):
+        if is_behavior_done(log):
             print("\tbehavior already inserted, will continue with the next log")
             continue
 
@@ -210,13 +210,13 @@ if __name__ == "__main__":
                 for k, v in input_boolean_lookup.items():
                     input_symbols.update({v["name"]: v["value"]})
 
-                data = {
+                symbol_data = {
                     "input": input_symbols,
                     "output": output_symbols,
                 }
                 json_obj = {
-                    "log_id": log_id,
-                    "data": data,
+                    "log": log.id,
+                    "data": symbol_data,
                 }
 
                 try:
