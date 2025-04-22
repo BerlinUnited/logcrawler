@@ -18,7 +18,7 @@ def input_frames_done(log_id):
     except Exception as e:
         print(e)
 
-    # set to not done if Logstatus reports no Cognition frames for this log
+    # abort if Logstatus reports no Cognition frames for this log
     if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
         print(
             "\tWARNING: first calculate the number of cognition frames and put it in the db"
