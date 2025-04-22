@@ -93,8 +93,9 @@ def parse_sparse_option(log_id, frame, time, parent, node):
 
 
 def is_behavior_done(log):
+    # get the log status object for this log
     try:
-        # we use list here because we only know the log_id here and not the if of the logstatus object
+        # we use list here because we only know the log_id here and not the id of the logstatus object
         response = client.log_status.list(log=log.id)
         if len(response) == 0:
             return False
@@ -102,23 +103,28 @@ def is_behavior_done(log):
     except Exception as e:
         print(e)
 
+    # abort if Logstatus reports no Cognition frames for this log
     if not log_status.FrameInfo or int(log_status.FrameInfo) == 0:
         print(
             "\tWARNING: first calculate the number of cognitions frames and put it in the db"
         )
-        return False
+        quit()
 
-    # TODO also check for number of frames that are actually there.
-
-    print("\tcheck inserted behavior frames")
-    if log_status.FrameInfo and int(log_status.FrameInfo) > 0:
-        print(f"\tcognition frames are {log_status.FrameInfo}")
-
-        response = client.behavior_frame_option.get_behavior_count(log=log.id)
-        print(f"\tbehavior frames are {response['count']}")
-
-        return response["count"] == int(log_status.FrameInfo)
+    response = client.behavior_frame_option.get_behavior_count(log=log.id)
+    if int(log_status.BehaviorStateSparse) == int(response["count"]):
+        return True
+    elif int(response["count"]) > int(log_status.BehaviorStateSparse):
+        # rust based calculation for num frames stops if one broken representation is in the last frame
+        print("ERROR: there are more frames in the database than they should be")
+        print(
+            f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way"
+        )
+        print(f"\tBehaviorStateSparse frames in log are {log_status.BehaviorStateSparse}")
+        print(f"\ttBehaviorStateSparse frames in db are {response['count']}")
+        quit()
     else:
+        print(f"\tBehaviorStateSparse frames in log are {log_status.BehaviorStateSparse}")
+        print(f"\ttBehaviorStateSparse frames in db are {response['count']}")
         return False
 
 
