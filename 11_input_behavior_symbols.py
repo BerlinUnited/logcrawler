@@ -21,6 +21,10 @@ def get_key_and_dict_by_name(dictionary1, dictionary2, name):
     return None, None  # Return None if name is not found
 
 
+def get_frame_id(target_frame_number):
+    return frame_to_id.get(target_frame_number, None)
+
+
 def is_behavior_done(data):
     print("\tcheck inserted behavior frames")
     try:
@@ -68,6 +72,11 @@ if __name__ == "__main__":
         if is_behavior_done(log):
             print("\tbehavior already inserted, will continue with the next log")
             continue
+        
+        # precalculate frame mapping for this log
+        frame_list = client.cognitionframe.list(log=log.id)
+        # Create a dictionary mapping frame_number to id
+        frame_to_id = {frame.frame_number: frame.id for frame in frame_list}
 
         my_parser = Parser()
         game_log = LogReader(str(log_path), my_parser)
@@ -257,8 +266,7 @@ if __name__ == "__main__":
                     "output": output_symbols,
                 }
                 json_obj = {
-                    "log_id": log_id,
-                    "frame": fi.frameNumber,
+                    "frame": get_frame_id(fi.frameNumber),
                     "data": data,
                 }
 
