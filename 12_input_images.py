@@ -119,7 +119,7 @@ if __name__ == "__main__":
     existing_data = client.logs.list()
 
     def myfunc(log):
-        return log.log_path
+        return log.id
 
     for log in sorted(existing_data, key=myfunc, reverse=True):
         print(f"{log.id}: {log.log_path}")
