@@ -1,5 +1,5 @@
 """
- Pretty ulgy implementation for patch detection. Has a ton of problems!!!
+Pretty ulgy implementation for patch detection. Has a ton of problems!!!
 """
 
 import argparse
@@ -33,7 +33,7 @@ params = {
     "dbname": "logs",
     "user": "naoth",
     "password": environ.get("DB_PASS"),
-    "connect_timeout":10
+    "connect_timeout": 10,
 }
 conn = psycopg2.connect(**params)
 cur = conn.cursor()
@@ -51,7 +51,9 @@ ls = Client(url=LABEL_STUDIO_URL, api_key=API_KEY)
 ls.check_connection()
 
 evaluator = PatchExecutor()
-keras_model = load_model_from_server("2024-06-11-semantic_segmentation-bottom-lyrical-sloth-580.keras")
+keras_model = load_model_from_server(
+    "2024-06-11-semantic_segmentation-bottom-lyrical-sloth-580.keras"
+)
 
 
 def get_buckets_with_top_images(
@@ -59,7 +61,6 @@ def get_buckets_with_top_images(
     ls_project_ids: Optional[List[Union[str, int]]] = None,
     validated_only: bool = True,
 ) -> Tuple[str, str, str]:
-
     select_statement = f"""
     SELECT log_path, bucket_top, ls_project_top
     FROM robot_logs
@@ -89,7 +90,6 @@ def get_buckets_with_bottom_images(
     ls_project_ids: Optional[List[Union[str, int]]] = None,
     validated_only: bool = True,
 ) -> Tuple[str, str, str]:
-
     select_statement = f"""
     SELECT log_path, bucket_bottom, ls_project_bottom
     FROM robot_logs
@@ -188,9 +188,7 @@ def gt_ball_bounding_boxes_from_labelstudio_task(
 
 
 def upload_patches_zip_to_bucket(
-    patch_bucket_name: str, 
-    output_patch_folder: Union[str, Path],
-    zipfile_name: str
+    patch_bucket_name: str, output_patch_folder: Union[str, Path], zipfile_name: str
 ):
     shutil.make_archive(zipfile_name, "zip", str(output_patch_folder))
 
@@ -213,7 +211,7 @@ def create_patches_from_annotations(
     debug: bool = False,
     output_folder: str = None,
     segmentation: bool = False,
-    extra_border: int = 0
+    extra_border: int = 0,
 ):
     ls_project = ls.get_project(id=ls_project_id)
     labeled_tasks = ls_project.get_labeled_tasks()
@@ -222,14 +220,16 @@ def create_patches_from_annotations(
         print("\tNo labeled tasks found for this project, skipping...")
         return
 
-    #Create the bucket for the patches
+    # Create the bucket for the patches
     patch_bucket_name, patch_bucket_exists = create_patch_bucket(
         logpath, bucketname, db_field
     )
 
     if output_folder:
         if segmentation:
-            output_patch_folder_seg = Path(output_folder) / f"patches_segmentation_border{extra_border}"
+            output_patch_folder_seg = (
+                Path(output_folder) / f"patches_segmentation_border{extra_border}"
+            )
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
             zipfile_name = output_patch_folder_seg.name
         else:
@@ -240,18 +240,27 @@ def create_patches_from_annotations(
         tmp_download_folder = tempfile.TemporaryDirectory()
 
         if segmentation:
-            output_patch_folder_seg = Path(tmp_download_folder.name) / f"patches_segmentation_border{extra_border}"
+            output_patch_folder_seg = (
+                Path(tmp_download_folder.name)
+                / f"patches_segmentation_border{extra_border}"
+            )
             output_patch_folder_seg.mkdir(exist_ok=True, parents=True)
             zipfile_name = output_patch_folder_seg.name
         else:
             output_folder = tmp_download_folder.name
-            output_patch_folder = Path(tmp_download_folder.name) / f"patches_border{extra_border}"
+            output_patch_folder = (
+                Path(tmp_download_folder.name) / f"patches_border{extra_border}"
+            )
             output_patch_folder.mkdir(exist_ok=True, parents=True)
             zipfile_name = output_patch_folder.name
 
-    minio_files = [mobject.object_name for mobject in mclient.list_objects(patch_bucket_name)]
+    minio_files = [
+        mobject.object_name for mobject in mclient.list_objects(patch_bucket_name)
+    ]
     if zipfile_name + ".zip" in minio_files and not overwrite:
-        print(f"\t{zipfile_name} already exists in {patch_bucket_name} and overwrite is not set, skipping...")
+        print(
+            f"\t{zipfile_name} already exists in {patch_bucket_name} and overwrite is not set, skipping..."
+        )
         return
 
     for task in tqdm(labeled_tasks):
@@ -284,7 +293,7 @@ def create_patches_from_annotations(
                     bucketname,
                     debug=debug,
                     model=keras_model,
-                    extra_border=extra_border
+                    extra_border=extra_border,
                 )
             else:
                 evaluator.export_patches(
@@ -292,7 +301,7 @@ def create_patches_from_annotations(
                     output_patch_folder,
                     bucketname,
                     debug=debug,
-                    extra_border=extra_border
+                    extra_border=extra_border,
                 )
 
             if debug:
@@ -303,13 +312,15 @@ def create_patches_from_annotations(
     if segmentation:
         upload_patches_zip_to_bucket(
             patch_bucket_name=patch_bucket_name,
-            output_patch_folder=output_patch_folder_seg, 
-            zipfile_name=zipfile_name)
+            output_patch_folder=output_patch_folder_seg,
+            zipfile_name=zipfile_name,
+        )
     else:
         upload_patches_zip_to_bucket(
             patch_bucket_name=patch_bucket_name,
             output_patch_folder=output_patch_folder,
-            zipfile_name=zipfile_name)
+            zipfile_name=zipfile_name,
+        )
 
     # cleanup
     if not output_folder:
@@ -410,7 +421,7 @@ if __name__ == "__main__":
     # for each bucket, loop over all annotated images in LabelStudio and create patches
     # with the naoth cpp code using the annotations as ball ground truth
     for logpath, bucketname, ls_project_id, db_field in data_combined:
-        if args.segmentation and db_field=="bucket_top_patches":
+        if args.segmentation and db_field == "bucket_top_patches":
             continue
         print(f"Creating {db_field} patches for ", end="")
         print(f"Log: {logpath}, Bucket: {bucketname}, LS Project: {ls_project_id}")
@@ -424,5 +435,5 @@ if __name__ == "__main__":
             debug=debug,
             output_folder=output_folder,
             segmentation=args.segmentation,
-            extra_border=args.border
+            extra_border=args.border,
         )

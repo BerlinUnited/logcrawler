@@ -1,7 +1,6 @@
 import os
 from naoth.pb.Framework_Representations_pb2 import Image
 from naoth.log import Reader as LogReader
-from naoth.log import Parser
 
 from pathlib import Path
 from urllib.request import urlretrieve
@@ -129,14 +128,15 @@ def combine_all_logs():
     image_log_index = create_image_log_dict(
         str(image_log), first_image_is_top=is_first_image_top
     )
-    with open(str(combined_log_path), "wb") as output, open(
-        str(image_log), "rb"
-    ) as image_log, LogReader(str(game_log)) as gamelog_reader:
+    with (
+        open(str(combined_log_path), "wb") as output,
+        open(str(image_log), "rb") as image_log,
+        LogReader(str(game_log)) as gamelog_reader,
+    ):
         for frame in gamelog_reader.read():
             print(frame.number)
             # only write frames which have corresponding images
             if frame.number in image_log_index:
-
                 # may contain 'ImageTop' and 'Image'
                 for image_name, (offset, size) in image_log_index[frame.number].items():
                     print(image_name)

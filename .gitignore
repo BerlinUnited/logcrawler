@@ -2,3 +2,9 @@ venv/
 .envrc
 
 __pycache__
+
+# rust stuff
+target/
+
+# c stuff
+fast_ls
