@@ -25,11 +25,11 @@ def get_frame_id(target_frame_number):
     return frame_to_id.get(target_frame_number, None)
 
 
-def is_behavior_done(data):
+def is_behavior_done(log):
     print("\tcheck inserted behavior frames")
     try:
         # we use list here because we only know the log_id here and not the if of the logstatus object
-        response = client.log_status.list(log=data.id)
+        response = client.log_status.list(log=log.id)
         if len(response) == 0:
             return False
         log_status = response[0]
@@ -40,12 +40,29 @@ def is_behavior_done(data):
         print(
             "\tWARNING: first calculate the number of cognitions frames and put it in the db"
         )
-        print(log_status.FrameInfo)
+        quit()
+
+    response = client.xabsl_symbol_sparse.get_behavior_count(log=log.id)
+    if int(log_status.BehaviorStateSparse) == int(response["count"]):
+        return True
+    elif int(response["count"]) > int(log_status.BehaviorStateSparse):
+        # rust based calculation for num frames stops if one broken representation is in the last frame
+        print("ERROR: there are more frames in the database than they should be")
+        print(
+            f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way"
+        )
+        print(f"\tBehaviorStateSparse frames in log are {log_status.BehaviorStateSparse}")
+        print(f"\tFrames with Behavior Symbols in db are {response['count']}")
+        quit()
+    else:
+        print(f"\tBehaviorStateSparse frames in log are {log_status.BehaviorStateSparse}")
+        print(f"\tFrames with Behavior Symbols in db are {response['count']}")
         return False
+
 
     if log_status.FrameInfo and int(log_status.FrameInfo) > 0:
         print(f"\tcognition frames are {log_status.FrameInfo}")
-        response = client.xabsl_symbol_sparse.get_behavior_count(log=data.id)
+        
         print(f"\tbehavior frames are {response['count']}")
         return response["count"] == int(log_status.FrameInfo)
     else:
