@@ -49,7 +49,7 @@ if __name__ == "__main__":
         api_key=os.environ.get("VAT_API_TOKEN"),
     )
 
-    log = client.logs.list()
+    logs = client.logs.list()
 
     # only check server availability if we are not working with local files
     if not args.local:
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         return log.id
 
     # FIXME how to query for a given log?
-    for log in sorted(log, key=sort_key_fn, reverse=True):
+    for log in sorted(logs, key=sort_key_fn, reverse=False):
         print(f"{log.id}: {log.log_path}")
 
         if args.camera:
