@@ -1,3 +1,5 @@
+# run sudo sshfs naoth@gruenau4.informatik.hu-berlin.de:/vol/repl261-vol4/naoth/logs/ /mnt/repl -o allow_other,ro,uid=33,gid=33,ServerAliveInterval=15,ServerAliveCountMax=3,reconnect
+
 rsync -avv --include='*/' --progress -h --include='combined.log' --exclude='*' /mnt/repl/2025-03-12-GO25/2025-03-12_21-30-00_BerlinUnited_vs_empty_half1-test/game_logs/ /mnt/d/logs/2025-03-12-GO25/2025-03-12_21-30-00_BerlinUnited_vs_empty_half1-test/game_logs/
 
 rsync -avv --include='*/' --progress -h --include='combined.log' --exclude='*' /mnt/repl/2025-03-12-GO25/2025-03-13_10-10-00_BerlinUnited_vs_Bembelbots_half1/game_logs/ /mnt/d/logs/2025-03-12-GO25/2025-03-13_10-10-00_BerlinUnited_vs_Bembelbots_half1/game_logs/
