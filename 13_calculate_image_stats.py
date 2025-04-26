@@ -38,9 +38,7 @@ def variance_of_laplacian(image):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--local", action="store_true", default=False)
-    parser.add_argument(
-        "-c", "--camera", type=str, help="Set either BOTTOM or TOP", default=False
-    )
+    parser.add_argument("-c", "--camera", type=str, help="Set BOTTOM or TOP")
     args = parser.parse_args()
 
     log_root_path = os.environ.get("VAT_LOG_ROOT")
@@ -64,10 +62,10 @@ if __name__ == "__main__":
 
         if args.camera:
             images = client.image.list(
-                log_id=log.id, camera=args.camera, blurredness_value="None"
+                log=log.id, camera=args.camera, blurredness_value="None"
             )
         else:
-            images = client.image.list(log_id=log.id, blurredness_value="None")
+            images = client.image.list(log=log.id, blurredness_value="None")
 
         image_data = list()
 
