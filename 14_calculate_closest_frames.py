@@ -23,7 +23,6 @@ def test_closest_other_frames(frames,  comparison_frames):
             if time_diff < min_time_diff:
                 min_time_diff = time_diff
                 closest_other_frame_id = comparison_frame.id
-                best_match_time = comparison_frame.frame_time
 
         result_item = {}
         result_item['id'] = frame.id
