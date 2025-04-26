@@ -3,7 +3,7 @@ import os
 import bisect
 
 def test_closest_other_frames(frames,  comparison_frames):
-
+    """this function exists only to verify the data of the alogrithm below is correct"""
     results = []
 
 
@@ -28,8 +28,6 @@ def test_closest_other_frames(frames,  comparison_frames):
         result_item = {}
         result_item['id'] = frame.id
         result_item['closest_other_frame'] = closest_other_frame_id
-        result_item['frame_time'] = frame.frame_time
-        result_item['closest_other_frame_time'] = best_match_time
         results.append(result_item)
 
     return results
@@ -71,14 +69,13 @@ def find_closest_other_frame(frames, comparison_frames):
             if min_diff is None or diff < min_diff or (diff == min_diff and cognition_ids[idx] < closest_id):
                 min_diff = diff
                 closest_id = cognition_ids[idx]
-                closest_time = cognition_times[idx]
+                
 
         processed_frame = {}
 
         processed_frame['id'] = frame.id
         processed_frame['closest_other_frame'] = closest_id
-        processed_frame['frame_time'] = frame.frame_time
-        processed_frame['closest_other_frame_time'] = closest_time
+        
     
         processed_frames.append(processed_frame)
 
@@ -99,7 +96,7 @@ if __name__ == "__main__":
 
     for log in sorted(log, key=sort_key_fn, reverse=True):
         print(f"{log.id}: {log.log_path}")
-
+    
         motionframes = client.motionframe.list(log=log.id)
         cognitionframes = client.cognitionframe.list(log=log.id)
 
@@ -107,18 +104,64 @@ if __name__ == "__main__":
             return frame.frame_time
 
         processed_MotionFrames = find_closest_other_frame(sorted(motionframes,key=sort_frame_key_fn),sorted(cognitionframes,key=sort_frame_key_fn))
+        
+        updated_frames_list = []
+        
+        for idx, frame in enumerate(processed_MotionFrames):
+            json_obj = {
+                "id": frame['id'],
+                "closest_cognition_frame": frame['closest_other_frame'], 
+            }
+            updated_frames_list.append(json_obj)
 
-        test_MotionFrames = test_closest_other_frames(sorted(motionframes,key=sort_frame_key_fn),sorted(cognitionframes,key=sort_frame_key_fn))
+            if idx % 100 == 0 and idx != 0:
+                try:
+                    response = client.motionframe.bulk_update(data=updated_frames_list)
+                    updated_frames_list.clear()
+                except Exception as e:
+                    print(e)
+                    print("error inputing the data")
+                    quit()
 
-        print(processed_MotionFrames==test_MotionFrames)
+        if len(updated_frames_list) > 0:
+            try:
+                response = client.motionframe.bulk_update(data=updated_frames_list)
+            except Exception as e:
+                print(e)
+                print("error inputing the data")    
+                quit()
 
         processed_CognitionFrames = find_closest_other_frame(sorted(cognitionframes,key=sort_frame_key_fn),sorted(motionframes,key=sort_frame_key_fn))
 
-        test_CognitionFrames = test_closest_other_frames(sorted(cognitionframes,key=sort_frame_key_fn),sorted(motionframes,key=sort_frame_key_fn))
+        updated_frames_list = []
+        
+        for idx, frame in enumerate(processed_CognitionFrames):
+            json_obj = {
+                "id": frame['id'],
+                "closest_motion_frame": frame['closest_other_frame'], 
+            }
+            updated_frames_list.append(json_obj)
 
-        print(test_CognitionFrames==test_CognitionFrames) 
+            if idx % 100 == 0 and idx != 0:
+                try:
+                    response = client.cognitionframe.bulk_update(data=updated_frames_list)
+                    updated_frames_list.clear()
+                except Exception as e:
+                    print(e)
+                    print("error inputing the data")
+                    quit()
+
+        if len(updated_frames_list) > 0:
+            try:
+                response = client.cognitionframe.bulk_update(data=updated_frames_list)
+            except Exception as e:
+                print(e)
+                print("error inputing the data") 
+                quit() 
+
+        # test_MotionFrames = test_closest_other_frames(sorted(motionframes,key=sort_frame_key_fn),sorted(cognitionframes,key=sort_frame_key_fn))
+        # print(processed_MotionFrames==test_MotionFrames)
+        # test_CognitionFrames = test_closest_other_frames(sorted(cognitionframes,key=sort_frame_key_fn),sorted(motionframes,key=sort_frame_key_fn))
+        # print(test_CognitionFrames==test_CognitionFrames) 
 
 
-
-
-        quit()
