@@ -4,10 +4,51 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from vaapi.client import Vaapi
 
+def plot_frame_data(ax,time_diff,title,sensor_log_path):
+    frequencies = Counter(time_diff)
+    values = list(frequencies.keys())
+    counts = list(frequencies.values())
+    
+    # Plot the data
+    x_positions = range(len(values))
+    ax.bar(x_positions, counts)
+    
+    # Set labels and title
+    ax.set_xlabel('Time Difference Values')
+    ax.set_ylabel('Frequency')
+    formatted_path = "\n".join(textwrap.wrap(sensor_log_path, width=50))
+    ax.set_title(f"{title}\n{formatted_path}")
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(values, rotation=45, ha='right')
+    ax.grid(axis='y', alpha=0.3)
+    
+    
+    
 def plot_frame_times_combined(logs):
-    # Create a figure with 3 subplots (1 row, 3 columns)
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    fig.suptitle('Frame Time Differences Across Logs', fontsize=16)
+   
+    figures = []
+    
+    # Page 1: Motion Frames for all logs
+    fig_motion = plt.figure(figsize=(18, 8))
+    fig_motion.suptitle('Motion Frame Time Differences Across Logs', fontsize=16)
+    figures.append(fig_motion)
+    
+    # Create a 1x3 grid for motion frames
+    axes_motion = []
+    for i in range(3):
+        ax = fig_motion.add_subplot(1, 3, i+1)
+        axes_motion.append(ax)
+    
+    # Page 2: Cognition Frames for all logs
+    fig_cognition = plt.figure(figsize=(18, 8))
+    fig_cognition.suptitle('Cognition Frame Time Differences Across Logs', fontsize=16)
+    figures.append(fig_cognition)
+    
+    # Create a 1x3 grid for cognition frames
+    axes_cognition = []
+    for i in range(3):
+        ax = fig_cognition.add_subplot(1, 3, i+1)
+        axes_cognition.append(ax)
     
     # Process each log and plot in the corresponding subplot
     for i, log in enumerate(logs):
@@ -19,47 +60,28 @@ def plot_frame_times_combined(logs):
         def sort_frame_key_fn(frame):
             return frame.frame_number
         motionframes = sorted(motionframes, key=sort_frame_key_fn)
+        cognitionframes = sorted(cognitionframes, key=sort_frame_key_fn)
         
-        # Calculate time differences
-        time_diff = []
+        # Calculate time differences for motion frames
+        motion_time_diff = []
         for x in range(len(motionframes)-1):
-            time_diff.append(motionframes[x+1].frame_time - motionframes[x].frame_time)
+            motion_time_diff.append(motionframes[x+1].frame_time - motionframes[x].frame_time)
         
-        # Print statistics for this log
-        print(f"Log {log.id} statistics:")
-        print(f"Max: {max(time_diff)}")
-        print(f"Min: {min(time_diff)}")
-        print(f"Mean: {statistics.mean(time_diff)}")
-        print(f"Unique values: {set(time_diff)}")
-        print("-" * 40)
-        
-        # Calculate frequencies
-        frequencies = Counter(time_diff)
-        values = list(frequencies.keys())
-        counts = list(frequencies.values())
-        
-        # Plot on the corresponding subplot
-        ax = axes[i]
-        x_positions = range(len(values))
-        bars = ax.bar(x_positions, counts)
-        
-        # Set labels and title
-        ax.set_xlabel('Time Difference Values')
-        ax.set_ylabel('Frequency')
-        ax.set_title('\n'.join(textwrap.wrap(log.sensor_log_path, width=50)))
-        ax.set_xticks(x_positions)
-        ax.set_xticklabels(values, rotation=45, ha='right')
-        ax.grid(axis='y', alpha=0.3)
+        cognition_time_diff = []
+        for x in range(len(cognitionframes)-1):
+            cognition_time_diff.append(cognitionframes[x+1].frame_time - cognitionframes[x].frame_time)
 
-        
-        # Add count labels above bars
-        for bar, count in zip(bars, counts):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                    str(count), ha='center', va='bottom')
     
-    # Adjust layout
-    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for the suptitle
+        plot_frame_data(axes_motion[i], motion_time_diff, f'Log ID: {log.id} - Motion Frames', log.sensor_log_path)
+        
+        plot_frame_data(axes_cognition[i], cognition_time_diff, f'Log ID: {log.id} - Cognition Frames', log.sensor_log_path)
+    
+   # Adjust layout for both figures
+    for fig in figures:
+        fig.tight_layout(rect=[0, 0.05, 1, 0.95])
+        fig.subplots_adjust(bottom=0.25)
+    
+    # Show plots - this will display them with navigation buttons in the UI
     plt.show()
 
 if __name__ == "__main__":
