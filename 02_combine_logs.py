@@ -215,6 +215,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--force", action="store_true", default=False)
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
     args = parser.parse_args()
 
     client = Vaapi(
@@ -226,7 +227,7 @@ if __name__ == "__main__":
     def sort_key_fn(data):
         return data.log_path
 
-    for data in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for data in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         log_id = data.id
         log_folder_path = Path(data.log_path).parent  # data.log_path is path to file
         log_path = Path(log_root_path) / log_folder_path

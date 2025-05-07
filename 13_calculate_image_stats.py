@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--local", action="store_true", default=False)
     parser.add_argument("-c", "--camera", type=str, help="Set BOTTOM or TOP")
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
     args = parser.parse_args()
 
     log_root_path = os.environ.get("VAT_LOG_ROOT")
@@ -57,7 +58,7 @@ if __name__ == "__main__":
         return log.id
 
     # FIXME how to query for a given log?
-    for log in sorted(logs, key=sort_key_fn, reverse=False):
+    for log in sorted(logs, key=sort_key_fn, reverse=args.reverse):
         print(f"{log.id}: {log.log_path}")
 
         if args.camera:

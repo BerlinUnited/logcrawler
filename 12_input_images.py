@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Generator, List
-import os
-from time import sleep
-
 from vaapi.client import Vaapi
+from time import sleep
+import argparse
+import os
 
 
 def scandir_yield_files(directory):
@@ -109,6 +109,10 @@ def is_done(log_id, camera, image_type):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
+    args = parser.parse_args()
+
     # FIXME handle the case that frame does not exist explicitely
     log_root_path = os.environ.get("VAT_LOG_ROOT")
     client = Vaapi(
@@ -121,7 +125,7 @@ if __name__ == "__main__":
     def myfunc(log):
         return log.id
 
-    for log in sorted(existing_data, key=myfunc, reverse=True):
+    for log in sorted(existing_data, key=myfunc, reverse=args.reverse):
         print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 

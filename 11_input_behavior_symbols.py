@@ -1,10 +1,11 @@
 from pathlib import Path
 from naoth.log import Reader as LogReader
-from naoth.log import Parser
-import os
-from tqdm import tqdm
 from vaapi.client import Vaapi
+from naoth.log import Parser
+from tqdm import tqdm
 import traceback
+import argparse
+import os
 
 
 def get_key_and_dict_by_name(dictionary1, dictionary2, name):
@@ -70,6 +71,10 @@ def is_behavior_done(log):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
+    args = parser.parse_args()
+
     log_root_path = os.environ.get("VAT_LOG_ROOT")
     client = Vaapi(
         base_url=os.environ.get("VAT_API_URL"),
@@ -80,9 +85,9 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.id
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         log_id = log.id
-        log_path = Path(log_root_path) / log.log_path
+        log_path = Path(log_root_path) / log.combined_log_path
 
         print(f"{log.id}: {log_path}")
         # check if we need to insert this log

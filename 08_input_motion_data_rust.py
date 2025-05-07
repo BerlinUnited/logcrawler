@@ -166,6 +166,7 @@ def get_motion_representations(log):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--force", action="store_true", default=False)
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
     args = parser.parse_args()
 
     log_root_path = os.environ.get("VAT_LOG_ROOT")
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.id
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         sensor_log_path = Path(log_root_path) / log.sensor_log_path
 
         print(f"{log.id}: {sensor_log_path}")

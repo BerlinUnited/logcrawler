@@ -2,7 +2,6 @@
 Representation Exporter
 FIXME: this fails in some logs -> add error handling and reporting about broken logs
 """
-
 from vaapi.client import Vaapi
 import log_crawler
 from pathlib import Path
@@ -68,7 +67,7 @@ def main(args):
     def sort_key_fn(data):
         return data.log_path
 
-    for log in sorted(existing_logs, key=sort_key_fn, reverse=False):
+    for log in sorted(existing_logs, key=sort_key_fn, reverse=args.reverse):
         print(f"{log.id}: {log.log_path}")
         log_path = Path(log_root_path) / log.log_path
 
@@ -122,6 +121,7 @@ if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("-f", "--force", action="store_true", default=False)
+        parser.add_argument("-r", "--reverse", action="store_true", default=False)
         args = parser.parse_args()
         main(args)
     except KeyboardInterrupt:

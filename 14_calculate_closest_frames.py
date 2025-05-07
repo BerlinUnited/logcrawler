@@ -1,6 +1,8 @@
 from vaapi.client import Vaapi
-import os
+import argparse
 import bisect
+import os
+
 
 def test_closest_other_frames(frames,  comparison_frames):
     """this function exists only to verify the data of the alogrithm below is correct"""
@@ -83,6 +85,10 @@ def find_closest_other_frame(frames, comparison_frames):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
+    args = parser.parse_args()
+
     client = Vaapi(
         base_url=os.environ.get("VAT_API_URL"),
         api_key=os.environ.get("VAT_API_TOKEN"),
@@ -93,7 +99,7 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.id
 
-    for log in sorted(log, key=sort_key_fn, reverse=True):
+    for log in sorted(log, key=sort_key_fn, reverse=args.reverse):
         print(f"{log.id}: {log.log_path}")
     
         motionframes = client.motionframe.list(log=log.id)

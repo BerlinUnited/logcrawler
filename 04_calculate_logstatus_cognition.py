@@ -1,8 +1,8 @@
 from pathlib import Path
 import log_crawler
-import os
 from vaapi.client import Vaapi
 import argparse
+import os
 
 
 def is_done(log_id, status_dict):
@@ -65,6 +65,10 @@ def add_gamelog_representations(log, log_path):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
+    args = parser.parse_args()
+
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
     existing_data = client.logs.list()
@@ -72,7 +76,7 @@ def main():
     def sort_key_fn(log):
         return log.id
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=True):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         # TODO use combined log if its a file. -> it should always be a file if not experiment
         combined_log_path = Path(log_root_path) / log.combined_log_path
 

@@ -4,6 +4,7 @@ from linetimer import CodeTimer
 from naoth.log import Reader as LogReader
 from naoth.log import Parser
 from pathlib import Path
+import argparse
 import concurrent.futures
 import subprocess
 import numpy as np
@@ -53,7 +54,7 @@ def is_done(log):
         if bottom_path.is_dir()
         else 0
     )
-    """
+
     print("\tcalculating num top images in folder")
     num_top = (
         subprocess.run(
@@ -62,7 +63,7 @@ def is_done(log):
         if top_path.is_dir()
         else 0
     )
-    """
+
     print("\tcalculating num bottom jpeg images in folder")
     num_jpg_bottom = (
         subprocess.run(
@@ -71,7 +72,7 @@ def is_done(log):
         if jpg_bottom_path.is_dir()
         else 0
     )
-    """
+
     print("\tcalculating num top jpeg images in folder")
     num_jpg_top = (
         subprocess.run(
@@ -80,25 +81,24 @@ def is_done(log):
         if jpg_top_path.is_dir()
         else 0
     )
-    """
 
     # FIXME This will also extract images that are already extracted if the log status is not already calculated for this log
     if int(log_status.Image or 0) != int(num_bottom):
         print(f"Image Bottom: {log_status.Image or 0} != {num_bottom}")
         return False
-    """
+
     if int(log_status.ImageTop or 0) != int(num_top):
         print(f"Image Top: {log_status.ImageTop or 0} != {num_top}")
         return False
-    """
+
     if int(log_status.ImageJPEG or 0) != int(num_jpg_bottom):
         print(f"ImageJPEG: {log_status.ImageJPEG or 0} != {num_jpg_bottom}")
         return False
-    """
+
     if int(log_status.ImageJPEGTop or 0) != int(num_jpg_top):
         print(f"ImageJPEGTop: {log_status.ImageJPEGTop or 0} != {num_jpg_top}")
         return False
-    """
+    
     with open(str(hidden_file), "w") as file:
         pass
 
@@ -115,9 +115,9 @@ def export_images(img):
     """
 
     for i, img_b, img_b_jpg, img_t, img_t_jpg, cm_b, cm_t in img:
-        frame_number = format(
-            i, "07d"
-        )  # make frame number a fixed length string so that the images are in the correct order
+        # make frame number a fixed length string so that the images are in the correct order
+        frame_number = format(i, "07d")
+
         if img_b:
             img_b = img_b.convert("RGB")
             save_image_to_png(
@@ -128,6 +128,7 @@ def export_images(img):
                 cam_id=1,
                 name=log.combined_log_path,
             )
+        
         # TODO add meta data indicating this was a jpeg image
         if img_b_jpg:
             img_b_jpg = img_b_jpg.convert("RGB")
@@ -305,6 +306,11 @@ def worker(data_queue):
 
 if __name__ == "__main__":
     # FIXME aborting this script can result in broken images being written
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--force", action="store_true", default=False)
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
+    args = parser.parse_args()
+
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
     client = Vaapi(
@@ -317,7 +323,7 @@ if __name__ == "__main__":
     def sort_key_fn(log):
         return log.id
 
-    for log in sorted(existing_data, key=sort_key_fn, reverse=False):
+    for log in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         log_path = Path(log_root_path) / Path(log.combined_log_path)
         log_folder_path = log_path.parent
         print(f"{log.id}: {log.combined_log_path}")
