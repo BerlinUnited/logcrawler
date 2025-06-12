@@ -185,51 +185,8 @@ def save_image_to_png(j, img, cm, target_dir, cam_id, name):
     img.save(filename, pnginfo=meta)
 
 
-def calculate_output_path(log_folder: str):
-    # FIXME have a better detection if its experiment log or not
-    """
-    log_path_w_prefix = log_root_path / Path(log_folder)
-    if Path(log_path_w_prefix).is_file():
-        print("\tdetected experiment log")
-        actual_log_folder = log_root_path / Path(log_folder).parent
-        log = log_path_w_prefix
-
-        extracted_folder = (
-            Path(actual_log_folder) / Path("extracted") / Path(log_path_w_prefix).stem
-        )
-        output_folder_top = extracted_folder / Path("log_top")
-        output_folder_bottom = extracted_folder / Path("log_bottom")
-        output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
-        output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
-
-        print(f"\toutput folder will be {extracted_folder}")
-
-    else:
-    """
-    print("\tdetected normal game log")
-    actual_log_folder = Path(log_folder)
-
-    extracted_folder = (
-        Path(actual_log_folder).parent.parent
-        / Path("extracted")
-        / Path(actual_log_folder).name
-    )
-
-    output_folder_top = extracted_folder / Path("log_top")
-    output_folder_bottom = extracted_folder / Path("log_bottom")
-    output_folder_top_jpg = extracted_folder / Path("log_top_jpg")
-    output_folder_bottom_jpg = extracted_folder / Path("log_bottom_jpg")
-
-    return (
-        output_folder_top,
-        output_folder_bottom,
-        output_folder_top_jpg,
-        output_folder_bottom_jpg,
-    )
-
-
 if __name__ == "__main__":
-    log_path = "./arms-up_01.log"
+    log_path = "/mnt/d/logs/2024-07-15_RC24/2024-07-15_20-00-00_BerlinUnited_vs_SPQR_half1-test/game_logs/2_16_Nao0017_240715-1830/combined.log"
     out_top = "out_top"
     out_bottom = "out_bottom"
     out_top_jpg = "out_top_jpg"
