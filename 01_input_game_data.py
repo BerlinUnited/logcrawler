@@ -124,6 +124,7 @@ if __name__ == "__main__":
                             .removeprefix(log_root_path)
                             .strip("/")
                         )
+                        
 
                         try:
                             response = client.logs.create(
@@ -140,6 +141,21 @@ if __name__ == "__main__":
                         except Exception as e:
                             print("ERROR:", e)
                             continue
+
+                        # patch game object for testgame flag
+                        try:
+                            if "test" in log_path.lower():
+                                testgame_flag = True
+                            else:
+                                testgame_flag = False
+
+                            client.games.update(
+                                id=game_id,
+                                is_testgame=False
+                            )    
+                        except Exception as e:
+                            print("ERROR:", e)
+                            quit()
 
                         # get log id of the newly created log object
                         log_id = response.id
