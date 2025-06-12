@@ -65,10 +65,6 @@ def add_gamelog_representations(log, log_path):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--reverse", action="store_true", default=False)
-    args = parser.parse_args()
-
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
     existing_data = client.logs.list()
@@ -87,6 +83,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--force", action="store_true", default=False)
+    parser.add_argument("-r", "--reverse", action="store_true", default=False)
     args = parser.parse_args()
 
     client = Vaapi(
