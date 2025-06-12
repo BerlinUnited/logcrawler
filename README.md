@@ -1,22 +1,27 @@
 # Logcrawler
-Scripts for inserting log data into the database. These scripts generally only need to be run once. 
+Scripts for inserting log data into the database. These scripts generally only need to be run once per game folder.
 
 The logcrawler scripts use the [VAAPI pip package](https://pypi.org/project/vaapi/) to communicate with the [database backend](https://github.com/BerlinUnited/Visual-Analytics) and the [Naoth pip package](https://pypi.org/project/naoth/) to parse the logs. The logcrawler expects the folder structure that is described below and will only work correctly if the data is in this structure. We developed a couple of standalone scripts in the standalone folder.
 
 ## Log folder structure
 ```
 logs/
-    2015-07-17_RC15/
-    2016-01-16_MM/
     ...
-    2018-06-16_RC18/
+    2024-07-15_RC24/
         comments.txt
-        2018-06-18_15-00-00_Berlin_United_vs_Austin_half1/
-        2018-06-18_15-00-00_Berlin_United_vs_Austin_half1_to1/
-            **[eine Auszeit (TimeOut) ist ein normaler Spielabschnitt, entsprechend enthÃ¤lt er alle Daten wie eine normale Halbzeit]**
-        2018-06-18_15-00-00_Berlin_United_vs_Austin_half1_to2/
-            **[2. Auszeit]**
-        2018-06-18_15-00-00_Berlin_United_vs_Austin_half2/
+        ...
+        2024-07-18_16-30-00_BerlinUnited_vs_Roboeirean_half1
+        2024-07-18_16-30-00_BerlinUnited_vs_Roboeirean_half2
+        2024-07-18_16-30-00_BerlinUnited_vs_Roboeirean_half2-to
+            **a timeOut (to) is a normal part of the game therefor we treat it as if it would be an additional half**
+            **the folder with the -to suffix contains data from when the game was resumed after timeout was called**
+            **if a second timeout is called in a game we would use the suffix -to2**
+    2025-03-12-GO25/
+        comments.txt
+        2025-03-12_21-30-00_BerlinUnited_vs_empty_half1-test/
+            **the -test suffix indicates a testgame that we recorded similar to a realy game, we are not logging experiment logs but game.logs**
+        2025-03-13_17-30-00_BerlinUnited_vs_HTWK_half1/
+        2025-03-13_17-30-00_BerlinUnited_vs_HTWK_half2/
             comments.txt
             extracted/
                 1_91_Nao0379/
@@ -34,11 +39,10 @@ logs/
                 3_94_Nao0338/
                 4_96_Nao0377/
                 5_95_Nao0225/
-                    **[via Log-Stick gesammelte Daten]**
+                    **[data recorded by the robot and collected via USB-Stick]**
                     config.zip
                     game.log
                     nao.info
-                    patch_labels.json
                     comments.txt
                     ...
             gc_logs/
@@ -49,14 +53,19 @@ logs/
                     comments.txt
             videos/
                     comments.txt
-                    half2.LRV
-                    half2.MP4
+                    half2.mp4
                     half2.url
-                        **[enthÃ¤lt einen Link/URL auf ein Video, z.B.: https://www.youtube.com/watch?v=0R39kqXO_KE]**
+                        **[enthält einen Link/URL auf ein Video, z.B.: https://www.youtube.com/watch?v=0R39kqXO_KE]**
+        videos/
+            **Contains videos of other games**
+            2025-03-16_xx-xx-00_B-Human_vs_Hulks_half1-FeldA
         2018-06-18_15-00-00_Berlin_United_vs_Austin_half2_penalty/
-            **[ElfmeterschieÃŸen (Penalty Shootout) ist ein normaler Spielabschnitt, entsprechend enthÃ¤lt er alle Daten wie eine normale Halbzeit]**
+            **[Elfmeterschießen (Penalty Shootout) ist ein normaler Spielabschnitt, entsprechend enthÃ¤lt er alle Daten wie eine normale Halbzeit]**
+            **TODO each penalty shoot is its own half - how is this communicated by the gamecontroller and how can we name the videos and folders for this**
+            ** there are some instances of penalty shootout in go25 **
+            ** TODO how to handle penalty shootout vs sudden death shootout?**
 
-
+**TODO: the comments file is better place for this maybe? - think of scenarios that happen where we need this also take into account what is easiest to parse**
 Ein kleiner Kommentar (bestehend aus 1/2 Worten kann durch ein "-" getrennt an das Event, das Spiel oder den Log-Ordner angehÃ¤ngt werden:
 logs/
     2018-06-16_RC18-prepare/
