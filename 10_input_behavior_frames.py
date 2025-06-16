@@ -120,11 +120,11 @@ def is_behavior_done(log):
         print(
             f"Run logstatus calculation again for log {log_id} or make sure the end of the log is calculated the same way"
         )
-        print(f"\tBehaviorStateSparse frames in log are {log_status.BehaviorStateSparse}")
+        print(f"\tBehaviorStateSparse frames in log status are {log_status.BehaviorStateSparse}")
         print(f"\tBehaviorStateSparse frames in db are {response['count']}")
         quit()
     else:
-        print(f"\tBehaviorStateSparse frames in log are {log_status.BehaviorStateSparse}")
+        print(f"\tBehaviorStateSparse frames in log status are {log_status.BehaviorStateSparse}")
         print(f"\tBehaviorStateSparse frames in db are {response['count']}")
         return False
 
