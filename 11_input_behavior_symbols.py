@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         log_id = log.id
-        log_path = Path(log_root_path) / log.combined_log_path
+        log_path = Path(log_root_path) / log.log_path
 
         print(f"{log.id}: {log_path}")
         # check if we need to insert this log
