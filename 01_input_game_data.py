@@ -25,11 +25,13 @@ def handle_games(event_id: int, game: str):
         print(game_parsed)
 
     date_object = datetime.strptime(timestamp, "%Y-%m-%d_%H-%M-%S")
+
     response = client.games.create(
         event=event_id,
         team1=team1,
         team2=team2,
         half=halftime,
+        game_folder=str(game).removeprefix(log_root_path).strip("/"),
         # Hack: by default django return the time with Z appended. We do that on input as well so we can compare it in the add_games function
         # TODO: check if this is still necessary
         start_time=date_object.isoformat() + "Z",
@@ -75,7 +77,10 @@ if __name__ == "__main__":
     all_events = [f for f in Path(log_root_path).iterdir() if f.is_dir()]
     for event in sorted(all_events, reverse=True):
         if event.name in event_list:
-            response = client.events.create(name=event.name)
+            response = client.events.create(
+                name=event.name,
+                event_folder=str(event).removeprefix(log_root_path).strip("/"),
+                )
             event_id = response.id
 
             all_games = [f for f in event.iterdir() if f.is_dir()]
@@ -152,7 +157,7 @@ if __name__ == "__main__":
                             client.games.update(
                                 id=game_id,
                                 is_testgame=False
-                            )    
+                            )
                         except Exception as e:
                             print("ERROR:", e)
                             quit()
