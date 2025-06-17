@@ -98,7 +98,7 @@ def is_done(log):
     if int(log_status.ImageJPEGTop or 0) != int(num_jpg_top):
         print(f"ImageJPEGTop: {log_status.ImageJPEGTop or 0} != {num_jpg_top}")
         return False
-    
+
     with open(str(hidden_file), "w") as file:
         pass
 
@@ -128,7 +128,7 @@ def export_images(img):
                 cam_id=1,
                 name=log.combined_log_path,
             )
-        
+
         # TODO add meta data indicating this was a jpeg image
         if img_b_jpg:
             img_b_jpg = img_b_jpg.convert("RGB")
@@ -151,7 +151,12 @@ def export_images(img):
         if img_t_jpg:
             img_t_jpg = img_t_jpg.convert("RGB")
             save_image_to_png(
-                frame_number, img_t_jpg, cm_t, out_top_jpg, cam_id=0, name=log.combined_log_path
+                frame_number,
+                img_t_jpg,
+                cm_t,
+                out_top_jpg,
+                cam_id=0,
+                name=log.combined_log_path,
             )
 
         print("\tsaving images from frame ", i, end="\r", flush=True)
@@ -325,17 +330,17 @@ if __name__ == "__main__":
 
     for log in sorted(existing_data, key=sort_key_fn, reverse=args.reverse):
         log_path = Path(log_root_path) / Path(log.combined_log_path)
-        log_folder_path = log_path.parent
+
         print(f"{log.id}: {log.combined_log_path}")
+
+        if log_path is None or not log_path.exists():
+            print("\tcouldnt find a valid log file")
+            continue
 
         if is_done(log):
             continue
 
         data_queue = queue.Queue()
-
-        if log_path is None:
-            print("\tcouldnt find a valid log file")
-            continue
 
         extracted_folder = str(log_path.parent).replace("game_logs", "extracted")
 
