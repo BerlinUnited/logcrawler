@@ -10,8 +10,10 @@ import os
 def main():
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
-    games = client.games.list(event=2)
+    games = client.games.list(event=2)  # FIXME, should be for all events in the db but RC24 is not sorted correctly yet
     for game in games:
+        print(game)
+
         game_folder = Path(log_root_path) / game.game_folder
         print(game_folder)
 
@@ -25,10 +27,10 @@ def main():
             video_path = str(video).removeprefix(log_root_path).strip("/")
             print(f"\t{video_path}")
             video_parsed = str(video.name).split("_")
-            type = Path(video_parsed[7]).stem  # removes the .mp4 ending
+            video_type = Path(video_parsed[7]).stem  # removes the .mp4 ending
             
             #print(str(video).removeprefix(log_root_path).strip("/"))
-            response = client.video.create(game=game.id, video_path=video_path, type=str(type))
+            response = client.video.create(game=game.id, video_path=video_path, type=str(video_type))
 
 
 
