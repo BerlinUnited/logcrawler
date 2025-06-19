@@ -5,7 +5,9 @@ requests==2.32.3
 opencv-python==4.11.0.86
 pillow==11.1.0
 linetimer==0.1.5
+# used for rust based log reader
 maturin==1.8.3
+# used for youtube uploader
 google-api-python-client==2.172.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.2
