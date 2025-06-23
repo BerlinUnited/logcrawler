@@ -123,19 +123,20 @@ def input_representation_data(log, crawler, my_parser, representation_list):
         return frame_to_id.get(target_frame_number, None)
 
     for repr_name in representation_list:
-        repr_dict = crawler.get_unparsed_representation_list(repr_name)
-
+        repr_dict = crawler.get_representation_metadata(repr_name)
+        
         print(f"\tparse all {repr_name} messages in python")
+
         parsed_messages = list()
         for idx, (frame_number, data) in enumerate(repr_dict.items()):
-            message = my_parser.parse(repr_name, bytes(data))
-
-            message_dict = MessageToDict(message)
+            start, size = data
 
             json_obj = {
                 "frame": get_id_by_frame_number(frame_number),
-                "representation_data": message_dict,
+                "start_pos": start,
+                "size": size,
             }
+
             parsed_messages.append(json_obj)
             if idx % 600 == 0:
                 try:
