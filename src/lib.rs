@@ -1,15 +1,15 @@
 use pyo3::prelude::*;
+use std::fs;
+use std::collections::HashSet;
+use std::collections::HashMap;
 use pyo3::types::PyList;
 use pyo3::types::IntoPyDict;
 use pyo3::types::PyDict;
-use serde_pyobject::to_pyobject;
-use serde::Serialize;
+use pyo3::types::PyTuple;
 
 //use serde::Serialize;
 use kdam::tqdm;
-pub mod naothmessages {
-    include!(concat!(env!("OUT_DIR"), "/naothmessages.rs"));
-}
+
 mod crawler {
     // Include all files as if they were part of this module
     include!("reader.rs");
@@ -18,36 +18,12 @@ mod crawler {
 }
 
 pub use crawler::parse_frames_from_bytes;
-use std::fs;
-use std::collections::HashSet;
-use std::collections::HashMap;
-
-use naothmessages::*; // Import all types from naothmessages
-use prost::Message;
 
 #[pyclass]  // Expose the struct to Python
 struct LogCrawler {
     #[pyo3(get, set)]  // Optional: Allow Python to access/modify field
     log_path: String,
     bytes: Vec<u8>,
-}
-
-fn parse_representation2<T: Message + Default>(data: &[u8]) -> Result<T, prost::DecodeError> {
-    T::decode(data)
-}
-/*
-fn parse_representation(data: &[u8]) -> Result<SensorJointData, prost::DecodeError> {
-    SensorJointData::decode(data)
-}
-*/
-
-fn message_to_json<T: Message + serde::Serialize>(message: &T) -> serde_json::Result<String> {
-    Python::with_gil(|py| {
-        let obj: Bound<PyAny> = to_pyobject(py, &message).unwrap();
-        println!("{:?}", obj);
-    });
-    
-    serde_json::to_string(message)
 }
 
 
@@ -104,36 +80,6 @@ impl LogCrawler {
         })
     }
 
-    fn get_representation(&mut self) -> PyResult<PyObject> {
-        let frames = parse_frames_from_bytes(&self.bytes);
-        let mut jpeg_data = Vec::new();
-    
-        for frame in tqdm!(frames.iter()) {
-            for (field_name, my_tuple) in &frame.fields {
-                // ignore empty representations here
-                if my_tuple.1 > 0  && field_name == "ImageJPEGTop"{
-                    //println!("ImageJPEGTop");
-                    let start: usize = my_tuple.0 as usize;
-                    let size: usize = my_tuple.1 as usize;
-    
-                    // Read the byte slice from bytes
-                    let slice = &self.bytes[start..start+size];
-                    jpeg_data.push(slice);
-                    /*
-                    if let Ok(image) = Image::decode(slice) {
-                        jpeg_data.push(image);
-                    }*/
-                }
-            }
-        };
-        //println!("Parsed ImageJPEGTop: {:?}", jpeg_data[0]);
-    
-        Python::with_gil(|py| {
-            let py_list = PyList::new(py, jpeg_data);
-            Ok(py_list.into())
-        })
-    }
-
     fn get_unparsed_representation_list(&mut self, representation: String) -> PyResult<PyObject> {
         let frames = parse_frames_from_bytes(&self.bytes);
         //let mut data = Vec::new();
@@ -159,71 +105,33 @@ impl LogCrawler {
         })
 
     }
-    
-        fn get_first_representation2(&mut self, representation: String) -> PyResult<PyObject> {
-            let frames = parse_frames_from_bytes(&self.bytes);
 
-            let mut data = Vec::new();
-            for (field_name, my_tuple) in &frames[0].fields {
+    fn get_representation_metadata(&mut self, representation: String) -> PyResult<PyObject> {
+        let frames = parse_frames_from_bytes(&self.bytes);
+
+        let mut data = HashMap::new();
+        for frame in frames{
+            for (field_name, my_tuple) in &frame.fields {
                 // ignore empty representations here
                 if my_tuple.1 > 0  && field_name == &representation{
                     let start: usize = my_tuple.0 as usize;
                     let size: usize = my_tuple.1 as usize;
 
-                    // Read the byte slice from bytes
-                    let slice = &self.bytes[start..start+size];
-                    
-                    let repr = match parse_representation2(&slice) {
-                        Ok(value) => value,
-                        Err(e) => {
-                            println!("Error: {}", e);
-                            break;
-                        }
-                    };
-                    println!("Error: {:?}", repr);
-                    data.push(repr)
+                    data.insert(frame.frame_number, (start, size));
                 }
             }
-
-            Python::with_gil(|py| {
-                let obj = to_pyobject(py, &data[0]).unwrap();
-                Ok(obj.into())
-            })
-
         }
-}
-
-#[pyfunction]
-fn get_representation(full_log_path: &str) -> PyResult<PyObject> {
-    println!("\tloading logfile into memory");
-    let bytes = fs::read(full_log_path).unwrap();
-
-    let frames = parse_frames_from_bytes(&bytes);
-    let mut jpeg_data = Vec::new();
-
-    for frame in tqdm!(frames.iter()) {
-        for (field_name, my_tuple) in &frame.fields {
-            // ignore empty representations here
-            if my_tuple.1 > 0  && field_name == "ImageJPEGTop"{
-                //println!("ImageJPEGTop");
-                let start: usize = my_tuple.0 as usize;
-                let size: usize = my_tuple.1 as usize;
-
-                // Read the byte slice from bytes
-                let slice = &bytes[start..start+size];
-                jpeg_data.push(slice);
-                /*
-                if let Ok(image) = Image::decode(slice) {
-                    jpeg_data.push(image);
-                }*/
+        // FIXME: return a dict frame_number: data
+        Python::with_gil(|py| {
+            let py_dict = PyDict::new(py);
+            for (frame_number, (start, size)) in data {
+                // Create a Python tuple for the start and size values
+                let py_tuple = PyTuple::new(py, &[start.into_py(py), size.into_py(py)]);
+                py_dict.set_item(frame_number, py_tuple)?;
             }
-        }
-    };
-    
-    Python::with_gil(|py| {
-        let py_list = PyList::new(py, jpeg_data);
-        Ok(py_list.into())
-    })
+            Ok(py_dict.into())
+        })
+    }
 }
 
 
@@ -231,7 +139,6 @@ fn get_representation(full_log_path: &str) -> PyResult<PyObject> {
 #[pymodule]
 fn log_crawler(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LogCrawler>()?;
-    m.add_function(wrap_pyfunction!(get_representation, m)?)?;
     Ok(())
 }
 
