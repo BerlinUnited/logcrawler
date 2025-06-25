@@ -11,3 +11,5 @@ maturin==1.8.3
 google-api-python-client==2.172.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.2
+# for accessing telemetry data in GoPro Videos
+telemetry_parser==0.3.0
