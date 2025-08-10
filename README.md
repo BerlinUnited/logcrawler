@@ -58,7 +58,8 @@ logs/
                         **[enthält einen Link/URL auf ein Video, z.B.: https://www.youtube.com/watch?v=0R39kqXO_KE]**
         videos/
             **Contains videos of other games**
-            2025-03-16_xx-xx-00_B-Human_vs_Hulks_half1-FeldA
+            2025-03-16_xx-xx-00_B-Human_vs_Hulks_half1_Field-A_GoPro.mp4
+            2025-03-16_xx-xx-00_B-Human_vs_Hulks_half1_Field-A_PiCam.mp4
         2018-06-18_15-00-00_Berlin_United_vs_Austin_half2_penalty/
             **[Elfmeterschießen (Penalty Shootout) ist ein normaler Spielabschnitt, entsprechend enthÃ¤lt er alle Daten wie eine normale Halbzeit]**
             **TODO each penalty shoot is its own half - how is this communicated by the gamecontroller and how can we name the videos and folders for this**

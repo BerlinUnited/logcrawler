@@ -148,11 +148,11 @@ if __name__ == "__main__":
     img_jpeg_log_path = Path(args.input) / "images_jpeg.log"
 
     if not img_jpeg_log_path.exists():
-        print("No jpeg log found in folder")
+        print(f"No jpeg log found in folder {img_jpeg_log_path}")
         quit()
 
     if not gamelog_path.exists():
-        print("No game.log found in folder")
+        print(f"No game.log found in folder {gamelog_path}")
         quit()
 
     write_combined_log_jpeg(str(combined_log_path), str(img_jpeg_log_path), str(gamelog_path))
