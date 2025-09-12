@@ -10,6 +10,13 @@ logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBU
 
 #TODO check if event folder exist and return warning if not found
 # split script into 3 files, add error handling check folder structure, add info to db and use logging error
+
+#TODO write scripts that check all folders of games and create warning if team doesn't exist
+
+#scripts should be impodent
+
+# first check if event folder exist if no warning or error then continue
+#TODO create postgres docker container script maybe psql / docker run
 if __name__ == "__main__":
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
