@@ -30,4 +30,4 @@ USER nonroot
 WORKDIR /app
 
 # Run the FastAPI application by default
-CMD ["python", "test.py"]
+CMD ["python", "src/main.py"]
