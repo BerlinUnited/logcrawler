@@ -2,7 +2,7 @@ name: build logcrawler container
 
 on:
   push:
-    branches: ['main']
+    branches: ['feature/logcrawler_rewrite']
     
 # This creates an environment variable called `IMAGE_NAME ` with the value `ghtoken_product_demo`.
 env:
