@@ -6,8 +6,9 @@ from utils import check_folder_exists
 import logging
 import os
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
+
+def main():
+    logging.basicConfig(level=logging.INFO)
     check_env_vars()
     log_root_path = os.environ.get("VAT_LOG_ROOT")
 
@@ -21,3 +22,7 @@ if __name__ == "__main__":
     )
     input_events(log_root_path, client)
     input_games(log_root_path, client)
+
+
+if __name__ == "__main__":
+    main()

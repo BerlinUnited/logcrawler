@@ -2,8 +2,8 @@ from pathlib import Path
 import logging
 
 
-event_list = ["2024-07-15_RC24", "2025-03-12-GO25", "2025-07-15_RC25", "2025-09-05-IFA"]
-
+event_list = ["2024-07-15_RC24", "2025-03-12-GO25", "2025-07-15_RC25"]
+# TODO: at ifa and other test events we play against ourselves: how should we deal with this in our db?
 
 def input_events(log_root_path, client):
     all_events = [f for f in Path(log_root_path).iterdir() if f.is_dir()]
