@@ -223,7 +223,7 @@ if __name__ == "__main__":
             str(out_bottom_jpg),
         )
 
-    # HACK delete image folders if they are empty - this is just so that looking at the distracted folder is not confusing for humans
+    # HACK delete image folders if they are empty - this is just so that looking at the extracted folder is not confusing for humans
     if not any(out_top_jpg.iterdir()):
         out_top_jpg.rmdir()
     if not any(out_bottom_jpg.iterdir()):
